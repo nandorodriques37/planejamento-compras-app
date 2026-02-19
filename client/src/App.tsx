@@ -2,19 +2,35 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
+import { Suspense, lazy } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
-import EstoquePlanning from "./pages/EstoquePlanning";
-import AprovacaoPedidos from "./pages/AprovacaoPedidos";
+import LoadingSpinner from "./components/LoadingSpinner";
+
+// Lazy load pages for code-splitting
+const Home = lazy(() => import("./pages/Home"));
+const EstoquePlanning = lazy(() => import("./pages/EstoquePlanning"));
+const AprovacaoPedidos = lazy(() => import("./pages/AprovacaoPedidos"));
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/compras" component={Home} />
-      <Route path="/estoque" component={EstoquePlanning} />
-      <Route path="/aprovacao" component={AprovacaoPedidos} />
+      <Route path="/estoque">
+        {() => (
+          <Suspense fallback={<LoadingSpinner />}>
+            <EstoquePlanning />
+          </Suspense>
+        )}
+      </Route>
+      <Route path="/aprovacao">
+        {() => (
+          <Suspense fallback={<LoadingSpinner />}>
+            <AprovacaoPedidos />
+          </Suspense>
+        )}
+      </Route>
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
