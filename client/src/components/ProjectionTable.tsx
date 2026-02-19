@@ -139,10 +139,11 @@ function EditableCell({
   );
 }
 
-function calcularCoberturaDias(estoqueProjetado: number, estoqueObjetivo: number, objetivoDias: number): number {
-  if (estoqueObjetivo <= 0) return estoqueProjetado > 0 ? 999 : 0;
+function calcularCoberturaDias(estoqueProjetado: number, sellOut: number): number {
+  const demandaDiaria = sellOut / 30;
+  if (demandaDiaria <= 0) return estoqueProjetado > 0 ? 999 : 0;
   if (estoqueProjetado <= 0) return 0;
-  return Math.round((estoqueProjetado / estoqueObjetivo) * objetivoDias);
+  return Math.round(estoqueProjetado / demandaDiaria);
 }
 
 function getCoberturaColor(coberturaDias: number, objetivoDias: number): string {
@@ -429,17 +430,22 @@ export default function ProjectionTable({
           valA = cadA.PREECHIMENTO_DEMANDA_LOJA || 0;
           valB = cadB.PREECHIMENTO_DEMANDA_LOJA || 0;
           break;
-        case 'obj_dias':
-          valA = (cadA.LT || 0) + (cadA.FREQUENCIA || 0) + (cadA.EST_SEGURANCA || 0);
-          valB = (cadB.LT || 0) + (cadB.FREQUENCIA || 0) + (cadB.EST_SEGURANCA || 0);
+        case 'obj_dias': {
+          const dA1 = a.meses[firstMes];
+          const dB1 = b.meses[firstMes];
+          const soA = dA1?.SELL_OUT || 0;
+          const soB = dB1?.SELL_OUT || 0;
+          const fbA = (cadA.LT || 0) + (cadA.FREQUENCIA || 0) + (cadA.EST_SEGURANCA || 0);
+          const fbB = (cadB.LT || 0) + (cadB.FREQUENCIA || 0) + (cadB.EST_SEGURANCA || 0);
+          valA = soA > 0 ? Math.round((dA1!.ESTOQUE_OBJETIVO) / (soA / 30)) : fbA;
+          valB = soB > 0 ? Math.round((dB1!.ESTOQUE_OBJETIVO) / (soB / 30)) : fbB;
           break;
+        }
         case 'cobertura_m1': {
           const dA = a.meses[firstMes];
           const dB = b.meses[firstMes];
-          const objDiasA = (cadA.LT || 0) + (cadA.FREQUENCIA || 0) + (cadA.EST_SEGURANCA || 0);
-          const objDiasB = (cadB.LT || 0) + (cadB.FREQUENCIA || 0) + (cadB.EST_SEGURANCA || 0);
-          valA = dA ? calcularCoberturaDias(dA.ESTOQUE_PROJETADO, dA.ESTOQUE_OBJETIVO, objDiasA) : 0;
-          valB = dB ? calcularCoberturaDias(dB.ESTOQUE_PROJETADO, dB.ESTOQUE_OBJETIVO, objDiasB) : 0;
+          valA = dA ? calcularCoberturaDias(dA.ESTOQUE_PROJETADO, dA.SELL_OUT) : 0;
+          valB = dB ? calcularCoberturaDias(dB.ESTOQUE_PROJETADO, dB.SELL_OUT) : 0;
           break;
         }
       }
@@ -591,9 +597,12 @@ export default function ProjectionTable({
 
   const renderScrollableRow = (proj: ProjecaoSKU, rowIdx: number) => {
     const cad = cadastroMap.get(proj.CHAVE);
-    const estObjDias = cad ? (cad.LT || 0) + (cad.FREQUENCIA || 0) + (cad.EST_SEGURANCA || 0) : 0;
+    const fallbackObjDias = cad ? (cad.LT || 0) + (cad.FREQUENCIA || 0) + (cad.EST_SEGURANCA || 0) : 0;
     const mes1Data = proj.meses[meses[0]];
     const demandaDiariaMes1 = (mes1Data?.SELL_OUT || 0) / 30;
+    const estObjDias = demandaDiariaMes1 > 0
+      ? Math.round((mes1Data?.ESTOQUE_OBJETIVO || 0) / demandaDiariaMes1)
+      : fallbackObjDias;
     const cobEstDias = cad && demandaDiariaMes1 > 0 ? Math.round((cad.ESTOQUE || 0) / demandaDiariaMes1) : ((cad?.ESTOQUE || 0) > 0 ? 999 : 0);
     const cobEPDias = cad && demandaDiariaMes1 > 0 ? Math.round(((cad.ESTOQUE || 0) + (cad.PENDENCIA || 0)) / demandaDiariaMes1) : (((cad?.ESTOQUE || 0) + (cad?.PENDENCIA || 0)) > 0 ? 999 : 0);
     const isSelected = selectedSKU === proj.CHAVE;
@@ -654,8 +663,9 @@ export default function ProjectionTable({
 
           const isAbaixoObj = d.ESTOQUE_PROJETADO < d.ESTOQUE_OBJETIVO;
           const isNegativo = d.ESTOQUE_PROJETADO < 0;
-          const coberturaDias = calcularCoberturaDias(d.ESTOQUE_PROJETADO, d.ESTOQUE_OBJETIVO, estObjDias);
-          const coberturaColor = getCoberturaColor(coberturaDias, estObjDias);
+          const coberturaDias = calcularCoberturaDias(d.ESTOQUE_PROJETADO, d.SELL_OUT);
+          const objDiasMes = d.SELL_OUT > 0 ? Math.round(d.ESTOQUE_OBJETIVO / (d.SELL_OUT / 30)) : fallbackObjDias;
+          const coberturaColor = getCoberturaColor(coberturaDias, objDiasMes);
 
           // Distribuição semanal multi-mês para o mês 1
           const skuLT = cad?.LT || 0;
@@ -718,8 +728,8 @@ export default function ProjectionTable({
                   {formatNumber(d.ESTOQUE_OBJETIVO)}
                 </span>
               </div>
-              <div style={{ width: colWidth }} className={`px-2 flex items-center justify-end rounded-sm ${getCoberturaHeatClass(coberturaDias, estObjDias)}`}>
-                <span className={`text-xs font-mono tabular-nums font-semibold ${coberturaColor}`} title={`Cobertura: ${coberturaDias} dias (Obj: ${estObjDias}d)`}>
+              <div style={{ width: colWidth }} className={`px-2 flex items-center justify-end rounded-sm ${getCoberturaHeatClass(coberturaDias, objDiasMes)}`}>
+                <span className={`text-xs font-mono tabular-nums font-semibold ${coberturaColor}`} title={`Cobertura: ${coberturaDias} dias (Obj: ${objDiasMes}d)`}>
                   {coberturaDias >= 999 ? '∞' : `${coberturaDias}d`}
                 </span>
               </div>
