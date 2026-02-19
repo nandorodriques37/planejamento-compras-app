@@ -1,0 +1,2307 @@
+{
+  "metadata": {
+    "data_referencia": "2026-02-13",
+    "horizonte_meses": 13,
+    "meses": [
+      "2026_02",
+      "2026_03",
+      "2026_04",
+      "2026_05",
+      "2026_06",
+      "2026_07",
+      "2026_08",
+      "2026_09",
+      "2026_10",
+      "2026_11",
+      "2026_12",
+      "2027_01",
+      "2027_02"
+    ],
+    "total_skus": 20,
+    "dias_mes": 30
+  },
+  "cadastro": [
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "1-2959",
+      "codigo_deposito_pd": 1,
+      "codigo_produto": 2959,
+      "nome produto": "INSUL NOVOLIN N 10ML",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 389.0,
+      "PENDENCIA": 4000.0,
+      "LT": 9.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 77.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 61.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "1-39306",
+      "codigo_deposito_pd": 1,
+      "codigo_produto": 39306,
+      "nome produto": "INSUL NOVORAPID FLEXPEN SINGLPAC3M",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 226.0,
+      "PENDENCIA": 2400.0,
+      "LT": 11.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 127.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 51.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "1-51080",
+      "codigo_deposito_pd": 1,
+      "codigo_produto": 51080,
+      "nome produto": "INSUL XULTOPHY 100UI/ML 3MLC/1APLI",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 410.0,
+      "PENDENCIA": 1574.0,
+      "LT": 15.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 156.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 86.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "1-53706",
+      "codigo_deposito_pd": 1,
+      "codigo_produto": 53706,
+      "nome produto": "OZEMPIC 1MG C/1 SISTEMA +4 AGULHA",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 2039.0,
+      "PENDENCIA": 880.0,
+      "LT": 34.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 52.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 23.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "1-55975",
+      "codigo_deposito_pd": 1,
+      "codigo_produto": 55975,
+      "nome produto": "INSUL FIASP FLEXTOUCH 100UI/3ML C/",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 28.0,
+      "PENDENCIA": 4677.0,
+      "LT": 16.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 20.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 104.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "1-77350",
+      "codigo_deposito_pd": 1,
+      "codigo_produto": 77350,
+      "nome produto": "WEGOVY 1,7MG 3ML  C/1 SISTEMA +4 +",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 906.0,
+      "PENDENCIA": 480.0,
+      "LT": 26.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 210.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 14.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "1-77351",
+      "codigo_deposito_pd": 1,
+      "codigo_produto": 77351,
+      "nome produto": "WEGOVY 1MG 3ML  C/1 SISTEMA +4+",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 1880.0,
+      "PENDENCIA": 1840.0,
+      "LT": 20.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 190.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 36.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "1-77352",
+      "codigo_deposito_pd": 1,
+      "codigo_produto": 77352,
+      "nome produto": "WEGOVY 2,4MG 3ML C/1SISTEMA+4AGULH",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 1415.0,
+      "PENDENCIA": 1415.0,
+      "LT": 15.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 186.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 27.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "2-2959",
+      "codigo_deposito_pd": 2,
+      "codigo_produto": 2959,
+      "nome produto": "INSUL NOVOLIN N 10ML",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 3166.0,
+      "PENDENCIA": 60.0,
+      "LT": 7.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 36.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 8.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "2-53706",
+      "codigo_deposito_pd": 2,
+      "codigo_produto": 53706,
+      "nome produto": "OZEMPIC 1MG C/1 SISTEMA +4 AGULHA",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 1186.0,
+      "PENDENCIA": 800.0,
+      "LT": 22.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 0.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 11.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "2-55975",
+      "codigo_deposito_pd": 2,
+      "codigo_produto": 55975,
+      "nome produto": "INSUL FIASP FLEXTOUCH 100UI/3ML C/",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 1120.0,
+      "PENDENCIA": 2320.0,
+      "LT": 13.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 17.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 35.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "2-77351",
+      "codigo_deposito_pd": 2,
+      "codigo_produto": 77351,
+      "nome produto": "WEGOVY 1MG 3ML  C/1 SISTEMA +4+",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 1596.0,
+      "PENDENCIA": 720.0,
+      "LT": 16.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 187.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 10.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "2-77352",
+      "codigo_deposito_pd": 2,
+      "codigo_produto": 77352,
+      "nome produto": "WEGOVY 2,4MG 3ML C/1SISTEMA+4AGULH",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 379.0,
+      "PENDENCIA": 1200.0,
+      "LT": 13.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 195.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 21.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "3-2959",
+      "codigo_deposito_pd": 3,
+      "codigo_produto": 2959,
+      "nome produto": "INSUL NOVOLIN N 10ML",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 0.0,
+      "PENDENCIA": 6000.0,
+      "LT": 9.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 23.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 1191.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "3-55975",
+      "codigo_deposito_pd": 3,
+      "codigo_produto": 55975,
+      "nome produto": "INSUL FIASP FLEXTOUCH 100UI/3ML C/",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 716.0,
+      "PENDENCIA": 2080.0,
+      "LT": 12.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 35.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 7.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "4-2959",
+      "codigo_deposito_pd": 4,
+      "codigo_produto": 2959,
+      "nome produto": "INSUL NOVOLIN N 10ML",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 313.0,
+      "PENDENCIA": 3500.0,
+      "LT": 8.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 111.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 1.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "4-55975",
+      "codigo_deposito_pd": 4,
+      "codigo_produto": 55975,
+      "nome produto": "INSUL FIASP FLEXTOUCH 100UI/3ML C/",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 869.0,
+      "PENDENCIA": 2240.0,
+      "LT": 12.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 96.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 3.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "6-2959",
+      "codigo_deposito_pd": 6,
+      "codigo_produto": 2959,
+      "nome produto": "INSUL NOVOLIN N 10ML",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 466.0,
+      "PENDENCIA": 5500.0,
+      "LT": 11.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 30.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 24.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "7-2959",
+      "codigo_deposito_pd": 7,
+      "codigo_produto": 2959,
+      "nome produto": "INSUL NOVOLIN N 10ML",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 1522.0,
+      "PENDENCIA": 2500.0,
+      "LT": 9.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 39.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 2.0
+    },
+    {
+      "fornecedor comercial": "NOVO NORDISK",
+      "situacao": "A",
+      "CHAVE": "9-2959",
+      "codigo_deposito_pd": 9,
+      "codigo_produto": 2959,
+      "nome produto": "INSUL NOVOLIN N 10ML",
+      "nome nível 3": "DIABETES",
+      "nome nível 4": "DIABETES-INJETAVEL",
+      "ESTOQUE": 3899.0,
+      "PENDENCIA": 0.0,
+      "LT": 9.0,
+      "NNA": 0.0,
+      "FREQUENCIA": 7.0,
+      "EST_SEGURANCA": 5.0,
+      "IMPACTO": 78.0,
+      "PREECHIMENTO_DEMANDA_LOJA": 0.0
+    }
+  ],
+  "projecao": [
+    {
+      "CHAVE": "6-2959",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 3208.0,
+          "ESTOQUE_PROJETADO": 4304.0,
+          "ESTOQUE_OBJETIVO": 4304.0,
+          "PEDIDO": 1546.0,
+          "ENTRADA": 1546.0
+        },
+        "2026_03": {
+          "SELL_OUT": 6001.0,
+          "ESTOQUE_PROJETADO": 4601.0,
+          "ESTOQUE_OBJETIVO": 4601.0,
+          "PEDIDO": 6298.0,
+          "ENTRADA": 6298.0
+        },
+        "2026_04": {
+          "SELL_OUT": 5838.0,
+          "ESTOQUE_PROJETADO": 4476.0,
+          "ESTOQUE_OBJETIVO": 4476.0,
+          "PEDIDO": 5713.0,
+          "ENTRADA": 5713.0
+        },
+        "2026_05": {
+          "SELL_OUT": 5613.0,
+          "ESTOQUE_PROJETADO": 4303.0,
+          "ESTOQUE_OBJETIVO": 4303.0,
+          "PEDIDO": 5441.0,
+          "ENTRADA": 5441.0
+        },
+        "2026_06": {
+          "SELL_OUT": 6017.0,
+          "ESTOQUE_PROJETADO": 4613.0,
+          "ESTOQUE_OBJETIVO": 4613.0,
+          "PEDIDO": 6327.0,
+          "ENTRADA": 6327.0
+        },
+        "2026_07": {
+          "SELL_OUT": 5687.0,
+          "ESTOQUE_PROJETADO": 4360.0,
+          "ESTOQUE_OBJETIVO": 4360.0,
+          "PEDIDO": 5434.0,
+          "ENTRADA": 5434.0
+        },
+        "2026_08": {
+          "SELL_OUT": 6096.0,
+          "ESTOQUE_PROJETADO": 4674.0,
+          "ESTOQUE_OBJETIVO": 4674.0,
+          "PEDIDO": 6410.0,
+          "ENTRADA": 6410.0
+        },
+        "2026_09": {
+          "SELL_OUT": 6034.0,
+          "ESTOQUE_PROJETADO": 4626.0,
+          "ESTOQUE_OBJETIVO": 4626.0,
+          "PEDIDO": 5986.0,
+          "ENTRADA": 5986.0
+        },
+        "2026_10": {
+          "SELL_OUT": 5569.0,
+          "ESTOQUE_PROJETADO": 4270.0,
+          "ESTOQUE_OBJETIVO": 4270.0,
+          "PEDIDO": 5213.0,
+          "ENTRADA": 5213.0
+        },
+        "2026_11": {
+          "SELL_OUT": 5546.0,
+          "ESTOQUE_PROJETADO": 4252.0,
+          "ESTOQUE_OBJETIVO": 4252.0,
+          "PEDIDO": 5528.0,
+          "ENTRADA": 5528.0
+        },
+        "2026_12": {
+          "SELL_OUT": 6194.0,
+          "ESTOQUE_PROJETADO": 4749.0,
+          "ESTOQUE_OBJETIVO": 4749.0,
+          "PEDIDO": 6691.0,
+          "ENTRADA": 6691.0
+        },
+        "2027_01": {
+          "SELL_OUT": 6047.0,
+          "ESTOQUE_PROJETADO": 4636.0,
+          "ESTOQUE_OBJETIVO": 4636.0,
+          "PEDIDO": 5934.0,
+          "ENTRADA": 5934.0
+        },
+        "2027_02": {
+          "SELL_OUT": 5614.0,
+          "ESTOQUE_PROJETADO": 4304.0,
+          "ESTOQUE_OBJETIVO": 4304.0,
+          "PEDIDO": 5282.0,
+          "ENTRADA": 5282.0
+        }
+      }
+    },
+    {
+      "CHAVE": "3-2959",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 3182.0,
+          "ESTOQUE_PROJETADO": 3898.0,
+          "ESTOQUE_OBJETIVO": 3898.0,
+          "PEDIDO": 1081.0,
+          "ENTRADA": 1081.0
+        },
+        "2026_03": {
+          "SELL_OUT": 5606.0,
+          "ESTOQUE_PROJETADO": 3924.0,
+          "ESTOQUE_OBJETIVO": 3924.0,
+          "PEDIDO": 5632.0,
+          "ENTRADA": 5632.0
+        },
+        "2026_04": {
+          "SELL_OUT": 5642.0,
+          "ESTOQUE_PROJETADO": 3949.0,
+          "ESTOQUE_OBJETIVO": 3949.0,
+          "PEDIDO": 5667.0,
+          "ENTRADA": 5667.0
+        },
+        "2026_05": {
+          "SELL_OUT": 5646.0,
+          "ESTOQUE_PROJETADO": 3952.0,
+          "ESTOQUE_OBJETIVO": 3952.0,
+          "PEDIDO": 5649.0,
+          "ENTRADA": 5649.0
+        },
+        "2026_06": {
+          "SELL_OUT": 5602.0,
+          "ESTOQUE_PROJETADO": 3921.0,
+          "ESTOQUE_OBJETIVO": 3921.0,
+          "PEDIDO": 5571.0,
+          "ENTRADA": 5571.0
+        },
+        "2026_07": {
+          "SELL_OUT": 5510.0,
+          "ESTOQUE_PROJETADO": 3857.0,
+          "ESTOQUE_OBJETIVO": 3857.0,
+          "PEDIDO": 5446.0,
+          "ENTRADA": 5446.0
+        },
+        "2026_08": {
+          "SELL_OUT": 5696.0,
+          "ESTOQUE_PROJETADO": 3987.0,
+          "ESTOQUE_OBJETIVO": 3987.0,
+          "PEDIDO": 5826.0,
+          "ENTRADA": 5826.0
+        },
+        "2026_09": {
+          "SELL_OUT": 5656.0,
+          "ESTOQUE_PROJETADO": 3959.0,
+          "ESTOQUE_OBJETIVO": 3959.0,
+          "PEDIDO": 5628.0,
+          "ENTRADA": 5628.0
+        },
+        "2026_10": {
+          "SELL_OUT": 5389.0,
+          "ESTOQUE_PROJETADO": 3772.0,
+          "ESTOQUE_OBJETIVO": 3772.0,
+          "PEDIDO": 5202.0,
+          "ENTRADA": 5202.0
+        },
+        "2026_11": {
+          "SELL_OUT": 5624.0,
+          "ESTOQUE_PROJETADO": 3937.0,
+          "ESTOQUE_OBJETIVO": 3937.0,
+          "PEDIDO": 5789.0,
+          "ENTRADA": 5789.0
+        },
+        "2026_12": {
+          "SELL_OUT": 5541.0,
+          "ESTOQUE_PROJETADO": 3879.0,
+          "ESTOQUE_OBJETIVO": 3879.0,
+          "PEDIDO": 5483.0,
+          "ENTRADA": 5483.0
+        },
+        "2027_01": {
+          "SELL_OUT": 5904.0,
+          "ESTOQUE_PROJETADO": 4133.0,
+          "ESTOQUE_OBJETIVO": 4133.0,
+          "PEDIDO": 6158.0,
+          "ENTRADA": 6158.0
+        },
+        "2027_02": {
+          "SELL_OUT": 5569.0,
+          "ESTOQUE_PROJETADO": 3898.0,
+          "ESTOQUE_OBJETIVO": 3898.0,
+          "PEDIDO": 5334.0,
+          "ENTRADA": 5334.0
+        }
+      }
+    },
+    {
+      "CHAVE": "1-2959",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 2738.0,
+          "ESTOQUE_PROJETADO": 3354.0,
+          "ESTOQUE_OBJETIVO": 3354.0,
+          "PEDIDO": 1704.0,
+          "ENTRADA": 1704.0
+        },
+        "2026_03": {
+          "SELL_OUT": 4713.0,
+          "ESTOQUE_PROJETADO": 3299.0,
+          "ESTOQUE_OBJETIVO": 3299.0,
+          "PEDIDO": 4658.0,
+          "ENTRADA": 4658.0
+        },
+        "2026_04": {
+          "SELL_OUT": 4760.0,
+          "ESTOQUE_PROJETADO": 3332.0,
+          "ESTOQUE_OBJETIVO": 3332.0,
+          "PEDIDO": 4793.0,
+          "ENTRADA": 4793.0
+        },
+        "2026_05": {
+          "SELL_OUT": 4773.0,
+          "ESTOQUE_PROJETADO": 3341.0,
+          "ESTOQUE_OBJETIVO": 3341.0,
+          "PEDIDO": 4782.0,
+          "ENTRADA": 4782.0
+        },
+        "2026_06": {
+          "SELL_OUT": 4801.0,
+          "ESTOQUE_PROJETADO": 3361.0,
+          "ESTOQUE_OBJETIVO": 3361.0,
+          "PEDIDO": 4821.0,
+          "ENTRADA": 4821.0
+        },
+        "2026_07": {
+          "SELL_OUT": 5087.0,
+          "ESTOQUE_PROJETADO": 3561.0,
+          "ESTOQUE_OBJETIVO": 3561.0,
+          "PEDIDO": 5287.0,
+          "ENTRADA": 5287.0
+        },
+        "2026_08": {
+          "SELL_OUT": 5056.0,
+          "ESTOQUE_PROJETADO": 3539.0,
+          "ESTOQUE_OBJETIVO": 3539.0,
+          "PEDIDO": 5034.0,
+          "ENTRADA": 5034.0
+        },
+        "2026_09": {
+          "SELL_OUT": 4936.0,
+          "ESTOQUE_PROJETADO": 3455.0,
+          "ESTOQUE_OBJETIVO": 3455.0,
+          "PEDIDO": 4852.0,
+          "ENTRADA": 4852.0
+        },
+        "2026_10": {
+          "SELL_OUT": 4820.0,
+          "ESTOQUE_PROJETADO": 3374.0,
+          "ESTOQUE_OBJETIVO": 3374.0,
+          "PEDIDO": 4739.0,
+          "ENTRADA": 4739.0
+        },
+        "2026_11": {
+          "SELL_OUT": 4894.0,
+          "ESTOQUE_PROJETADO": 3426.0,
+          "ESTOQUE_OBJETIVO": 3426.0,
+          "PEDIDO": 4946.0,
+          "ENTRADA": 4946.0
+        },
+        "2026_12": {
+          "SELL_OUT": 4977.0,
+          "ESTOQUE_PROJETADO": 3484.0,
+          "ESTOQUE_OBJETIVO": 3484.0,
+          "PEDIDO": 5035.0,
+          "ENTRADA": 5035.0
+        },
+        "2027_01": {
+          "SELL_OUT": 5056.0,
+          "ESTOQUE_PROJETADO": 3539.0,
+          "ESTOQUE_OBJETIVO": 3539.0,
+          "PEDIDO": 5111.0,
+          "ENTRADA": 5111.0
+        },
+        "2027_02": {
+          "SELL_OUT": 4792.0,
+          "ESTOQUE_PROJETADO": 3354.0,
+          "ESTOQUE_OBJETIVO": 3354.0,
+          "PEDIDO": 4607.0,
+          "ENTRADA": 4607.0
+        }
+      }
+    },
+    {
+      "CHAVE": "1-77351",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 1215.0,
+          "ESTOQUE_PROJETADO": 2505.0,
+          "ESTOQUE_OBJETIVO": 2269.0,
+          "PEDIDO": 1212.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 1799.0,
+          "ESTOQUE_PROJETADO": 1918.0,
+          "ESTOQUE_OBJETIVO": 1918.0,
+          "PEDIDO": 3758.0,
+          "ENTRADA": 1212.0
+        },
+        "2026_04": {
+          "SELL_OUT": 2747.0,
+          "ESTOQUE_PROJETADO": 2930.0,
+          "ESTOQUE_OBJETIVO": 2930.0,
+          "PEDIDO": 4440.0,
+          "ENTRADA": 3758.0
+        },
+        "2026_05": {
+          "SELL_OUT": 3566.0,
+          "ESTOQUE_PROJETADO": 3804.0,
+          "ESTOQUE_OBJETIVO": 3804.0,
+          "PEDIDO": 3754.0,
+          "ENTRADA": 4440.0
+        },
+        "2026_06": {
+          "SELL_OUT": 3657.0,
+          "ESTOQUE_PROJETADO": 3901.0,
+          "ESTOQUE_OBJETIVO": 3901.0,
+          "PEDIDO": 3311.0,
+          "ENTRADA": 3754.0
+        },
+        "2026_07": {
+          "SELL_OUT": 3490.0,
+          "ESTOQUE_PROJETADO": 3722.0,
+          "ESTOQUE_OBJETIVO": 3722.0,
+          "PEDIDO": 3540.0,
+          "ENTRADA": 3311.0
+        },
+        "2026_08": {
+          "SELL_OUT": 3514.0,
+          "ESTOQUE_PROJETADO": 3748.0,
+          "ESTOQUE_OBJETIVO": 3748.0,
+          "PEDIDO": 4897.0,
+          "ENTRADA": 3540.0
+        },
+        "2026_09": {
+          "SELL_OUT": 4183.0,
+          "ESTOQUE_PROJETADO": 4462.0,
+          "ESTOQUE_OBJETIVO": 4462.0,
+          "PEDIDO": 4998.0,
+          "ENTRADA": 4897.0
+        },
+        "2026_10": {
+          "SELL_OUT": 4577.0,
+          "ESTOQUE_PROJETADO": 4883.0,
+          "ESTOQUE_OBJETIVO": 4883.0,
+          "PEDIDO": 5264.0,
+          "ENTRADA": 4998.0
+        },
+        "2026_11": {
+          "SELL_OUT": 4909.0,
+          "ESTOQUE_PROJETADO": 5237.0,
+          "ESTOQUE_OBJETIVO": 5237.0,
+          "PEDIDO": 4369.0,
+          "ENTRADA": 5264.0
+        },
+        "2026_12": {
+          "SELL_OUT": 4648.0,
+          "ESTOQUE_PROJETADO": 4958.0,
+          "ESTOQUE_OBJETIVO": 4958.0,
+          "PEDIDO": 4923.0,
+          "ENTRADA": 4369.0
+        },
+        "2027_01": {
+          "SELL_OUT": 4781.0,
+          "ESTOQUE_PROJETADO": 5100.0,
+          "ESTOQUE_OBJETIVO": 5100.0,
+          "PEDIDO": 4241.0,
+          "ENTRADA": 4923.0
+        },
+        "2027_02": {
+          "SELL_OUT": 4520.0,
+          "ESTOQUE_PROJETADO": 4821.0,
+          "ESTOQUE_OBJETIVO": 4821.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 4241.0
+        }
+      }
+    },
+    {
+      "CHAVE": "4-2959",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 1947.0,
+          "ESTOQUE_PROJETADO": 2272.0,
+          "ESTOQUE_OBJETIVO": 2272.0,
+          "PEDIDO": 406.0,
+          "ENTRADA": 406.0
+        },
+        "2026_03": {
+          "SELL_OUT": 3400.0,
+          "ESTOQUE_PROJETADO": 2267.0,
+          "ESTOQUE_OBJETIVO": 2267.0,
+          "PEDIDO": 3395.0,
+          "ENTRADA": 3395.0
+        },
+        "2026_04": {
+          "SELL_OUT": 3422.0,
+          "ESTOQUE_PROJETADO": 2281.0,
+          "ESTOQUE_OBJETIVO": 2281.0,
+          "PEDIDO": 3437.0,
+          "ENTRADA": 3437.0
+        },
+        "2026_05": {
+          "SELL_OUT": 3376.0,
+          "ESTOQUE_PROJETADO": 2251.0,
+          "ESTOQUE_OBJETIVO": 2251.0,
+          "PEDIDO": 3345.0,
+          "ENTRADA": 3345.0
+        },
+        "2026_06": {
+          "SELL_OUT": 3418.0,
+          "ESTOQUE_PROJETADO": 2279.0,
+          "ESTOQUE_OBJETIVO": 2279.0,
+          "PEDIDO": 3446.0,
+          "ENTRADA": 3446.0
+        },
+        "2026_07": {
+          "SELL_OUT": 3461.0,
+          "ESTOQUE_PROJETADO": 2307.0,
+          "ESTOQUE_OBJETIVO": 2307.0,
+          "PEDIDO": 3490.0,
+          "ENTRADA": 3490.0
+        },
+        "2026_08": {
+          "SELL_OUT": 3466.0,
+          "ESTOQUE_PROJETADO": 2311.0,
+          "ESTOQUE_OBJETIVO": 2311.0,
+          "PEDIDO": 3469.0,
+          "ENTRADA": 3469.0
+        },
+        "2026_09": {
+          "SELL_OUT": 3449.0,
+          "ESTOQUE_PROJETADO": 2299.0,
+          "ESTOQUE_OBJETIVO": 2299.0,
+          "PEDIDO": 3438.0,
+          "ENTRADA": 3438.0
+        },
+        "2026_10": {
+          "SELL_OUT": 3445.0,
+          "ESTOQUE_PROJETADO": 2297.0,
+          "ESTOQUE_OBJETIVO": 2297.0,
+          "PEDIDO": 3442.0,
+          "ENTRADA": 3442.0
+        },
+        "2026_11": {
+          "SELL_OUT": 3441.0,
+          "ESTOQUE_PROJETADO": 2294.0,
+          "ESTOQUE_OBJETIVO": 2294.0,
+          "PEDIDO": 3438.0,
+          "ENTRADA": 3438.0
+        },
+        "2026_12": {
+          "SELL_OUT": 3416.0,
+          "ESTOQUE_PROJETADO": 2277.0,
+          "ESTOQUE_OBJETIVO": 2277.0,
+          "PEDIDO": 3399.0,
+          "ENTRADA": 3399.0
+        },
+        "2027_01": {
+          "SELL_OUT": 3630.0,
+          "ESTOQUE_PROJETADO": 2420.0,
+          "ESTOQUE_OBJETIVO": 2420.0,
+          "PEDIDO": 3773.0,
+          "ENTRADA": 3773.0
+        },
+        "2027_02": {
+          "SELL_OUT": 3408.0,
+          "ESTOQUE_PROJETADO": 2272.0,
+          "ESTOQUE_OBJETIVO": 2272.0,
+          "PEDIDO": 3260.0,
+          "ENTRADA": 3260.0
+        }
+      }
+    },
+    {
+      "CHAVE": "1-53706",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 1050.0,
+          "ESTOQUE_PROJETADO": 1869.0,
+          "ESTOQUE_OBJETIVO": 2818.0,
+          "PEDIDO": 3386.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 2074.0,
+          "ESTOQUE_PROJETADO": 3181.0,
+          "ESTOQUE_OBJETIVO": 3181.0,
+          "PEDIDO": 2567.0,
+          "ENTRADA": 3386.0
+        },
+        "2026_04": {
+          "SELL_OUT": 2269.0,
+          "ESTOQUE_PROJETADO": 3479.0,
+          "ESTOQUE_OBJETIVO": 3479.0,
+          "PEDIDO": 3569.0,
+          "ENTRADA": 2567.0
+        },
+        "2026_05": {
+          "SELL_OUT": 2782.0,
+          "ESTOQUE_PROJETADO": 4266.0,
+          "ESTOQUE_OBJETIVO": 4266.0,
+          "PEDIDO": 5067.0,
+          "ENTRADA": 3569.0
+        },
+        "2026_06": {
+          "SELL_OUT": 3684.0,
+          "ESTOQUE_PROJETADO": 5649.0,
+          "ESTOQUE_OBJETIVO": 5649.0,
+          "PEDIDO": 4367.0,
+          "ENTRADA": 5067.0
+        },
+        "2026_07": {
+          "SELL_OUT": 3954.0,
+          "ESTOQUE_PROJETADO": 6062.0,
+          "ESTOQUE_OBJETIVO": 6062.0,
+          "PEDIDO": 3321.0,
+          "ENTRADA": 4367.0
+        },
+        "2026_08": {
+          "SELL_OUT": 3704.0,
+          "ESTOQUE_PROJETADO": 5679.0,
+          "ESTOQUE_OBJETIVO": 5679.0,
+          "PEDIDO": 3115.0,
+          "ENTRADA": 3321.0
+        },
+        "2026_09": {
+          "SELL_OUT": 3471.0,
+          "ESTOQUE_PROJETADO": 5323.0,
+          "ESTOQUE_OBJETIVO": 5323.0,
+          "PEDIDO": 3179.0,
+          "ENTRADA": 3115.0
+        },
+        "2026_10": {
+          "SELL_OUT": 3356.0,
+          "ESTOQUE_PROJETADO": 5146.0,
+          "ESTOQUE_OBJETIVO": 5146.0,
+          "PEDIDO": 2331.0,
+          "ENTRADA": 3179.0
+        },
+        "2026_11": {
+          "SELL_OUT": 2951.0,
+          "ESTOQUE_PROJETADO": 4525.0,
+          "ESTOQUE_OBJETIVO": 4525.0,
+          "PEDIDO": 3257.0,
+          "ENTRADA": 2331.0
+        },
+        "2026_12": {
+          "SELL_OUT": 3072.0,
+          "ESTOQUE_PROJETADO": 4710.0,
+          "ESTOQUE_OBJETIVO": 4710.0,
+          "PEDIDO": 3744.0,
+          "ENTRADA": 3257.0
+        },
+        "2027_01": {
+          "SELL_OUT": 3337.0,
+          "ESTOQUE_PROJETADO": 5117.0,
+          "ESTOQUE_OBJETIVO": 5117.0,
+          "PEDIDO": 4776.0,
+          "ENTRADA": 3744.0
+        },
+        "2027_02": {
+          "SELL_OUT": 3905.0,
+          "ESTOQUE_PROJETADO": 5988.0,
+          "ESTOQUE_OBJETIVO": 5988.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 4776.0
+        }
+      }
+    },
+    {
+      "CHAVE": "1-55975",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 1701.0,
+          "ESTOQUE_PROJETADO": 3004.0,
+          "ESTOQUE_OBJETIVO": 2778.0,
+          "PEDIDO": 2693.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 2947.0,
+          "ESTOQUE_PROJETADO": 2751.0,
+          "ESTOQUE_OBJETIVO": 2751.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 2693.0
+        },
+        "2026_04": {
+          "SELL_OUT": 2952.0,
+          "ESTOQUE_PROJETADO": 2755.0,
+          "ESTOQUE_OBJETIVO": 2755.0,
+          "PEDIDO": 2957.0,
+          "ENTRADA": 2957.0
+        },
+        "2026_05": {
+          "SELL_OUT": 3058.0,
+          "ESTOQUE_PROJETADO": 2854.0,
+          "ESTOQUE_OBJETIVO": 2854.0,
+          "PEDIDO": 3157.0,
+          "ENTRADA": 3157.0
+        },
+        "2026_06": {
+          "SELL_OUT": 3030.0,
+          "ESTOQUE_PROJETADO": 2828.0,
+          "ESTOQUE_OBJETIVO": 2828.0,
+          "PEDIDO": 3004.0,
+          "ENTRADA": 3004.0
+        },
+        "2026_07": {
+          "SELL_OUT": 3295.0,
+          "ESTOQUE_PROJETADO": 3075.0,
+          "ESTOQUE_OBJETIVO": 3075.0,
+          "PEDIDO": 3542.0,
+          "ENTRADA": 3542.0
+        },
+        "2026_08": {
+          "SELL_OUT": 3234.0,
+          "ESTOQUE_PROJETADO": 3018.0,
+          "ESTOQUE_OBJETIVO": 3018.0,
+          "PEDIDO": 3177.0,
+          "ENTRADA": 3177.0
+        },
+        "2026_09": {
+          "SELL_OUT": 3254.0,
+          "ESTOQUE_PROJETADO": 3037.0,
+          "ESTOQUE_OBJETIVO": 3037.0,
+          "PEDIDO": 3273.0,
+          "ENTRADA": 3273.0
+        },
+        "2026_10": {
+          "SELL_OUT": 3235.0,
+          "ESTOQUE_PROJETADO": 3019.0,
+          "ESTOQUE_OBJETIVO": 3019.0,
+          "PEDIDO": 3217.0,
+          "ENTRADA": 3217.0
+        },
+        "2026_11": {
+          "SELL_OUT": 3281.0,
+          "ESTOQUE_PROJETADO": 3062.0,
+          "ESTOQUE_OBJETIVO": 3062.0,
+          "PEDIDO": 3324.0,
+          "ENTRADA": 3324.0
+        },
+        "2026_12": {
+          "SELL_OUT": 3281.0,
+          "ESTOQUE_PROJETADO": 3062.0,
+          "ESTOQUE_OBJETIVO": 3062.0,
+          "PEDIDO": 3281.0,
+          "ENTRADA": 3281.0
+        },
+        "2027_01": {
+          "SELL_OUT": 3060.0,
+          "ESTOQUE_PROJETADO": 2856.0,
+          "ESTOQUE_OBJETIVO": 2856.0,
+          "PEDIDO": 2854.0,
+          "ENTRADA": 2854.0
+        },
+        "2027_02": {
+          "SELL_OUT": 2976.0,
+          "ESTOQUE_PROJETADO": -120.0,
+          "ESTOQUE_OBJETIVO": 2778.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        }
+      }
+    },
+    {
+      "CHAVE": "7-2959",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 1639.0,
+          "ESTOQUE_PROJETADO": 2383.0,
+          "ESTOQUE_OBJETIVO": 2008.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 2655.0,
+          "ESTOQUE_PROJETADO": 1858.0,
+          "ESTOQUE_OBJETIVO": 1858.0,
+          "PEDIDO": 2130.0,
+          "ENTRADA": 2130.0
+        },
+        "2026_04": {
+          "SELL_OUT": 2908.0,
+          "ESTOQUE_PROJETADO": 2036.0,
+          "ESTOQUE_OBJETIVO": 2036.0,
+          "PEDIDO": 3085.0,
+          "ENTRADA": 3085.0
+        },
+        "2026_05": {
+          "SELL_OUT": 2749.0,
+          "ESTOQUE_PROJETADO": 1924.0,
+          "ESTOQUE_OBJETIVO": 1924.0,
+          "PEDIDO": 2638.0,
+          "ENTRADA": 2638.0
+        },
+        "2026_06": {
+          "SELL_OUT": 2865.0,
+          "ESTOQUE_PROJETADO": 2006.0,
+          "ESTOQUE_OBJETIVO": 2006.0,
+          "PEDIDO": 2946.0,
+          "ENTRADA": 2946.0
+        },
+        "2026_07": {
+          "SELL_OUT": 2941.0,
+          "ESTOQUE_PROJETADO": 2059.0,
+          "ESTOQUE_OBJETIVO": 2059.0,
+          "PEDIDO": 2994.0,
+          "ENTRADA": 2994.0
+        },
+        "2026_08": {
+          "SELL_OUT": 2994.0,
+          "ESTOQUE_PROJETADO": 2096.0,
+          "ESTOQUE_OBJETIVO": 2096.0,
+          "PEDIDO": 3031.0,
+          "ENTRADA": 3031.0
+        },
+        "2026_09": {
+          "SELL_OUT": 3039.0,
+          "ESTOQUE_PROJETADO": 2127.0,
+          "ESTOQUE_OBJETIVO": 2127.0,
+          "PEDIDO": 3071.0,
+          "ENTRADA": 3071.0
+        },
+        "2026_10": {
+          "SELL_OUT": 2938.0,
+          "ESTOQUE_PROJETADO": 2057.0,
+          "ESTOQUE_OBJETIVO": 2057.0,
+          "PEDIDO": 2867.0,
+          "ENTRADA": 2867.0
+        },
+        "2026_11": {
+          "SELL_OUT": 2785.0,
+          "ESTOQUE_PROJETADO": 1950.0,
+          "ESTOQUE_OBJETIVO": 1950.0,
+          "PEDIDO": 2678.0,
+          "ENTRADA": 2678.0
+        },
+        "2026_12": {
+          "SELL_OUT": 3010.0,
+          "ESTOQUE_PROJETADO": 2107.0,
+          "ESTOQUE_OBJETIVO": 2107.0,
+          "PEDIDO": 3168.0,
+          "ENTRADA": 3168.0
+        },
+        "2027_01": {
+          "SELL_OUT": 3034.0,
+          "ESTOQUE_PROJETADO": 2124.0,
+          "ESTOQUE_OBJETIVO": 2124.0,
+          "PEDIDO": 3051.0,
+          "ENTRADA": 3051.0
+        },
+        "2027_02": {
+          "SELL_OUT": 2868.0,
+          "ESTOQUE_PROJETADO": 2008.0,
+          "ESTOQUE_OBJETIVO": 2008.0,
+          "PEDIDO": 2752.0,
+          "ENTRADA": 2752.0
+        }
+      }
+    },
+    {
+      "CHAVE": "9-2959",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 1536.0,
+          "ESTOQUE_PROJETADO": 2363.0,
+          "ESTOQUE_OBJETIVO": 1882.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 2673.0,
+          "ESTOQUE_PROJETADO": 1871.0,
+          "ESTOQUE_OBJETIVO": 1871.0,
+          "PEDIDO": 2181.0,
+          "ENTRADA": 2181.0
+        },
+        "2026_04": {
+          "SELL_OUT": 2769.0,
+          "ESTOQUE_PROJETADO": 1938.0,
+          "ESTOQUE_OBJETIVO": 1938.0,
+          "PEDIDO": 2836.0,
+          "ENTRADA": 2836.0
+        },
+        "2026_05": {
+          "SELL_OUT": 2618.0,
+          "ESTOQUE_PROJETADO": 1833.0,
+          "ESTOQUE_OBJETIVO": 1833.0,
+          "PEDIDO": 2512.0,
+          "ENTRADA": 2512.0
+        },
+        "2026_06": {
+          "SELL_OUT": 2703.0,
+          "ESTOQUE_PROJETADO": 1892.0,
+          "ESTOQUE_OBJETIVO": 1892.0,
+          "PEDIDO": 2762.0,
+          "ENTRADA": 2762.0
+        },
+        "2026_07": {
+          "SELL_OUT": 2685.0,
+          "ESTOQUE_PROJETADO": 1880.0,
+          "ESTOQUE_OBJETIVO": 1880.0,
+          "PEDIDO": 2672.0,
+          "ENTRADA": 2672.0
+        },
+        "2026_08": {
+          "SELL_OUT": 2740.0,
+          "ESTOQUE_PROJETADO": 1918.0,
+          "ESTOQUE_OBJETIVO": 1918.0,
+          "PEDIDO": 2778.0,
+          "ENTRADA": 2778.0
+        },
+        "2026_09": {
+          "SELL_OUT": 2618.0,
+          "ESTOQUE_PROJETADO": 1833.0,
+          "ESTOQUE_OBJETIVO": 1833.0,
+          "PEDIDO": 2533.0,
+          "ENTRADA": 2533.0
+        },
+        "2026_10": {
+          "SELL_OUT": 2738.0,
+          "ESTOQUE_PROJETADO": 1917.0,
+          "ESTOQUE_OBJETIVO": 1917.0,
+          "PEDIDO": 2822.0,
+          "ENTRADA": 2822.0
+        },
+        "2026_11": {
+          "SELL_OUT": 2536.0,
+          "ESTOQUE_PROJETADO": 1775.0,
+          "ESTOQUE_OBJETIVO": 1775.0,
+          "PEDIDO": 2395.0,
+          "ENTRADA": 2395.0
+        },
+        "2026_12": {
+          "SELL_OUT": 2844.0,
+          "ESTOQUE_PROJETADO": 1991.0,
+          "ESTOQUE_OBJETIVO": 1991.0,
+          "PEDIDO": 3060.0,
+          "ENTRADA": 3060.0
+        },
+        "2027_01": {
+          "SELL_OUT": 2833.0,
+          "ESTOQUE_PROJETADO": 1983.0,
+          "ESTOQUE_OBJETIVO": 1983.0,
+          "PEDIDO": 2825.0,
+          "ENTRADA": 2825.0
+        },
+        "2027_02": {
+          "SELL_OUT": 2688.0,
+          "ESTOQUE_PROJETADO": 1882.0,
+          "ESTOQUE_OBJETIVO": 1882.0,
+          "PEDIDO": 2586.0,
+          "ENTRADA": 2586.0
+        }
+      }
+    },
+    {
+      "CHAVE": "2-53706",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 869.0,
+          "ESTOQUE_PROJETADO": 1117.0,
+          "ESTOQUE_OBJETIVO": 1724.0,
+          "PEDIDO": 2631.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 1757.0,
+          "ESTOQUE_PROJETADO": 1991.0,
+          "ESTOQUE_OBJETIVO": 1991.0,
+          "PEDIDO": 1743.0,
+          "ENTRADA": 2631.0
+        },
+        "2026_04": {
+          "SELL_OUT": 1750.0,
+          "ESTOQUE_PROJETADO": 1984.0,
+          "ESTOQUE_OBJETIVO": 1984.0,
+          "PEDIDO": 2609.0,
+          "ENTRADA": 1743.0
+        },
+        "2026_05": {
+          "SELL_OUT": 2153.0,
+          "ESTOQUE_PROJETADO": 2440.0,
+          "ESTOQUE_OBJETIVO": 2440.0,
+          "PEDIDO": 3973.0,
+          "ENTRADA": 2609.0
+        },
+        "2026_06": {
+          "SELL_OUT": 3006.0,
+          "ESTOQUE_PROJETADO": 3407.0,
+          "ESTOQUE_OBJETIVO": 3407.0,
+          "PEDIDO": 2891.0,
+          "ENTRADA": 3973.0
+        },
+        "2026_07": {
+          "SELL_OUT": 2952.0,
+          "ESTOQUE_PROJETADO": 3346.0,
+          "ESTOQUE_OBJETIVO": 3346.0,
+          "PEDIDO": 2065.0,
+          "ENTRADA": 2891.0
+        },
+        "2026_08": {
+          "SELL_OUT": 2536.0,
+          "ESTOQUE_PROJETADO": 2874.0,
+          "ESTOQUE_OBJETIVO": 2874.0,
+          "PEDIDO": 3687.0,
+          "ENTRADA": 2065.0
+        },
+        "2026_09": {
+          "SELL_OUT": 3075.0,
+          "ESTOQUE_PROJETADO": 3485.0,
+          "ESTOQUE_OBJETIVO": 3485.0,
+          "PEDIDO": 1998.0,
+          "ENTRADA": 3687.0
+        },
+        "2026_10": {
+          "SELL_OUT": 2570.0,
+          "ESTOQUE_PROJETADO": 2913.0,
+          "ESTOQUE_OBJETIVO": 2913.0,
+          "PEDIDO": 1424.0,
+          "ENTRADA": 1998.0
+        },
+        "2026_11": {
+          "SELL_OUT": 2033.0,
+          "ESTOQUE_PROJETADO": 2304.0,
+          "ESTOQUE_OBJETIVO": 2304.0,
+          "PEDIDO": 2505.0,
+          "ENTRADA": 1424.0
+        },
+        "2026_12": {
+          "SELL_OUT": 2254.0,
+          "ESTOQUE_PROJETADO": 2555.0,
+          "ESTOQUE_OBJETIVO": 2555.0,
+          "PEDIDO": 2399.0,
+          "ENTRADA": 2505.0
+        },
+        "2027_01": {
+          "SELL_OUT": 2322.0,
+          "ESTOQUE_PROJETADO": 2632.0,
+          "ESTOQUE_OBJETIVO": 2632.0,
+          "PEDIDO": 4262.0,
+          "ENTRADA": 2399.0
+        },
+        "2027_02": {
+          "SELL_OUT": 3232.0,
+          "ESTOQUE_PROJETADO": 3663.0,
+          "ESTOQUE_OBJETIVO": 3663.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 4262.0
+        }
+      }
+    },
+    {
+      "CHAVE": "1-39306",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 1291.0,
+          "ESTOQUE_PROJETADO": 1733.0,
+          "ESTOQUE_OBJETIVO": 1733.0,
+          "PEDIDO": 398.0,
+          "ENTRADA": 398.0
+        },
+        "2026_03": {
+          "SELL_OUT": 2175.0,
+          "ESTOQUE_PROJETADO": 1668.0,
+          "ESTOQUE_OBJETIVO": 1668.0,
+          "PEDIDO": 2110.0,
+          "ENTRADA": 2110.0
+        },
+        "2026_04": {
+          "SELL_OUT": 2207.0,
+          "ESTOQUE_PROJETADO": 1692.0,
+          "ESTOQUE_OBJETIVO": 1692.0,
+          "PEDIDO": 2232.0,
+          "ENTRADA": 2232.0
+        },
+        "2026_05": {
+          "SELL_OUT": 2282.0,
+          "ESTOQUE_PROJETADO": 1750.0,
+          "ESTOQUE_OBJETIVO": 1750.0,
+          "PEDIDO": 2340.0,
+          "ENTRADA": 2340.0
+        },
+        "2026_06": {
+          "SELL_OUT": 2212.0,
+          "ESTOQUE_PROJETADO": 1696.0,
+          "ESTOQUE_OBJETIVO": 1696.0,
+          "PEDIDO": 2158.0,
+          "ENTRADA": 2158.0
+        },
+        "2026_07": {
+          "SELL_OUT": 2245.0,
+          "ESTOQUE_PROJETADO": 1721.0,
+          "ESTOQUE_OBJETIVO": 1721.0,
+          "PEDIDO": 2270.0,
+          "ENTRADA": 2270.0
+        },
+        "2026_08": {
+          "SELL_OUT": 2378.0,
+          "ESTOQUE_PROJETADO": 1823.0,
+          "ESTOQUE_OBJETIVO": 1823.0,
+          "PEDIDO": 2480.0,
+          "ENTRADA": 2480.0
+        },
+        "2026_09": {
+          "SELL_OUT": 2356.0,
+          "ESTOQUE_PROJETADO": 1806.0,
+          "ESTOQUE_OBJETIVO": 1806.0,
+          "PEDIDO": 2339.0,
+          "ENTRADA": 2339.0
+        },
+        "2026_10": {
+          "SELL_OUT": 2318.0,
+          "ESTOQUE_PROJETADO": 1777.0,
+          "ESTOQUE_OBJETIVO": 1777.0,
+          "PEDIDO": 2289.0,
+          "ENTRADA": 2289.0
+        },
+        "2026_11": {
+          "SELL_OUT": 2339.0,
+          "ESTOQUE_PROJETADO": 1793.0,
+          "ESTOQUE_OBJETIVO": 1793.0,
+          "PEDIDO": 2355.0,
+          "ENTRADA": 2355.0
+        },
+        "2026_12": {
+          "SELL_OUT": 2305.0,
+          "ESTOQUE_PROJETADO": 1767.0,
+          "ESTOQUE_OBJETIVO": 1767.0,
+          "PEDIDO": 2279.0,
+          "ENTRADA": 2279.0
+        },
+        "2027_01": {
+          "SELL_OUT": 2127.0,
+          "ESTOQUE_PROJETADO": 1631.0,
+          "ESTOQUE_OBJETIVO": 1631.0,
+          "PEDIDO": 1991.0,
+          "ENTRADA": 1991.0
+        },
+        "2027_02": {
+          "SELL_OUT": 2260.0,
+          "ESTOQUE_PROJETADO": 1733.0,
+          "ESTOQUE_OBJETIVO": 1733.0,
+          "PEDIDO": 2362.0,
+          "ENTRADA": 2362.0
+        }
+      }
+    },
+    {
+      "CHAVE": "2-77351",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 515.0,
+          "ESTOQUE_PROJETADO": 1801.0,
+          "ESTOQUE_OBJETIVO": 841.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 928.0,
+          "ESTOQUE_PROJETADO": 873.0,
+          "ESTOQUE_OBJETIVO": 866.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_04": {
+          "SELL_OUT": 1688.0,
+          "ESTOQUE_PROJETADO": 1576.0,
+          "ESTOQUE_OBJETIVO": 1576.0,
+          "PEDIDO": 2390.0,
+          "ENTRADA": 2390.0
+        },
+        "2026_05": {
+          "SELL_OUT": 1908.0,
+          "ESTOQUE_PROJETADO": 1781.0,
+          "ESTOQUE_OBJETIVO": 1781.0,
+          "PEDIDO": 2114.0,
+          "ENTRADA": 2114.0
+        },
+        "2026_06": {
+          "SELL_OUT": 2081.0,
+          "ESTOQUE_PROJETADO": 1942.0,
+          "ESTOQUE_OBJETIVO": 1942.0,
+          "PEDIDO": 2242.0,
+          "ENTRADA": 2242.0
+        },
+        "2026_07": {
+          "SELL_OUT": 1784.0,
+          "ESTOQUE_PROJETADO": 1665.0,
+          "ESTOQUE_OBJETIVO": 1665.0,
+          "PEDIDO": 1507.0,
+          "ENTRADA": 1507.0
+        },
+        "2026_08": {
+          "SELL_OUT": 1833.0,
+          "ESTOQUE_PROJETADO": 1710.0,
+          "ESTOQUE_OBJETIVO": 1710.0,
+          "PEDIDO": 1878.0,
+          "ENTRADA": 1878.0
+        },
+        "2026_09": {
+          "SELL_OUT": 2061.0,
+          "ESTOQUE_PROJETADO": 1923.0,
+          "ESTOQUE_OBJETIVO": 1923.0,
+          "PEDIDO": 2273.0,
+          "ENTRADA": 2273.0
+        },
+        "2026_10": {
+          "SELL_OUT": 2637.0,
+          "ESTOQUE_PROJETADO": 2461.0,
+          "ESTOQUE_OBJETIVO": 2461.0,
+          "PEDIDO": 3175.0,
+          "ENTRADA": 3175.0
+        },
+        "2026_11": {
+          "SELL_OUT": 2896.0,
+          "ESTOQUE_PROJETADO": 2703.0,
+          "ESTOQUE_OBJETIVO": 2703.0,
+          "PEDIDO": 3138.0,
+          "ENTRADA": 3138.0
+        },
+        "2026_12": {
+          "SELL_OUT": 2416.0,
+          "ESTOQUE_PROJETADO": 2255.0,
+          "ESTOQUE_OBJETIVO": 2255.0,
+          "PEDIDO": 1968.0,
+          "ENTRADA": 1968.0
+        },
+        "2027_01": {
+          "SELL_OUT": 2585.0,
+          "ESTOQUE_PROJETADO": 2413.0,
+          "ESTOQUE_OBJETIVO": 2413.0,
+          "PEDIDO": 2743.0,
+          "ENTRADA": 2743.0
+        },
+        "2027_02": {
+          "SELL_OUT": 1915.0,
+          "ESTOQUE_PROJETADO": 498.0,
+          "ESTOQUE_OBJETIVO": 1787.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        }
+      }
+    },
+    {
+      "CHAVE": "1-77352",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 581.0,
+          "ESTOQUE_PROJETADO": 2249.0,
+          "ESTOQUE_OBJETIVO": 914.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 1185.0,
+          "ESTOQUE_PROJETADO": 1067.0,
+          "ESTOQUE_OBJETIVO": 1067.0,
+          "PEDIDO": 3.0,
+          "ENTRADA": 3.0
+        },
+        "2026_04": {
+          "SELL_OUT": 1390.0,
+          "ESTOQUE_PROJETADO": 1251.0,
+          "ESTOQUE_OBJETIVO": 1251.0,
+          "PEDIDO": 1575.0,
+          "ENTRADA": 1575.0
+        },
+        "2026_05": {
+          "SELL_OUT": 1765.0,
+          "ESTOQUE_PROJETADO": 1589.0,
+          "ESTOQUE_OBJETIVO": 1589.0,
+          "PEDIDO": 2103.0,
+          "ENTRADA": 2103.0
+        },
+        "2026_06": {
+          "SELL_OUT": 2058.0,
+          "ESTOQUE_PROJETADO": 1852.0,
+          "ESTOQUE_OBJETIVO": 1852.0,
+          "PEDIDO": 2321.0,
+          "ENTRADA": 2321.0
+        },
+        "2026_07": {
+          "SELL_OUT": 1981.0,
+          "ESTOQUE_PROJETADO": 1783.0,
+          "ESTOQUE_OBJETIVO": 1783.0,
+          "PEDIDO": 1911.0,
+          "ENTRADA": 1911.0
+        },
+        "2026_08": {
+          "SELL_OUT": 2040.0,
+          "ESTOQUE_PROJETADO": 1836.0,
+          "ESTOQUE_OBJETIVO": 1836.0,
+          "PEDIDO": 2093.0,
+          "ENTRADA": 2093.0
+        },
+        "2026_09": {
+          "SELL_OUT": 2256.0,
+          "ESTOQUE_PROJETADO": 2030.0,
+          "ESTOQUE_OBJETIVO": 2030.0,
+          "PEDIDO": 2450.0,
+          "ENTRADA": 2450.0
+        },
+        "2026_10": {
+          "SELL_OUT": 2242.0,
+          "ESTOQUE_PROJETADO": 2018.0,
+          "ESTOQUE_OBJETIVO": 2018.0,
+          "PEDIDO": 2230.0,
+          "ENTRADA": 2230.0
+        },
+        "2026_11": {
+          "SELL_OUT": 2263.0,
+          "ESTOQUE_PROJETADO": 2036.0,
+          "ESTOQUE_OBJETIVO": 2036.0,
+          "PEDIDO": 2281.0,
+          "ENTRADA": 2281.0
+        },
+        "2026_12": {
+          "SELL_OUT": 2261.0,
+          "ESTOQUE_PROJETADO": 2035.0,
+          "ESTOQUE_OBJETIVO": 2035.0,
+          "PEDIDO": 2259.0,
+          "ENTRADA": 2259.0
+        },
+        "2027_01": {
+          "SELL_OUT": 2200.0,
+          "ESTOQUE_PROJETADO": 1980.0,
+          "ESTOQUE_OBJETIVO": 1980.0,
+          "PEDIDO": 2145.0,
+          "ENTRADA": 2145.0
+        },
+        "2027_02": {
+          "SELL_OUT": 2159.0,
+          "ESTOQUE_PROJETADO": 1943.0,
+          "ESTOQUE_OBJETIVO": 1943.0,
+          "PEDIDO": 2122.0,
+          "ENTRADA": 2122.0
+        }
+      }
+    },
+    {
+      "CHAVE": "1-51080",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 991.0,
+          "ESTOQUE_PROJETADO": 1562.0,
+          "ESTOQUE_OBJETIVO": 1562.0,
+          "PEDIDO": 569.0,
+          "ENTRADA": 569.0
+        },
+        "2026_03": {
+          "SELL_OUT": 1798.0,
+          "ESTOQUE_PROJETADO": 1618.0,
+          "ESTOQUE_OBJETIVO": 1618.0,
+          "PEDIDO": 1855.0,
+          "ENTRADA": 1855.0
+        },
+        "2026_04": {
+          "SELL_OUT": 1727.0,
+          "ESTOQUE_PROJETADO": 1554.0,
+          "ESTOQUE_OBJETIVO": 1554.0,
+          "PEDIDO": 1663.0,
+          "ENTRADA": 1663.0
+        },
+        "2026_05": {
+          "SELL_OUT": 1824.0,
+          "ESTOQUE_PROJETADO": 1642.0,
+          "ESTOQUE_OBJETIVO": 1642.0,
+          "PEDIDO": 1911.0,
+          "ENTRADA": 1911.0
+        },
+        "2026_06": {
+          "SELL_OUT": 1783.0,
+          "ESTOQUE_PROJETADO": 1605.0,
+          "ESTOQUE_OBJETIVO": 1605.0,
+          "PEDIDO": 1746.0,
+          "ENTRADA": 1746.0
+        },
+        "2026_07": {
+          "SELL_OUT": 1904.0,
+          "ESTOQUE_PROJETADO": 1714.0,
+          "ESTOQUE_OBJETIVO": 1714.0,
+          "PEDIDO": 2013.0,
+          "ENTRADA": 2013.0
+        },
+        "2026_08": {
+          "SELL_OUT": 1869.0,
+          "ESTOQUE_PROJETADO": 1682.0,
+          "ESTOQUE_OBJETIVO": 1682.0,
+          "PEDIDO": 1837.0,
+          "ENTRADA": 1837.0
+        },
+        "2026_09": {
+          "SELL_OUT": 1857.0,
+          "ESTOQUE_PROJETADO": 1671.0,
+          "ESTOQUE_OBJETIVO": 1671.0,
+          "PEDIDO": 1846.0,
+          "ENTRADA": 1846.0
+        },
+        "2026_10": {
+          "SELL_OUT": 1809.0,
+          "ESTOQUE_PROJETADO": 1628.0,
+          "ESTOQUE_OBJETIVO": 1628.0,
+          "PEDIDO": 1766.0,
+          "ENTRADA": 1766.0
+        },
+        "2026_11": {
+          "SELL_OUT": 1840.0,
+          "ESTOQUE_PROJETADO": 1656.0,
+          "ESTOQUE_OBJETIVO": 1656.0,
+          "PEDIDO": 1868.0,
+          "ENTRADA": 1868.0
+        },
+        "2026_12": {
+          "SELL_OUT": 1863.0,
+          "ESTOQUE_PROJETADO": 1677.0,
+          "ESTOQUE_OBJETIVO": 1677.0,
+          "PEDIDO": 1884.0,
+          "ENTRADA": 1884.0
+        },
+        "2027_01": {
+          "SELL_OUT": 1713.0,
+          "ESTOQUE_PROJETADO": 1542.0,
+          "ESTOQUE_OBJETIVO": 1542.0,
+          "PEDIDO": 1578.0,
+          "ENTRADA": 1578.0
+        },
+        "2027_02": {
+          "SELL_OUT": 1735.0,
+          "ESTOQUE_PROJETADO": 1562.0,
+          "ESTOQUE_OBJETIVO": 1562.0,
+          "PEDIDO": 1755.0,
+          "ENTRADA": 1755.0
+        }
+      }
+    },
+    {
+      "CHAVE": "4-55975",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 885.0,
+          "ESTOQUE_PROJETADO": 2224.0,
+          "ESTOQUE_OBJETIVO": 1239.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 1555.0,
+          "ESTOQUE_PROJETADO": 1244.0,
+          "ESTOQUE_OBJETIVO": 1244.0,
+          "PEDIDO": 575.0,
+          "ENTRADA": 575.0
+        },
+        "2026_04": {
+          "SELL_OUT": 1525.0,
+          "ESTOQUE_PROJETADO": 1220.0,
+          "ESTOQUE_OBJETIVO": 1220.0,
+          "PEDIDO": 1501.0,
+          "ENTRADA": 1501.0
+        },
+        "2026_05": {
+          "SELL_OUT": 1604.0,
+          "ESTOQUE_PROJETADO": 1283.0,
+          "ESTOQUE_OBJETIVO": 1283.0,
+          "PEDIDO": 1667.0,
+          "ENTRADA": 1667.0
+        },
+        "2026_06": {
+          "SELL_OUT": 1580.0,
+          "ESTOQUE_PROJETADO": 1264.0,
+          "ESTOQUE_OBJETIVO": 1264.0,
+          "PEDIDO": 1561.0,
+          "ENTRADA": 1561.0
+        },
+        "2026_07": {
+          "SELL_OUT": 1674.0,
+          "ESTOQUE_PROJETADO": 1339.0,
+          "ESTOQUE_OBJETIVO": 1339.0,
+          "PEDIDO": 1749.0,
+          "ENTRADA": 1749.0
+        },
+        "2026_08": {
+          "SELL_OUT": 1641.0,
+          "ESTOQUE_PROJETADO": 1313.0,
+          "ESTOQUE_OBJETIVO": 1313.0,
+          "PEDIDO": 1615.0,
+          "ENTRADA": 1615.0
+        },
+        "2026_09": {
+          "SELL_OUT": 1685.0,
+          "ESTOQUE_PROJETADO": 1348.0,
+          "ESTOQUE_OBJETIVO": 1348.0,
+          "PEDIDO": 1720.0,
+          "ENTRADA": 1720.0
+        },
+        "2026_10": {
+          "SELL_OUT": 1649.0,
+          "ESTOQUE_PROJETADO": 1319.0,
+          "ESTOQUE_OBJETIVO": 1319.0,
+          "PEDIDO": 1620.0,
+          "ENTRADA": 1620.0
+        },
+        "2026_11": {
+          "SELL_OUT": 1659.0,
+          "ESTOQUE_PROJETADO": 1327.0,
+          "ESTOQUE_OBJETIVO": 1327.0,
+          "PEDIDO": 1667.0,
+          "ENTRADA": 1667.0
+        },
+        "2026_12": {
+          "SELL_OUT": 1692.0,
+          "ESTOQUE_PROJETADO": 1354.0,
+          "ESTOQUE_OBJETIVO": 1354.0,
+          "PEDIDO": 1718.0,
+          "ENTRADA": 1718.0
+        },
+        "2027_01": {
+          "SELL_OUT": 1600.0,
+          "ESTOQUE_PROJETADO": 1280.0,
+          "ESTOQUE_OBJETIVO": 1280.0,
+          "PEDIDO": 1526.0,
+          "ENTRADA": 1526.0
+        },
+        "2027_02": {
+          "SELL_OUT": 1549.0,
+          "ESTOQUE_PROJETADO": 1239.0,
+          "ESTOQUE_OBJETIVO": 1239.0,
+          "PEDIDO": 1508.0,
+          "ENTRADA": 1508.0
+        }
+      }
+    },
+    {
+      "CHAVE": "2-55975",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 861.0,
+          "ESTOQUE_PROJETADO": 2579.0,
+          "ESTOQUE_OBJETIVO": 1256.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 1520.0,
+          "ESTOQUE_PROJETADO": 1267.0,
+          "ESTOQUE_OBJETIVO": 1267.0,
+          "PEDIDO": 208.0,
+          "ENTRADA": 208.0
+        },
+        "2026_04": {
+          "SELL_OUT": 1495.0,
+          "ESTOQUE_PROJETADO": 1246.0,
+          "ESTOQUE_OBJETIVO": 1246.0,
+          "PEDIDO": 1474.0,
+          "ENTRADA": 1474.0
+        },
+        "2026_05": {
+          "SELL_OUT": 1533.0,
+          "ESTOQUE_PROJETADO": 1278.0,
+          "ESTOQUE_OBJETIVO": 1278.0,
+          "PEDIDO": 1565.0,
+          "ENTRADA": 1565.0
+        },
+        "2026_06": {
+          "SELL_OUT": 1552.0,
+          "ESTOQUE_PROJETADO": 1293.0,
+          "ESTOQUE_OBJETIVO": 1293.0,
+          "PEDIDO": 1568.0,
+          "ENTRADA": 1568.0
+        },
+        "2026_07": {
+          "SELL_OUT": 1664.0,
+          "ESTOQUE_PROJETADO": 1387.0,
+          "ESTOQUE_OBJETIVO": 1387.0,
+          "PEDIDO": 1757.0,
+          "ENTRADA": 1757.0
+        },
+        "2026_08": {
+          "SELL_OUT": 1673.0,
+          "ESTOQUE_PROJETADO": 1394.0,
+          "ESTOQUE_OBJETIVO": 1394.0,
+          "PEDIDO": 1680.0,
+          "ENTRADA": 1680.0
+        },
+        "2026_09": {
+          "SELL_OUT": 1657.0,
+          "ESTOQUE_PROJETADO": 1381.0,
+          "ESTOQUE_OBJETIVO": 1381.0,
+          "PEDIDO": 1644.0,
+          "ENTRADA": 1644.0
+        },
+        "2026_10": {
+          "SELL_OUT": 1639.0,
+          "ESTOQUE_PROJETADO": 1366.0,
+          "ESTOQUE_OBJETIVO": 1366.0,
+          "PEDIDO": 1624.0,
+          "ENTRADA": 1624.0
+        },
+        "2026_11": {
+          "SELL_OUT": 1654.0,
+          "ESTOQUE_PROJETADO": 1378.0,
+          "ESTOQUE_OBJETIVO": 1378.0,
+          "PEDIDO": 1667.0,
+          "ENTRADA": 1667.0
+        },
+        "2026_12": {
+          "SELL_OUT": 1670.0,
+          "ESTOQUE_PROJETADO": 1392.0,
+          "ESTOQUE_OBJETIVO": 1392.0,
+          "PEDIDO": 1683.0,
+          "ENTRADA": 1683.0
+        },
+        "2027_01": {
+          "SELL_OUT": 1541.0,
+          "ESTOQUE_PROJETADO": 1284.0,
+          "ESTOQUE_OBJETIVO": 1284.0,
+          "PEDIDO": 1434.0,
+          "ENTRADA": 1434.0
+        },
+        "2027_02": {
+          "SELL_OUT": 1507.0,
+          "ESTOQUE_PROJETADO": 1256.0,
+          "ESTOQUE_OBJETIVO": 1256.0,
+          "PEDIDO": 1479.0,
+          "ENTRADA": 1479.0
+        }
+      }
+    },
+    {
+      "CHAVE": "2-2959",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 843.0,
+          "ESTOQUE_PROJETADO": 2383.0,
+          "ESTOQUE_OBJETIVO": 934.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 1409.0,
+          "ESTOQUE_PROJETADO": 974.0,
+          "ESTOQUE_OBJETIVO": 892.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_04": {
+          "SELL_OUT": 1482.0,
+          "ESTOQUE_PROJETADO": 939.0,
+          "ESTOQUE_OBJETIVO": 939.0,
+          "PEDIDO": 1446.0,
+          "ENTRADA": 1446.0
+        },
+        "2026_05": {
+          "SELL_OUT": 1467.0,
+          "ESTOQUE_PROJETADO": 929.0,
+          "ESTOQUE_OBJETIVO": 929.0,
+          "PEDIDO": 1458.0,
+          "ENTRADA": 1458.0
+        },
+        "2026_06": {
+          "SELL_OUT": 1456.0,
+          "ESTOQUE_PROJETADO": 922.0,
+          "ESTOQUE_OBJETIVO": 922.0,
+          "PEDIDO": 1449.0,
+          "ENTRADA": 1449.0
+        },
+        "2026_07": {
+          "SELL_OUT": 1588.0,
+          "ESTOQUE_PROJETADO": 1006.0,
+          "ESTOQUE_OBJETIVO": 1006.0,
+          "PEDIDO": 1672.0,
+          "ENTRADA": 1672.0
+        },
+        "2026_08": {
+          "SELL_OUT": 1584.0,
+          "ESTOQUE_PROJETADO": 1003.0,
+          "ESTOQUE_OBJETIVO": 1003.0,
+          "PEDIDO": 1581.0,
+          "ENTRADA": 1581.0
+        },
+        "2026_09": {
+          "SELL_OUT": 1596.0,
+          "ESTOQUE_PROJETADO": 1011.0,
+          "ESTOQUE_OBJETIVO": 1011.0,
+          "PEDIDO": 1604.0,
+          "ENTRADA": 1604.0
+        },
+        "2026_10": {
+          "SELL_OUT": 1599.0,
+          "ESTOQUE_PROJETADO": 1013.0,
+          "ESTOQUE_OBJETIVO": 1013.0,
+          "PEDIDO": 1601.0,
+          "ENTRADA": 1601.0
+        },
+        "2026_11": {
+          "SELL_OUT": 1473.0,
+          "ESTOQUE_PROJETADO": 933.0,
+          "ESTOQUE_OBJETIVO": 933.0,
+          "PEDIDO": 1393.0,
+          "ENTRADA": 1393.0
+        },
+        "2026_12": {
+          "SELL_OUT": 1620.0,
+          "ESTOQUE_PROJETADO": 1026.0,
+          "ESTOQUE_OBJETIVO": 1026.0,
+          "PEDIDO": 1713.0,
+          "ENTRADA": 1713.0
+        },
+        "2027_01": {
+          "SELL_OUT": 1497.0,
+          "ESTOQUE_PROJETADO": 948.0,
+          "ESTOQUE_OBJETIVO": 948.0,
+          "PEDIDO": 1419.0,
+          "ENTRADA": 1419.0
+        },
+        "2027_02": {
+          "SELL_OUT": 1475.0,
+          "ESTOQUE_PROJETADO": 934.0,
+          "ESTOQUE_OBJETIVO": 934.0,
+          "PEDIDO": 1461.0,
+          "ENTRADA": 1461.0
+        }
+      }
+    },
+    {
+      "CHAVE": "3-55975",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 831.0,
+          "ESTOQUE_PROJETADO": 1965.0,
+          "ESTOQUE_OBJETIVO": 1163.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 1455.0,
+          "ESTOQUE_PROJETADO": 1164.0,
+          "ESTOQUE_OBJETIVO": 1164.0,
+          "PEDIDO": 654.0,
+          "ENTRADA": 654.0
+        },
+        "2026_04": {
+          "SELL_OUT": 1424.0,
+          "ESTOQUE_PROJETADO": 1139.0,
+          "ESTOQUE_OBJETIVO": 1139.0,
+          "PEDIDO": 1399.0,
+          "ENTRADA": 1399.0
+        },
+        "2026_05": {
+          "SELL_OUT": 1483.0,
+          "ESTOQUE_PROJETADO": 1186.0,
+          "ESTOQUE_OBJETIVO": 1186.0,
+          "PEDIDO": 1530.0,
+          "ENTRADA": 1530.0
+        },
+        "2026_06": {
+          "SELL_OUT": 1486.0,
+          "ESTOQUE_PROJETADO": 1189.0,
+          "ESTOQUE_OBJETIVO": 1189.0,
+          "PEDIDO": 1488.0,
+          "ENTRADA": 1488.0
+        },
+        "2026_07": {
+          "SELL_OUT": 1586.0,
+          "ESTOQUE_PROJETADO": 1269.0,
+          "ESTOQUE_OBJETIVO": 1269.0,
+          "PEDIDO": 1666.0,
+          "ENTRADA": 1666.0
+        },
+        "2026_08": {
+          "SELL_OUT": 1544.0,
+          "ESTOQUE_PROJETADO": 1235.0,
+          "ESTOQUE_OBJETIVO": 1235.0,
+          "PEDIDO": 1510.0,
+          "ENTRADA": 1510.0
+        },
+        "2026_09": {
+          "SELL_OUT": 1573.0,
+          "ESTOQUE_PROJETADO": 1258.0,
+          "ESTOQUE_OBJETIVO": 1258.0,
+          "PEDIDO": 1596.0,
+          "ENTRADA": 1596.0
+        },
+        "2026_10": {
+          "SELL_OUT": 1549.0,
+          "ESTOQUE_PROJETADO": 1239.0,
+          "ESTOQUE_OBJETIVO": 1239.0,
+          "PEDIDO": 1530.0,
+          "ENTRADA": 1530.0
+        },
+        "2026_11": {
+          "SELL_OUT": 1553.0,
+          "ESTOQUE_PROJETADO": 1242.0,
+          "ESTOQUE_OBJETIVO": 1242.0,
+          "PEDIDO": 1556.0,
+          "ENTRADA": 1556.0
+        },
+        "2026_12": {
+          "SELL_OUT": 1605.0,
+          "ESTOQUE_PROJETADO": 1284.0,
+          "ESTOQUE_OBJETIVO": 1284.0,
+          "PEDIDO": 1647.0,
+          "ENTRADA": 1647.0
+        },
+        "2027_01": {
+          "SELL_OUT": 1470.0,
+          "ESTOQUE_PROJETADO": 1176.0,
+          "ESTOQUE_OBJETIVO": 1176.0,
+          "PEDIDO": 1362.0,
+          "ENTRADA": 1362.0
+        },
+        "2027_02": {
+          "SELL_OUT": 1454.0,
+          "ESTOQUE_PROJETADO": 1163.0,
+          "ESTOQUE_OBJETIVO": 1163.0,
+          "PEDIDO": 1441.0,
+          "ENTRADA": 1441.0
+        }
+      }
+    },
+    {
+      "CHAVE": "2-77352",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 423.0,
+          "ESTOQUE_PROJETADO": 1156.0,
+          "ESTOQUE_OBJETIVO": 617.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 884.0,
+          "ESTOQUE_PROJETADO": 737.0,
+          "ESTOQUE_OBJETIVO": 736.0,
+          "PEDIDO": 465.0,
+          "ENTRADA": 465.0
+        },
+        "2026_04": {
+          "SELL_OUT": 1042.0,
+          "ESTOQUE_PROJETADO": 868.0,
+          "ESTOQUE_OBJETIVO": 868.0,
+          "PEDIDO": 1173.0,
+          "ENTRADA": 1173.0
+        },
+        "2026_05": {
+          "SELL_OUT": 1280.0,
+          "ESTOQUE_PROJETADO": 1067.0,
+          "ESTOQUE_OBJETIVO": 1067.0,
+          "PEDIDO": 1480.0,
+          "ENTRADA": 1480.0
+        },
+        "2026_06": {
+          "SELL_OUT": 1576.0,
+          "ESTOQUE_PROJETADO": 1314.0,
+          "ESTOQUE_OBJETIVO": 1314.0,
+          "PEDIDO": 1823.0,
+          "ENTRADA": 1823.0
+        },
+        "2026_07": {
+          "SELL_OUT": 1389.0,
+          "ESTOQUE_PROJETADO": 1157.0,
+          "ESTOQUE_OBJETIVO": 1157.0,
+          "PEDIDO": 1232.0,
+          "ENTRADA": 1232.0
+        },
+        "2026_08": {
+          "SELL_OUT": 1427.0,
+          "ESTOQUE_PROJETADO": 1189.0,
+          "ESTOQUE_OBJETIVO": 1189.0,
+          "PEDIDO": 1459.0,
+          "ENTRADA": 1459.0
+        },
+        "2026_09": {
+          "SELL_OUT": 1561.0,
+          "ESTOQUE_PROJETADO": 1300.0,
+          "ESTOQUE_OBJETIVO": 1300.0,
+          "PEDIDO": 1672.0,
+          "ENTRADA": 1672.0
+        },
+        "2026_10": {
+          "SELL_OUT": 1542.0,
+          "ESTOQUE_PROJETADO": 1285.0,
+          "ESTOQUE_OBJETIVO": 1285.0,
+          "PEDIDO": 1526.0,
+          "ENTRADA": 1526.0
+        },
+        "2026_11": {
+          "SELL_OUT": 1588.0,
+          "ESTOQUE_PROJETADO": 1323.0,
+          "ESTOQUE_OBJETIVO": 1323.0,
+          "PEDIDO": 1626.0,
+          "ENTRADA": 1626.0
+        },
+        "2026_12": {
+          "SELL_OUT": 1591.0,
+          "ESTOQUE_PROJETADO": 1326.0,
+          "ESTOQUE_OBJETIVO": 1326.0,
+          "PEDIDO": 1594.0,
+          "ENTRADA": 1594.0
+        },
+        "2027_01": {
+          "SELL_OUT": 1552.0,
+          "ESTOQUE_PROJETADO": 1293.0,
+          "ESTOQUE_OBJETIVO": 1293.0,
+          "PEDIDO": 1520.0,
+          "ENTRADA": 1520.0
+        },
+        "2027_02": {
+          "SELL_OUT": 1574.0,
+          "ESTOQUE_PROJETADO": 1312.0,
+          "ESTOQUE_OBJETIVO": 1312.0,
+          "PEDIDO": 1593.0,
+          "ENTRADA": 1593.0
+        }
+      }
+    },
+    {
+      "CHAVE": "1-77350",
+      "meses": {
+        "2026_02": {
+          "SELL_OUT": 420.0,
+          "ESTOQUE_PROJETADO": 966.0,
+          "ESTOQUE_OBJETIVO": 931.0,
+          "PEDIDO": 1165.0,
+          "ENTRADA": 0.0
+        },
+        "2026_03": {
+          "SELL_OUT": 940.0,
+          "ESTOQUE_PROJETADO": 1191.0,
+          "ESTOQUE_OBJETIVO": 1191.0,
+          "PEDIDO": 995.0,
+          "ENTRADA": 1165.0
+        },
+        "2026_04": {
+          "SELL_OUT": 964.0,
+          "ESTOQUE_PROJETADO": 1222.0,
+          "ESTOQUE_OBJETIVO": 1222.0,
+          "PEDIDO": 1652.0,
+          "ENTRADA": 995.0
+        },
+        "2026_05": {
+          "SELL_OUT": 1268.0,
+          "ESTOQUE_PROJETADO": 1606.0,
+          "ESTOQUE_OBJETIVO": 1606.0,
+          "PEDIDO": 1509.0,
+          "ENTRADA": 1652.0
+        },
+        "2026_06": {
+          "SELL_OUT": 1374.0,
+          "ESTOQUE_PROJETADO": 1740.0,
+          "ESTOQUE_OBJETIVO": 1740.0,
+          "PEDIDO": 1180.0,
+          "ENTRADA": 1509.0
+        },
+        "2026_07": {
+          "SELL_OUT": 1288.0,
+          "ESTOQUE_PROJETADO": 1632.0,
+          "ESTOQUE_OBJETIVO": 1632.0,
+          "PEDIDO": 1375.0,
+          "ENTRADA": 1180.0
+        },
+        "2026_08": {
+          "SELL_OUT": 1327.0,
+          "ESTOQUE_PROJETADO": 1680.0,
+          "ESTOQUE_OBJETIVO": 1680.0,
+          "PEDIDO": 1592.0,
+          "ENTRADA": 1375.0
+        },
+        "2026_09": {
+          "SELL_OUT": 1444.0,
+          "ESTOQUE_PROJETADO": 1829.0,
+          "ESTOQUE_OBJETIVO": 1829.0,
+          "PEDIDO": 1526.0,
+          "ENTRADA": 1592.0
+        },
+        "2026_10": {
+          "SELL_OUT": 1480.0,
+          "ESTOQUE_PROJETADO": 1875.0,
+          "ESTOQUE_OBJETIVO": 1875.0,
+          "PEDIDO": 1582.0,
+          "ENTRADA": 1526.0
+        },
+        "2026_11": {
+          "SELL_OUT": 1525.0,
+          "ESTOQUE_PROJETADO": 1932.0,
+          "ESTOQUE_OBJETIVO": 1932.0,
+          "PEDIDO": 1520.0,
+          "ENTRADA": 1582.0
+        },
+        "2026_12": {
+          "SELL_OUT": 1523.0,
+          "ESTOQUE_PROJETADO": 1929.0,
+          "ESTOQUE_OBJETIVO": 1929.0,
+          "PEDIDO": 1450.0,
+          "ENTRADA": 1520.0
+        },
+        "2027_01": {
+          "SELL_OUT": 1491.0,
+          "ESTOQUE_PROJETADO": 1888.0,
+          "ESTOQUE_OBJETIVO": 1888.0,
+          "PEDIDO": 1651.0,
+          "ENTRADA": 1450.0
+        },
+        "2027_02": {
+          "SELL_OUT": 1562.0,
+          "ESTOQUE_PROJETADO": 1978.0,
+          "ESTOQUE_OBJETIVO": 1978.0,
+          "PEDIDO": 0.0,
+          "ENTRADA": 1651.0
+        }
+      }
+    }
+  ]
+}

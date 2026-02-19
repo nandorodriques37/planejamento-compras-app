@@ -4,7 +4,15 @@ import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
-import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+
+// Carrega vite-plugin-manus-runtime apenas quando disponível (ambiente Manus)
+let vitePluginManusRuntime: (() => Plugin) | undefined;
+try {
+  const mod = await import("vite-plugin-manus-runtime");
+  vitePluginManusRuntime = mod.vitePluginManusRuntime;
+} catch {
+  // Não estamos no Manus — plugin não disponível
+}
 
 // =============================================================================
 // Manus Debug Collector - Vite Plugin
@@ -150,7 +158,13 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+const plugins: Plugin[] = [react(), tailwindcss(), jsxLocPlugin()];
+
+// Adiciona plugins Manus apenas quando disponíveis
+if (vitePluginManusRuntime) {
+  plugins.push(vitePluginManusRuntime());
+  plugins.push(vitePluginManusDebugCollector());
+}
 
 export default defineConfig({
   plugins,
@@ -172,11 +186,15 @@ export default defineConfig({
     strictPort: false, // Will find next available port if 3000 is busy
     host: true,
     allowedHosts: [
+      // Manus
       ".manuspre.computer",
       ".manus.computer",
       ".manus-asia.computer",
       ".manuscomputer.ai",
       ".manusvm.computer",
+      // Vercel
+      ".vercel.app",
+      // Local
       "localhost",
       "127.0.0.1",
     ],
