@@ -8,7 +8,7 @@
  * quando os dados vierem de um Data Lake.
  * 
  * FÓRMULAS:
- * - EST_OBJ = (SELL_OUT / 30) × (LT + FREQUENCIA + EST_SEGURANCA) + IMPACTO
+ * - EST_OBJ = (SELL_OUT / DIAS_REAIS_MES) × (LT + FREQUENCIA + EST_SEGURANCA) + IMPACTO
  * - EST_PROJ[mês] = EST_PROJ[mês-1] + ENTRADA[mês] - SELL_OUT[mês]
  * - Estoque_Inicial = ESTOQUE - IMPACTO - PREENCHIMENTO + PENDENCIA + NNA
  * - PEDIDO = max(0, EST_OBJ[mês_chegada] - EST_PROJ[mês_chegada] antes da entrada)
@@ -123,8 +123,6 @@ export interface CoberturaResultado {
   };
 }
 
-const DIAS_MES = 30;
-
 /**
  * Retorna o número de dias em um mês/ano específico.
  */
@@ -203,7 +201,9 @@ export function recalcularProjecaoSKU(
   const estObjPorMes: Record<string, number> = {};
   meses.forEach((mes) => {
     const so = sellOutPorMes[mes] || 0;
-    const demandaMedia = so / DIAS_MES;
+    const { ano, mes: mesNum } = parseMesAno(mes);
+    const diasReais = diasNoMes(ano, mesNum);
+    const demandaMedia = so / diasReais;
     estObjPorMes[mes] = demandaMedia * (lt + frequencia + estSeguranca) + impacto;
   });
 
@@ -225,31 +225,31 @@ export function recalcularProjecaoSKU(
 
     const estProjAntesPedido = estAnterior + entradaJaAcumulada - sellOut;
 
+    // Calcular índice de chegada UMA VEZ por iteração (evita chamada duplicada)
+    const indiceChegada = calcularIndiceMesChegada(i, lt, meses, dataReferencia);
+
     if (pedidosManuais[mes] !== null && pedidosManuais[mes] !== undefined) {
       pedidosFinais[mes] = pedidosManuais[mes]!;
     } else {
-      const indiceChegada = calcularIndiceMesChegada(i, lt, meses, dataReferencia);
-      
       if (indiceChegada === i) {
         const necessidade = estObjPorMes[mes] - estProjAntesPedido;
-        pedidosFinais[mes] = Math.max(0, Math.round(necessidade));
+        pedidosFinais[mes] = Math.max(0, necessidade);
       } else {
         let estSimulado = estProjAntesPedido;
-        
+
         for (let j = i + 1; j <= indiceChegada && j < meses.length; j++) {
           const soFuturo = sellOutPorMes[meses[j]] || 0;
           const entradaFutura = entradas[meses[j]] || 0;
           estSimulado = estSimulado + entradaFutura - soFuturo;
         }
-        
+
         const mesChegada = meses[indiceChegada];
         const necessidade = estObjPorMes[mesChegada] - estSimulado;
-        pedidosFinais[mes] = Math.max(0, Math.round(necessidade));
+        pedidosFinais[mes] = Math.max(0, necessidade);
       }
     }
 
     if (pedidosFinais[mes] > 0) {
-      const indiceChegada = calcularIndiceMesChegada(i, lt, meses, dataReferencia);
       const mesChegada = meses[indiceChegada];
       entradas[mesChegada] = (entradas[mesChegada] || 0) + pedidosFinais[mes];
     }
