@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ProjectionItem } from '../lib/types';
-// Importando o seu adaptador de dados atual que lê o sample-data.json
 import { getProjections } from '../lib/dataAdapter'; 
+import { ProjectionItem } from '../lib/types';
 
 interface UseProjectionDataParams {
   page: number;
@@ -20,19 +19,14 @@ export function useProjectionData(params: UseProjectionDataParams) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Função que simula o comportamento de um Backend
     const fetchFakeServer = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        // 1. Simula o tempo de resposta de uma internet real (500ms)
         await new Promise(resolve => setTimeout(resolve, 500));
-
-        // 2. Puxa todos os dados do seu arquivo JSON (simulando o banco de dados)
         let allData = await getProjections(); 
 
-        // 3. Aplica os Filtros (Simulando o WHERE do SQL no backend)
         if (params.search) {
           const lowerSearch = params.search.toLowerCase();
           allData = allData.filter(
@@ -46,43 +40,37 @@ export function useProjectionData(params: UseProjectionDataParams) {
           allData = allData.filter((item) => item.status === params.status);
         }
 
-        // 4. Aplica a Ordenação (Simulando o ORDER BY)
         allData.sort((a, b) => {
-          // Usando type assertion (as any) para acessar dinamicamente a propriedade
-          let valA = (a as any)[params.sortBy];
-          let valB = (b as any)[params.sortBy];
-
-          if (typeof valA === 'string') valA = valA.toLowerCase();
-          if (typeof valB === 'string') valB = valB.toLowerCase();
+          const valA = String(a[params.sortBy as keyof ProjectionItem] || '').toLowerCase();
+          const valB = String(b[params.sortBy as keyof ProjectionItem] || '').toLowerCase();
 
           if (valA < valB) return params.sortDir === 'asc' ? -1 : 1;
           if (valA > valB) return params.sortDir === 'asc' ? 1 : -1;
           return 0;
         });
 
-        // 5. Aplica a Paginação (Simulando o LIMIT e OFFSET)
         const total = allData.length;
         const startIndex = (params.page - 1) * params.limit;
         const endIndex = startIndex + params.limit;
         const paginatedData = allData.slice(startIndex, endIndex);
 
-        // 6. Atualiza os estados que a tela vai consumir
         setData(paginatedData);
         setTotalItems(total);
-        setTotalPages(Math.ceil(total / params.limit));
+        setTotalPages(Math.ceil(total / params.limit) || 1);
 
-      } catch (err: any) {
-        setError(err.message || 'Erro ao carregar os dados mockados');
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('Erro ao carregar os dados mockados');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    // Executa a busca simulada
     fetchFakeServer();
-
   }, [params.page, params.limit, params.search, params.status, params.sortBy, params.sortDir]); 
-  // O useEffect roda novamente sempre que você clica em outra página ou muda um filtro
 
   return { data, totalItems, totalPages, loading, error };
 }
