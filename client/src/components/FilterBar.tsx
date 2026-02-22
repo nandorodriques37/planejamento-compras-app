@@ -31,6 +31,9 @@ export default function FilterBar({
 }: FilterBarProps) {
   const hasActiveFilters = filters.fornecedor || filters.categoria || filters.cd || filters.busca || filters.status;
 
+  // Conta filtros dropdown ativos (exceto busca, que já é visível no input)
+  const activeFiltersCount = [filters.fornecedor, filters.categoria, filters.cd, filters.status].filter(Boolean).length;
+
   const updateFilter = (key: keyof Filters, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -63,11 +66,10 @@ export default function FilterBar({
               <button
                 key={h}
                 onClick={() => onHorizonteChange(h)}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${
-                  horizonte === h
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:scale-105 active:scale-95'
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${horizonte === h
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:scale-105 active:scale-95'
+                  }`}
               >
                 {h === 13 ? 'Máx' : `${h}m`}
               </button>
@@ -78,7 +80,14 @@ export default function FilterBar({
 
       {/* Row 2: Filters */}
       <div className="flex items-center gap-3 flex-wrap">
-        <Filter className="w-4 h-4 text-muted-foreground" />
+        <div className="relative flex-shrink-0">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          {activeFiltersCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 rounded-full bg-primary text-[8px] text-primary-foreground font-bold flex items-center justify-center px-0.5">
+              {activeFiltersCount}
+            </span>
+          )}
+        </div>
 
         {/* Fornecedor */}
         <select

@@ -1,0 +1,14 @@
+# =============================================================================
+# Configuração de Deploy — Netlify
+# Espelha o comportamento do vercel.json para compatibilidade de SPA routing.
+# =============================================================================
+
+[build]
+  command = "pnpm run build:client"
+  publish = "dist/public"
+
+# Redireciona todas as rotas para index.html (necessário para SPA com wouter)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

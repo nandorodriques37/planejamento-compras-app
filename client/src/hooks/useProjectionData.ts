@@ -10,10 +10,11 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { DadosCompletos, ProjecaoSKU, SKUCadastro, MesData } from '../lib/calculationEngine';
+import type { DadosCompletos, ProjecaoSKU, SKUCadastro } from '../lib/calculationEngine';
 import { recalcularProjecaoSKU, getStatusSKU } from '../lib/calculationEngine';
 import { obterProjecaoInicial } from '../lib/dataAdapter';
 import { useDebounce } from './useDebounce';
+import { usePersistedEdits } from './usePersistedEdits';
 
 export interface EditedCell {
   chave: string;
@@ -33,7 +34,6 @@ export function useProjectionData() {
   const [dados, setDados] = useState<DadosCompletos | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editedCells, setEditedCells] = useState<Map<string, number>>(new Map());
   const [horizonte, setHorizonte] = useState(13);
   const [filters, setFilters] = useState<Filters>({
     fornecedor: '',
@@ -42,6 +42,14 @@ export function useProjectionData() {
     busca: '',
     status: ''
   });
+
+  const {
+    editedCells,
+    editarPedidoPersistido,
+    desfazerEdicaoPersistida,
+    limparEdicoesPersistidas,
+    isCellEdited,
+  } = usePersistedEdits();
 
   // Debounce na busca textual (300ms)
   const debouncedBusca = useDebounce(filters.busca, 300);
@@ -141,56 +149,16 @@ export function useProjectionData() {
     });
   }, [projecoesComEdicoes, dados, filters.fornecedor, filters.categoria, filters.cd, filters.status, debouncedBusca, cadastroMap]);
 
-  const editarPedido = useCallback((chave: string, mes: string, valor: number) => {
-    setEditedCells(prev => {
-      const next = new Map(prev);
-      next.set(`${chave}|${mes}`, valor);
-      return next;
-    });
-  }, []);
-
-  // Undo individual: desfaz edição de UMA célula
-  const desfazerEdicao = useCallback((chave: string, mes: string) => {
-    setEditedCells(prev => {
-      const next = new Map(prev);
-      next.delete(`${chave}|${mes}`);
-      return next;
-    });
-  }, []);
-
-  const isCellEdited = useCallback((chave: string, mes: string): boolean => {
-    return editedCells.has(`${chave}|${mes}`);
-  }, [editedCells]);
-
-  const limparEdicoes = useCallback(() => {
-    setEditedCells(new Map());
-  }, []);
+  const editarPedido = editarPedidoPersistido;
+  const desfazerEdicao = desfazerEdicaoPersistida;
+  const limparEdicoes = limparEdicoesPersistidas;
 
   const totalEdicoes = editedCells.size;
-
-  const resumoPorMes = useMemo(() => {
-    if (!dados) return {};
-    const resumo: Record<string, { SELL_OUT: number; PEDIDO: number; ENTRADA: number; EST_PROJ: number; EST_OBJ: number }> = {};
-    mesesVisiveis.forEach(mes => {
-      resumo[mes] = { SELL_OUT: 0, PEDIDO: 0, ENTRADA: 0, EST_PROJ: 0, EST_OBJ: 0 };
-      dadosFiltrados.forEach(proj => {
-        const d = proj.meses[mes];
-        if (d) {
-          resumo[mes].SELL_OUT += d.SELL_OUT;
-          resumo[mes].PEDIDO += d.PEDIDO;
-          resumo[mes].ENTRADA += d.ENTRADA;
-          resumo[mes].EST_PROJ += d.ESTOQUE_PROJETADO;
-          resumo[mes].EST_OBJ += d.ESTOQUE_OBJETIVO;
-        }
-      });
-    });
-    return resumo;
-  }, [dados, dadosFiltrados, mesesVisiveis]);
 
   return {
     dados, loading, error, mesesVisiveis, filterOptions, filters, setFilters,
     horizonte, setHorizonte, dadosFiltrados, editarPedido, desfazerEdicao,
-    isCellEdited, limparEdicoes, totalEdicoes, resumoPorMes, editedCells,
+    isCellEdited, limparEdicoes, totalEdicoes, editedCells,
     cadastroMap, projecoesComEdicoes
   };
 }

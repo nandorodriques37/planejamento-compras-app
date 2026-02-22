@@ -245,6 +245,8 @@ export default defineConfig({
       ".manusvm.computer",
       // Vercel
       ".vercel.app",
+      // Netlify
+      ".netlify.app",
       // Local
       "localhost",
       "127.0.0.1",

@@ -50,6 +50,20 @@ export default function Home() {
 
   const [, navigate] = useLocation();
   const { adicionarPedido } = usePedidosAprovacao();
+  const pedidosPendentes = (() => {
+    try {
+      const raw = localStorage.getItem('pedidos_aprovacao');
+      if (!raw) return 0;
+      const lista = JSON.parse(raw);
+      return Array.isArray(lista) ? lista.filter((p: any) => p.status === 'pendente').length : 0;
+    } catch { return 0; }
+  })();
+
+  // Contagem de SKUs críticos para badge do sidebar
+  const skusCriticos = useMemo(() => {
+    if (!dados) return 0;
+    return dadosFiltrados.filter(proj => getStatusSKU(proj.meses, dados.metadata.meses) === 'critical').length;
+  }, [dadosFiltrados, dados]);
 
   const [coveragePanelOpen, setCoveragePanelOpen] = useState(false);
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
@@ -283,7 +297,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex h-screen overflow-hidden">
-        <AppSidebar />
+        <AppSidebar skusCriticos={skusCriticos} pedidosPendentes={pedidosPendentes} />
         <main className="flex-1 overflow-y-auto bg-background px-6 py-5 space-y-5">
           {/* Skeleton for summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -327,7 +341,7 @@ export default function Home() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <AppSidebar />
+      <AppSidebar skusCriticos={skusCriticos} pedidosPendentes={pedidosPendentes} />
 
       <main className="flex-1 overflow-y-auto bg-background">
         {/* Page Header */}

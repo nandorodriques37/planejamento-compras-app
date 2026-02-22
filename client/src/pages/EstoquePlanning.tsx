@@ -345,13 +345,12 @@ function CDCard({
                         </td>
                         <td className="text-center px-3 py-2">
                           <span
-                            className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold ${
-                              sku.status === 'ok'
-                                ? 'badge-ok'
-                                : sku.status === 'warning'
+                            className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold ${sku.status === 'ok'
+                              ? 'badge-ok'
+                              : sku.status === 'warning'
                                 ? 'badge-warning'
                                 : 'badge-critical'
-                            }`}
+                              }`}
                           >
                             {sku.status === 'ok' ? 'OK' : sku.status === 'warning' ? 'Atenção' : 'Crítico'}
                           </span>
@@ -558,6 +557,17 @@ export default function EstoquePlanning() {
   const [expandedCDs, setExpandedCDs] = useState<Set<string>>(new Set());
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
   const [cdFilter, setCdFilter] = useState<string>('');
+  const [fornecedorFilter, setFornecedorFilter] = useState<string>('');
+
+  // Contagem de pedidos pendentes para badge do sidebar
+  const pedidosPendentes = (() => {
+    try {
+      const raw = localStorage.getItem('pedidos_aprovacao');
+      if (!raw) return 0;
+      const lista = JSON.parse(raw);
+      return Array.isArray(lista) ? lista.filter((p: any) => p.status === 'pendente').length : 0;
+    } catch { return 0; }
+  })();
 
   // Use full horizon (all months)
   const meses = dados?.metadata.meses ?? [];
@@ -769,12 +779,25 @@ export default function EstoquePlanning() {
     });
   }, []);
 
-  // Filtered CD summaries
+  // Opções de fornecedor disponíveis
+  const fornecedorOptions = useMemo(() => {
+    if (!dados) return [];
+    return Array.from(new Set(dados.cadastro.map(c => c['fornecedor comercial']))).sort();
+  }, [dados]);
+
+  // Filtered CD summaries (por CD e por fornecedor)
   const filteredCDs = useMemo(() => {
     if (!aggregated) return [];
-    if (!cdFilter) return aggregated.cdSummaries;
-    return aggregated.cdSummaries.filter((cd) => cd.cd === cdFilter);
-  }, [aggregated, cdFilter]);
+    return aggregated.cdSummaries.filter((cd) => {
+      if (cdFilter && cd.cd !== cdFilter) return false;
+      if (fornecedorFilter) {
+        // Mantém apenas CDs que contêm ao menos 1 SKU do fornecedor
+        const temFornecedor = cd.skus.some(s => s.cadastro['fornecedor comercial'] === fornecedorFilter);
+        if (!temFornecedor) return false;
+      }
+      return true;
+    });
+  }, [aggregated, cdFilter, fornecedorFilter]);
 
   // Selected SKU for detail panel
   const selectedProjecao = selectedSKU ? projecoesComEdicoes.find((p) => p.CHAVE === selectedSKU) : null;
@@ -787,7 +810,7 @@ export default function EstoquePlanning() {
   if (loading) {
     return (
       <div className="flex h-screen overflow-hidden">
-        <AppSidebar />
+        <AppSidebar skusCriticos={aggregated?.skusCritical} pedidosPendentes={pedidosPendentes} />
         <main className="flex-1 overflow-y-auto bg-background px-6 py-5 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -811,7 +834,7 @@ export default function EstoquePlanning() {
   if (error || !dados || !aggregated) {
     return (
       <div className="flex h-screen">
-        <AppSidebar />
+        <AppSidebar skusCriticos={aggregated?.skusCritical} pedidosPendentes={pedidosPendentes} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-sm text-destructive font-medium">Erro ao carregar dados</p>
@@ -824,7 +847,7 @@ export default function EstoquePlanning() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <AppSidebar />
+      <AppSidebar skusCriticos={aggregated.skusCritical} pedidosPendentes={pedidosPendentes} />
 
       <main className="flex-1 overflow-y-auto bg-background">
         {/* Page Header */}
@@ -908,7 +931,18 @@ export default function EstoquePlanning() {
               </div>
               {/* CD filter for the chart */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground">Filtrar CD:</span>
+                <span className="text-[10px] text-muted-foreground">Fornecedor:</span>
+                <select
+                  value={fornecedorFilter}
+                  onChange={(e) => setFornecedorFilter(e.target.value)}
+                  className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[120px]"
+                >
+                  <option value="">Todos</option>
+                  {fornecedorOptions.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-muted-foreground">CD:</span>
                 <select
                   value={cdFilter}
                   onChange={(e) => setCdFilter(e.target.value)}
@@ -930,14 +964,14 @@ export default function EstoquePlanning() {
                   data={
                     cdFilter
                       ? aggregated.cdSummaries
-                          .find((c) => c.cd === cdFilter)
-                          ?.projecaoMensal.map((m) => ({
-                            mes: m.mes,
-                            'Estoque Projetado': m.estoqueProjetado,
-                            'Estoque Objetivo': m.estoqueObjetivo,
-                            'Sell Out': m.sellOut,
-                            Pedido: m.pedido,
-                          })) ?? []
+                        .find((c) => c.cd === cdFilter)
+                        ?.projecaoMensal.map((m) => ({
+                          mes: m.mes,
+                          'Estoque Projetado': m.estoqueProjetado,
+                          'Estoque Objetivo': m.estoqueObjetivo,
+                          'Sell Out': m.sellOut,
+                          Pedido: m.pedido,
+                        })) ?? []
                       : aggregated.chartDataGlobal
                   }
                   margin={{ top: 10, right: 30, left: 20, bottom: 5 }}

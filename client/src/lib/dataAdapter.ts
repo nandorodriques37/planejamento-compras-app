@@ -21,7 +21,9 @@
 import type { DadosCompletos, ProjecaoSKU } from './calculationEngine';
 import { recalcularProjecaoSKU } from './calculationEngine';
 
+/** Cache de dados já carregados e calculados. Resetado quando o mês de referência muda. */
 let cachedData: DadosCompletos | null = null;
+let cachedRefMonth: string | null = null;
 
 /**
  * Carrega os dados de projeção inicial e recalcula usando o motor TS.
@@ -30,7 +32,13 @@ let cachedData: DadosCompletos | null = null;
  * FASE FUTURA: fetch('/api/get_projection') → pode vir já calculado do backend
  */
 export async function obterProjecaoInicial(): Promise<DadosCompletos> {
-  if (cachedData) return cachedData;
+  // Verifica se o mês de referênCIA mudou (nova sessão em mês diferente = invalida cache)
+  const hoje = new Date();
+  const refMonth = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  if (cachedData && cachedRefMonth === refMonth) return cachedData;
+
+  // Reseta cache se chegou aqui (stale ou primeira carga)
+  cachedData = null;
 
   try {
     const response = await fetch('/sample-data.json');
@@ -40,13 +48,14 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
     const data: DadosCompletos = await response.json();
 
     // Sobrescrever data_referencia com a data atual do sistema
-    const hoje = new Date();
     data.metadata.data_referencia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
+    // Constroi o map cadastro UMA vez para O(1) lookups em vez de O(n) por SKU
+    const cadastroMap = new Map(data.cadastro.map(c => [c.CHAVE, c]));
+
     // Recalcular todas as projeções usando o motor de cálculo TS
-    // Isso garante que regras como IMPACTO no estoque objetivo sejam aplicadas
     const projecaoRecalculada = data.projecao.map(proj => {
-      const cadastro = data.cadastro.find(c => c.CHAVE === proj.CHAVE);
+      const cadastro = cadastroMap.get(proj.CHAVE);
       if (!cadastro) return proj;
 
       // Extrair SELL_OUT dos dados originais
@@ -88,6 +97,7 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
     };
 
     cachedData = dadosRecalculados;
+    cachedRefMonth = refMonth;
     return dadosRecalculados;
   } catch (error) {
     console.error('Erro ao carregar dados de projeção:', error);
@@ -122,7 +132,7 @@ export function exportarParaCSV(dados: DadosCompletos, projecoesEditadas?: Proje
   const projecoes = projecoesEditadas || dados.projecao;
   const cadastroMap = new Map(dados.cadastro.map(c => [c.CHAVE, c]));
   const rows: string[] = [];
-  
+
   const headers = [
     'CHAVE', 'Fornecedor', 'Produto', 'CD', 'SKU', 'Categoria',
     'Estoque', 'Pendência', 'LT', 'NNA', 'Frequência', 'Est.Seg.',

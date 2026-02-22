@@ -24,13 +24,20 @@ import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/', soon: true },
   { icon: TrendingUp, label: 'Previsão de Demanda', href: '/demanda', soon: true },
-  { icon: Package, label: 'Planej. de Estoque', href: '/estoque', soon: false },
+  { icon: Package, label: 'Planej. de Estoque', href: '/estoque', soon: false, badgeKey: 'estoque' as const },
   { icon: ShoppingCart, label: 'Planej. de Compras', href: '/compras', soon: false },
-  { icon: ClipboardCheck, label: 'Aprovação de Pedidos', href: '/aprovacao', soon: false },
+  { icon: ClipboardCheck, label: 'Aprovação de Pedidos', href: '/aprovacao', soon: false, badgeKey: 'aprovacao' as const },
   { icon: BarChart3, label: 'KPIs & Diagnósticos', href: '/kpis', soon: true },
 ];
 
-export default function AppSidebar() {
+interface AppSidebarProps {
+  /** Contagem de SKUs críticos (exibida como badge vermelho no item Estoque). */
+  skusCriticos?: number;
+  /** Contagem de pedidos pendentes (exibida como badge âmbar no item Aprovação). */
+  pedidosPendentes?: number;
+}
+
+export default function AppSidebar({ skusCriticos, pedidosPendentes }: AppSidebarProps = {}) {
   const [collapsed, setCollapsed] = useState(false);
   const [location] = useLocation();
   const { theme, toggleTheme, switchable } = useTheme();
@@ -86,8 +93,17 @@ export default function AppSidebar() {
           >
             <span className="relative flex-shrink-0">
               <item.icon className={`w-4 h-4 ${isActive ? 'text-primary' : ''}`} />
-              {item.href === '/estoque' && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-destructive" />
+              {/* Badge dinâmico: SKUs críticos no estoque */}
+              {item.badgeKey === 'estoque' && skusCriticos !== undefined && skusCriticos > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 rounded-full bg-destructive text-[8px] text-white font-bold flex items-center justify-center px-0.5">
+                  {skusCriticos > 99 ? '99+' : skusCriticos}
+                </span>
+              )}
+              {/* Badge dinâmico: pedidos pendentes na aprovação */}
+              {item.badgeKey === 'aprovacao' && pedidosPendentes !== undefined && pedidosPendentes > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 rounded-full bg-amber-500 text-[8px] text-white font-bold flex items-center justify-center px-0.5">
+                  {pedidosPendentes > 99 ? '99+' : pedidosPendentes}
+                </span>
               )}
             </span>
             {(isMobileNav || !collapsed) && (

@@ -32,14 +32,14 @@ type StatusFilter = 'todos' | 'pendente' | 'aprovado' | 'rejeitado';
 
 function coverageColor(days: number | null): { bg: string; text: string; border: string; icon: string; label: string } {
   if (days === null) return { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-border', icon: 'text-muted-foreground', label: 'Sem dados' };
-  if (days < 30)    return { bg: 'bg-rose-50 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800', icon: 'text-rose-500', label: 'Critico' };
-  if (days < 60)    return { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800', icon: 'text-amber-500', label: 'Atenção' };
-  return              { bg: 'bg-teal-50 dark:bg-teal-950/30', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800', icon: 'text-teal-500', label: 'Saudável' };
+  if (days < 30) return { bg: 'bg-rose-50 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800', icon: 'text-rose-500', label: 'Critico' };
+  if (days < 60) return { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800', icon: 'text-amber-500', label: 'Atenção' };
+  return { bg: 'bg-teal-50 dark:bg-teal-950/30', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800', icon: 'text-teal-500', label: 'Saudável' };
 }
 
 function KpiPanel({ kpis, fornecedorNome }: { kpis: PedidoKPIs; fornecedorNome?: string }) {
   const fornColors = coverageColor(kpis.coberturaFornecedorDias);
-  const pedColors  = coverageColor(kpis.coberturaPedidoDias);
+  const pedColors = coverageColor(kpis.coberturaPedidoDias);
   const chegadaColors = coverageColor(kpis.coberturaDataChegadaDias ?? null);
 
   const dataChegadaFormatada = kpis.dataChegadaPrevista
@@ -347,7 +347,7 @@ export default function AprovacaoPedidos() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <AppSidebar />
+      <AppSidebar pedidosPendentes={pedidosPendentes} />
 
       <main className="flex-1 overflow-y-auto bg-background">
         {/* Page Header */}

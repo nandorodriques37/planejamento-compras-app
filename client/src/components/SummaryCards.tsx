@@ -10,6 +10,7 @@ import { formatNumber, getStatusSKU } from '../lib/calculationEngine';
 import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
 import { Progress } from '@/components/ui/progress';
 import type { LucideIcon } from 'lucide-react';
+import { useMemo } from 'react';
 
 const DIAS_MES = 30;
 
@@ -39,58 +40,71 @@ interface CardConfig {
 }
 
 export default function SummaryCards({ projecoes, cadastroMap, meses }: SummaryCardsProps) {
-  let totalEstoque = 0;
-  let totalPedidos = 0;
-  let skusCriticos = 0;
-  let skusAtencao = 0;
-  let totalSellOutMes1 = 0;
-  let totalEstProjMes1 = 0;
-  let totalLT = 0;
-  let countComLT = 0;
+  // Todos os cálculos pesados memoizados — só recalcula quando inputs mudam
+  const stats = useMemo(() => {
+    let totalEstoque = 0;
+    let totalPedidos = 0;
+    let skusCriticos = 0;
+    let skusAtencao = 0;
+    let totalSellOutMes1 = 0;
+    let totalEstProjMes1 = 0;
+    let totalLT = 0;
+    let countComLT = 0;
 
-  const mes1 = meses[0];
+    const mes1 = meses[0];
 
-  projecoes.forEach(proj => {
-    const cad = cadastroMap.get(proj.CHAVE);
-    if (cad) {
-      totalEstoque += cad.ESTOQUE;
-      if (cad.LT > 0) {
-        totalLT += cad.LT;
-        countComLT++;
+    projecoes.forEach(proj => {
+      const cad = cadastroMap.get(proj.CHAVE);
+      if (cad) {
+        totalEstoque += cad.ESTOQUE;
+        if (cad.LT > 0) {
+          totalLT += cad.LT;
+          countComLT++;
+        }
       }
-    }
 
-    meses.forEach(mes => {
-      const d = proj.meses[mes];
-      if (d) totalPedidos += d.PEDIDO;
+      meses.forEach(mes => {
+        const d = proj.meses[mes];
+        if (d) totalPedidos += d.PEDIDO;
+      });
+
+      if (mes1) {
+        const dadosMes1 = proj.meses[mes1];
+        if (dadosMes1) {
+          totalSellOutMes1 += dadosMes1.SELL_OUT;
+          totalEstProjMes1 += dadosMes1.ESTOQUE_PROJETADO;
+        }
+      }
+
+      const status = getStatusSKU(proj.meses, meses);
+      if (status === 'critical') skusCriticos++;
+      if (status === 'warning') skusAtencao++;
     });
 
-    if (mes1) {
-      const dadosMes1 = proj.meses[mes1];
-      if (dadosMes1) {
-        totalSellOutMes1 += dadosMes1.SELL_OUT;
-        totalEstProjMes1 += dadosMes1.ESTOQUE_PROJETADO;
-      }
-    }
+    const demandaDiaria = totalSellOutMes1 / DIAS_MES;
+    const coberturaAtualDias = demandaDiaria > 0 ? Math.round(totalEstoque / demandaDiaria) : null;
+    const coberturaProjetadaDias = demandaDiaria > 0 ? Math.round(totalEstProjMes1 / demandaDiaria) : null;
+    const ltMedio = countComLT > 0 ? Math.round(totalLT / countComLT) : null;
 
-    const status = getStatusSKU(proj.meses, meses);
-    if (status === 'critical') skusCriticos++;
-    if (status === 'warning') skusAtencao++;
-  });
+    const stockChange = totalEstoque > 0 && totalEstProjMes1 > 0
+      ? Math.round(((totalEstProjMes1 - totalEstoque) / totalEstoque) * 100)
+      : null;
 
-  const demandaDiaria = totalSellOutMes1 / DIAS_MES;
-  const coberturaAtualDias = demandaDiaria > 0 ? Math.round(totalEstoque / demandaDiaria) : null;
-  const coberturaProjetadaDias = demandaDiaria > 0 ? Math.round(totalEstProjMes1 / demandaDiaria) : null;
-  const ltMedio = countComLT > 0 ? Math.round(totalLT / countComLT) : null;
+    const targetCoverageDays = 90;
+    const coverageProgress = coberturaAtualDias !== null ? Math.min(100, (coberturaAtualDias / targetCoverageDays) * 100) : 0;
 
-  // Calculate percentage change for stock (current vs projected end of month 1)
-  const stockChange = totalEstoque > 0 && totalEstProjMes1 > 0
-    ? Math.round(((totalEstProjMes1 - totalEstoque) / totalEstoque) * 100)
-    : null;
+    return {
+      totalEstoque, totalPedidos, skusCriticos, skusAtencao,
+      coberturaAtualDias, coberturaProjetadaDias, ltMedio, countComLT,
+      stockChange, coverageProgress,
+    };
+  }, [projecoes, cadastroMap, meses]);
 
-  // Coverage progress (targeting ~90 days as a standard pharma target)
-  const targetCoverageDays = 90;
-  const coverageProgress = coberturaAtualDias !== null ? Math.min(100, (coberturaAtualDias / targetCoverageDays) * 100) : 0;
+  const {
+    totalEstoque, totalPedidos, skusCriticos, skusAtencao,
+    coberturaAtualDias, coberturaProjetadaDias, ltMedio, countComLT,
+    stockChange, coverageProgress,
+  } = stats;
 
   const cards: CardConfig[] = [
     { icon: Package, label: 'Estoque Total Atual', numericValue: totalEstoque, displayValue: formatNumber(totalEstoque), sublabel: `${projecoes.length} SKU/CD`, color: 'text-primary', bg: 'bg-primary/5', change: stockChange, formatter: formatNumber },
@@ -118,11 +132,10 @@ export default function SummaryCards({ projecoes, cadastroMap, meses }: SummaryC
                 }
               </p>
               {card.change != null && card.change !== 0 && (
-                <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1 py-0.5 rounded ${
-                  card.change > 0
+                <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1 py-0.5 rounded ${card.change > 0
                     ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30'
                     : 'text-destructive bg-red-50 dark:bg-red-950/30'
-                }`}>
+                  }`}>
                   {card.change > 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
                   {Math.abs(card.change)}%
                 </span>
