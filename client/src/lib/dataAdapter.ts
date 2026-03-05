@@ -50,6 +50,28 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
     // Sobrescrever data_referencia com a data atual do sistema
     data.metadata.data_referencia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
+    // Regenerar metadata.meses a partir do mês atual para não mostrar meses passados
+    const mesAtual = `${hoje.getFullYear()}_${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    const mesesOriginais = data.metadata.meses;
+    const horizonteOriginal = mesesOriginais.length;
+
+    // Filtrar meses passados
+    let mesesAtualizados = mesesOriginais.filter(m => m >= mesAtual);
+
+    // Se ficou menor que o horizonte original, gerar meses futuros adicionais
+    if (mesesAtualizados.length < horizonteOriginal) {
+      const ultimoMes = mesesAtualizados.length > 0 ? mesesAtualizados[mesesAtualizados.length - 1] : mesAtual;
+      let [ano, mes] = ultimoMes.split('_').map(Number);
+      while (mesesAtualizados.length < horizonteOriginal) {
+        mes++;
+        if (mes > 12) { mes = 1; ano++; }
+        mesesAtualizados.push(`${ano}_${String(mes).padStart(2, '0')}`);
+      }
+    }
+
+    data.metadata.meses = mesesAtualizados;
+    data.metadata.horizonte_meses = mesesAtualizados.length;
+
     // Constroi o map cadastro UMA vez para O(1) lookups em vez de O(n) por SKU
     const cadastroMap = new Map(data.cadastro.map(c => [c.CHAVE, c]));
 
