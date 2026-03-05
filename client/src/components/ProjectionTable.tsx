@@ -13,7 +13,7 @@ import { AlertTriangle, AlertCircle, CheckCircle2, Pencil, BarChart3, ArrowUpDow
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from './ui/empty';
 import { Checkbox } from './ui/checkbox';
 import type { ProjecaoSKU, SKUCadastro, SemanaInfo, WeekDistribution } from '../lib/calculationEngine';
-import { formatNumber, formatMes, getStatusSKU, calcularSemanasRestantes, distribuirPedidoSimples, parseMesAno } from '../lib/calculationEngine';
+import { formatNumber, formatMes, getStatusSKU, calcularSemanasRestantes, calcularSemanasComLT, distribuirPedidoMultiMes, parseMesAno } from '../lib/calculationEngine';
 
 interface ProjectionTableProps {
   projecoes: ProjecaoSKU[];
@@ -237,11 +237,10 @@ export default function ProjectionTable({
   // Ref para rastrear quais meses foram afetados por edições semanais (para undo)
   const weeklyAffectedMonths = useRef<Map<string, Set<string>>>(new Map());
 
-  // Função para obter a distribuição semanal de um SKU (apenas mês 1, sem antecipação multi-mês)
-  const getWeeklyDistribution = useCallback((chave: string, projecaoMeses: Record<string, import('../lib/calculationEngine').MesData>, _ltDias: number): WeekDistribution[] => {
+  // Função para obter a distribuição semanal de um SKU com cálculo individual de entrega por semana
+  const getWeeklyDistribution = useCallback((chave: string, projecaoMeses: Record<string, import('../lib/calculationEngine').MesData>, ltDias: number): WeekDistribution[] => {
     if (!temSemanas || !dataReferencia) return [];
     const mesAtual = meses[0];
-    const pedidoMes1 = projecaoMeses[mesAtual]?.PEDIDO || 0;
 
     // Prioridade 1: Edições manuais semanais
     const edited = weeklyEdits.get(chave);
@@ -263,18 +262,26 @@ export default function ProjectionTable({
       }));
     }
 
-    // Prioridade 3: Distribuição proporcional padrão
-    const values = distribuirPedidoSimples(pedidoMes1, semanasInfo);
-    return values.map(val => ({
-      valor: val,
-      mesOrigem: mesAtual,
-      isCurrentMonth: true
-    }));
+    // Prioridade 3: Distribuição com LT — cada semana calcula data de entrega individualmente
+    const refDate = new Date(dataReferencia + 'T00:00:00');
+    const { ano, mes } = parseMesAno(mesAtual);
+    const semanasComLT = calcularSemanasComLT(ano, mes, refDate.getDate(), ltDias);
+
+    // Montar pedido por mês: mês atual + meses futuros onde entregas caem
+    const pedidoPorMes: Record<string, number> = {};
+    pedidoPorMes[mesAtual] = projecaoMeses[mesAtual]?.PEDIDO || 0;
+    for (const sem of semanasComLT) {
+      if (sem.mesChegada && sem.mesChegada !== mesAtual && !(sem.mesChegada in pedidoPorMes)) {
+        pedidoPorMes[sem.mesChegada] = projecaoMeses[sem.mesChegada]?.PEDIDO || 0;
+      }
+    }
+
+    return distribuirPedidoMultiMes(mesAtual, pedidoPorMes, semanasComLT);
   }, [temSemanas, weeklyEdits, coverageWeeklyEdits, dataReferencia, meses, semanasInfo]);
 
-  // Handler para edição de uma semana (apenas mês 1)
-  const handleWeekEdit = useCallback((chave: string, semanaIdx: number, novoValor: number, projecaoMeses: Record<string, import('../lib/calculationEngine').MesData>, _ltDias: number) => {
-    const currentDistribution = getWeeklyDistribution(chave, projecaoMeses, 0);
+  // Handler para edição de uma semana (com suporte a multi-mês via LT)
+  const handleWeekEdit = useCallback((chave: string, semanaIdx: number, novoValor: number, projecaoMeses: Record<string, import('../lib/calculationEngine').MesData>, ltDias: number) => {
+    const currentDistribution = getWeeklyDistribution(chave, projecaoMeses, ltDias);
     const newValues = currentDistribution.map(d => d.valor);
     newValues[semanaIdx] = novoValor;
 
@@ -283,16 +290,26 @@ export default function ProjectionTable({
     nextWeeklyEdits.set(chave, newValues);
     onWeeklyEditsChange(nextWeeklyEdits);
 
-    // Somar todas as semanas = novo PEDIDO do mês 1
+    // Agrupar valores editados por mês de chegada (via LT)
     const mesAtual = meses[0];
-    const totalMes1 = newValues.reduce((acc, v) => acc + v, 0);
+    const refDate = new Date(dataReferencia! + 'T00:00:00');
+    const { ano, mes } = parseMesAno(mesAtual);
+    const semanasComLT = calcularSemanasComLT(ano, mes, refDate.getDate(), ltDias);
 
-    // Rastrear mês afetado para undo (apenas mês 1)
-    weeklyAffectedMonths.current.set(chave, new Set([mesAtual]));
+    const totalsByMonth = new Map<string, number>();
+    newValues.forEach((val, i) => {
+      const monthKey = semanasComLT[i]?.mesChegada || mesAtual;
+      totalsByMonth.set(monthKey, (totalsByMonth.get(monthKey) || 0) + val);
+    });
 
-    // Editar apenas o mês 1
-    onEditPedido(chave, mesAtual, totalMes1);
-  }, [getWeeklyDistribution, onEditPedido, meses, weeklyEdits, onWeeklyEditsChange]);
+    // Rastrear meses afetados para undo
+    weeklyAffectedMonths.current.set(chave, new Set(totalsByMonth.keys()));
+
+    // Atualizar PEDIDO de cada mês afetado
+    totalsByMonth.forEach((total, monthKey) => {
+      onEditPedido(chave, monthKey, total);
+    });
+  }, [getWeeklyDistribution, onEditPedido, meses, weeklyEdits, onWeeklyEditsChange, dataReferencia]);
 
   // Virtualization state
   const [scrollTop, setScrollTop] = useState(0);
@@ -692,7 +709,13 @@ export default function ProjectionTable({
                         onUndo={onUndoEdit ? () => {
                           const next = new Map(weeklyEdits); next.delete(proj.CHAVE); onWeeklyEditsChange(next);
                           weeklyTotalsRef.current.delete(proj.CHAVE);
-                          onUndoEdit(proj.CHAVE, meses[0]);
+                          // Undo de todos os meses afetados (não só mês 1)
+                          const affected = weeklyAffectedMonths.current.get(proj.CHAVE);
+                          if (affected) {
+                            affected.forEach(m => onUndoEdit!(proj.CHAVE, m));
+                          } else {
+                            onUndoEdit(proj.CHAVE, meses[0]);
+                          }
                           weeklyAffectedMonths.current.delete(proj.CHAVE);
                         } : undefined}
                       />
