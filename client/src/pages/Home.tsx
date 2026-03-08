@@ -8,8 +8,18 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { ShoppingCart, Download } from 'lucide-react';
+import { ShoppingCart, Download, Send, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import AppSidebar from '../components/AppSidebar';
@@ -71,6 +81,10 @@ export default function Home() {
   const [weeklyEdits, setWeeklyEdits] = useState<Map<string, number[]>>(new Map());
   const [selectedWeeks, setSelectedWeeks] = useState<Set<number>>(new Set());
 
+  // Programar compras
+  const [dialogProgramarAberto, setDialogProgramarAberto] = useState(false);
+  const [mesesProgramar, setMesesProgramar] = useState(0);
+
   // Calcula as semanas do mês 1 (igual ao useMemo interno do ProjectionTable)
   const semanasInfo = useMemo(() => {
     if (!dados || mesesVisiveis.length === 0) return [];
@@ -89,7 +103,13 @@ export default function Home() {
     });
   }, []);
 
-  const handleEnviarParaAprovacao = useCallback(() => {
+  const handleAbrirDialogProgramar = useCallback(() => {
+    if (selectedWeeks.size === 0 || !dados) return;
+    setMesesProgramar(0);
+    setDialogProgramarAberto(true);
+  }, [selectedWeeks, dados]);
+
+  const confirmarEnvioAprovacao = useCallback(() => {
     if (selectedWeeks.size === 0 || !dados) return;
     const mesAtual = mesesVisiveis[0];
     const semanasSelecionadas = [...selectedWeeks].sort().map(i => semanasInfo[i]?.label).filter(Boolean) as string[];
@@ -114,26 +134,60 @@ export default function Home() {
         }
       }
 
-      const semanas: Record<string, number> = {};
+      const entregas: Record<string, number> = {};
       let totalQuantidade = 0;
+      
+      // Mês atual é a soma das semanas flegadas
+      let somaSemanas = 0;
       for (const i of selectedWeeks) {
-        const label = semanasInfo[i]?.label;
-        if (label) {
-          const qty = valores[i] ?? 0;
-          semanas[label] = qty;
-          totalQuantidade += qty;
+        somaSemanas += valores[i] ?? 0;
+      }
+      
+      if (somaSemanas > 0 || mesesProgramar > 0) {
+        entregas[mesAtual] = somaSemanas;
+        totalQuantidade += somaSemanas;
+      }
+      
+      // Adicionar próximos meses programados
+      for (let m = 1; m <= mesesProgramar; m++) {
+        const proxMes = mesesVisiveis[m];
+        if (proxMes) {
+          const proxMesQty = proj.meses[proxMes]?.PEDIDO || 0;
+          entregas[proxMes] = proxMesQty;
+          totalQuantidade += proxMesQty;
         }
       }
 
       if (totalQuantidade === 0) return [];
+
+      // Enriquecimento: dados extras para a tabela expandida
+      // A quantidade comprada no 1º mês é a que chega com base no LT
+      const qtdCompradaMes1 = entregas[mesAtual] ?? 0;
+      const sellOut = proj.meses[mesAtual]?.SELL_OUT ?? 0;
+      const demandaDiaria = sellOut > 0 ? sellOut / 30 : 0;
+      const coberturaDiasHoje = demandaDiaria > 0 ? Math.round(cad.ESTOQUE / demandaDiaria) : null;
+
+      // Estoque projetado NA DATA DE CHEGADA (não no fim do mês!)
+      // Fórmula: estoque_atual - (demanda_diária × LT) + qtd_comprada + pendências
+      const lt = cad.LT ?? 0;
+      const consumoAteLT = demandaDiaria * lt;
+      const estoqueProjetadoChegada = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + qtdCompradaMes1 + (cad.PENDENCIA ?? 0)));
+      const coberturaDiasChegada = demandaDiaria > 0 ? Math.round(estoqueProjetadoChegada / demandaDiaria) : null;
 
       return [{
         chave: proj.CHAVE,
         nomeProduto: cad['nome produto'],
         fornecedor: cad['fornecedor comercial'],
         cd: cad.codigo_deposito_pd,
-        semanas,
-        totalQuantidade
+        entregas,
+        totalQuantidade,
+        estoqueAtual: cad.ESTOQUE,
+        estoqueSeguranca: cad.EST_SEGURANCA,
+        pendencias: cad.PENDENCIA ?? 0,
+        sellOutMes: sellOut,
+        coberturaDiasHoje,
+        estoqueProjetadoChegada,
+        coberturaDiasChegada,
       }];
     });
 
@@ -146,47 +200,137 @@ export default function Home() {
     const fornecedoresNoPedido = new Set(itens.map(it => it.fornecedor));
     const projecaoMap = new Map(projecoesComEdicoes.map(p => [p.CHAVE, p]));
 
-    // KPI 1: Cobertura do Fornecedor — todos os SKUs do(s) fornecedor(es)
-    let somaPonderadaForn = 0;
-    let somaVolumesForn = 0;
+    // 1. Contagem total de SKUs do fornecedor
+    let totalSkusFornecedorGlobais = 0;
+    Array.from(cadastroMap.values()).forEach(cad => {
+      if (fornecedoresNoPedido.has(cad['fornecedor comercial'])) {
+        totalSkusFornecedorGlobais++;
+      }
+    });
+
+    // KPI 1 & Novo KPI: Cobertura do Fornecedor — TODOS os SKUs do(s) fornecedor(es) (Hoje vs Chegada)
+    let somaPonderadaFornHoje = 0;
+    let somaVolumesFornHoje = 0;
+    
+    let somaPonderadaFornChegada = 0;
+    let somaVolumesFornChegada = 0;
+
+    // Mapa rápido: quais itens do pedido para cada chave (para somar qtd comprada)
+    const itensPedidoMap = new Map(itens.map(it => [it.chave, it]));
+
     projecoesComEdicoes.forEach(proj => {
       const cad = cadastroMap.get(proj.CHAVE);
       if (!cad || !fornecedoresNoPedido.has(cad['fornecedor comercial'])) return;
-      const sellOut = proj.meses[mesAtual]?.SELL_OUT ?? 0;
-      if (sellOut <= 0) return;
-      somaPonderadaForn += (cad.ESTOQUE / (sellOut / 30)) * sellOut;
-      somaVolumesForn += sellOut;
-    });
-    const coberturaFornecedorDias: number | null = somaVolumesForn > 0
-      ? Math.round(somaPonderadaForn / somaVolumesForn) : null;
+      
+      const sellOutAtual = proj.meses[mesAtual]?.SELL_OUT ?? 0;
+      if (sellOutAtual <= 0) return;
+      const demandaDiaria = sellOutAtual / 30;
+      
+      // Cobertura HOJE
+      const cobHoje = cad.ESTOQUE / demandaDiaria;
+      somaPonderadaFornHoje += cobHoje * sellOutAtual;
+      somaVolumesFornHoje += sellOutAtual;
 
-    // KPI 2: Cobertura do Pedido — apenas SKUs sendo comprados
-    let somaPonderadaPed = 0;
-    let somaVolumesPed = 0;
+      // Cobertura NA CHEGADA (LT-based)
+      const lt = cad.LT ?? 0;
+      const consumoAteLT = demandaDiaria * lt;
+      const itemPedido = itensPedidoMap.get(proj.CHAVE);
+      const qtdComprada = itemPedido ? (itemPedido.entregas[mesAtual] ?? 0) : 0;
+      const estoqueNaChegada = Math.max(0, cad.ESTOQUE - consumoAteLT + qtdComprada + (cad.PENDENCIA ?? 0));
+      const cobChegada = estoqueNaChegada / demandaDiaria;
+      somaPonderadaFornChegada += cobChegada * sellOutAtual;
+      somaVolumesFornChegada += sellOutAtual;
+    });
+
+    const coberturaFornecedorDiasHojeGlobais: number | null = somaVolumesFornHoje > 0
+      ? Math.round(somaPonderadaFornHoje / somaVolumesFornHoje) : null;
+    
+    const coberturaFornecedorDiasChegadaGlobais: number | null = somaVolumesFornChegada > 0
+      ? Math.round(somaPonderadaFornChegada / somaVolumesFornChegada) : null;
+    
+    // Antigo KPI retrocompatível
+    const coberturaFornecedorDiasGlobais = coberturaFornecedorDiasHojeGlobais; 
+
+
+    // KPI 2: Cobertura do Pedido — apenas SKUs sendo comprados (Hoje vs Chegada GLOBAL)
+    let somaPonderadaPedHoje = 0;
+    let somaVolumesPedHoje = 0;
+
+    // Também usaremos isso para calcular a saúde do pedido abaixo
+    let skusOk = 0;
+    let skusAtencao = 0;
+    let skusCriticos = 0;
+    let skusCriticosHojeGlobais = 0;
+    let estoqueObjetivoUnidadesGlobais = 0;
+    let estoqueChegadaUnidadesGlobais = 0;
+    let skusCompradosSemNecessidadeGlobais = 0;
+
+    // A chegada global (cobertura) usa a mesma lógica do fornecedor, mas restrito aos itens
+    let somaPonderadaPedChegada = 0;
+    let somaVolumesPedChegada = 0;
+
     itens.forEach(item => {
       const cad = cadastroMap.get(item.chave);
       const proj = projecaoMap.get(item.chave);
       if (!cad || !proj) return;
-      const sellOut = proj.meses[mesAtual]?.SELL_OUT ?? 0;
-      if (sellOut <= 0) return;
-      somaPonderadaPed += (cad.ESTOQUE / (sellOut / 30)) * sellOut;
-      somaVolumesPed += sellOut;
-    });
-    const coberturaPedidoDias: number | null = somaVolumesPed > 0
-      ? Math.round(somaPonderadaPed / somaVolumesPed) : null;
+      
+      const quantidadeMesAtual = item.entregas[mesAtual] || 0;
 
-    // KPI 3: Saúde dos SKUs do pedido
-    let skusOk = 0;
-    let skusAtencao = 0;
-    let skusCriticos = 0;
-    itens.forEach(item => {
-      const proj = projecaoMap.get(item.chave);
-      if (!proj) return;
-      const s = getStatusSKU(proj.meses, mesesVisiveis);
-      if (s === 'ok') skusOk++;
-      else if (s === 'warning') skusAtencao++;
-      else skusCriticos++;
+      // Saúde & Urgências
+      if (quantidadeMesAtual > 0) {
+        const s = getStatusSKU(proj.meses, [mesAtual]);
+        if (s === 'ok') skusOk++;
+        else if (s === 'warning') skusAtencao++;
+        else skusCriticos++;
+      }
+
+      if (cad.ESTOQUE <= cad.EST_SEGURANCA) {
+        skusCriticosHojeGlobais++;
+        item.motivoCompraCEO = 'urgente';
+      }
+
+      // CEO Efetividade & Eficiência (Mês 1 / Global)
+      const objetivoMes = proj.meses[mesAtual]?.ESTOQUE_OBJETIVO ?? 0;
+      estoqueObjetivoUnidadesGlobais += objetivoMes;
+
+      // Estoque na chegada: LT-based (mesma fórmula da tabela de itens)
+      const sellOut = proj.meses[mesAtual]?.SELL_OUT ?? 0;
+      const demandaDiaria = sellOut > 0 ? sellOut / 30 : 0;
+      const lt = cad.LT ?? 0;
+      const consumoAteLT = demandaDiaria * lt;
+      const estoqueNaChegada = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + quantidadeMesAtual + (cad.PENDENCIA ?? 0)));
+      estoqueChegadaUnidadesGlobais += estoqueNaChegada;
+
+      // Sem pedido = sem a quantidade comprada
+      const estoqueSemPedido = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + (cad.PENDENCIA ?? 0)));
+      
+      if (estoqueSemPedido > 0 && estoqueSemPedido >= objetivoMes && objetivoMes > 0) {
+        skusCompradosSemNecessidadeGlobais++;
+        item.motivoCompraCEO = 'excesso';
+      } else if (item.motivoCompraCEO !== 'urgente') {
+        item.motivoCompraCEO = 'normal';
+      }
+
+      // Coberturas (Hoje & Chegada)
+      if (sellOut > 0) {
+        const cobHoje = cad.ESTOQUE / demandaDiaria;
+        somaPonderadaPedHoje += cobHoje * sellOut;
+        somaVolumesPedHoje += sellOut;
+
+        const cobChegada = estoqueNaChegada / demandaDiaria;
+        somaPonderadaPedChegada += cobChegada * sellOut;
+        somaVolumesPedChegada += sellOut;
+      }
     });
+
+    const coberturaPedidoDiasHojeGlobais: number | null = somaVolumesPedHoje > 0
+      ? Math.round(somaPonderadaPedHoje / somaVolumesPedHoje) : null;
+    
+    const coberturaDataChegadaDiasGlobais: number | null = somaVolumesPedChegada > 0
+      ? Math.round(somaPonderadaPedChegada / somaVolumesPedChegada) : null;
+
+    // Antigo KPI retrocompatível
+    const coberturaPedidoDias = coberturaPedidoDiasHojeGlobais;
 
     // KPI 4: Data prevista de chegada (baseada no LT médio ponderado por volume)
     let somaLTPonderado = 0;
@@ -198,53 +342,168 @@ export default function Home() {
       somaVolumeLT += item.totalQuantidade;
     });
     const ltMedioPonderado = somaVolumeLT > 0 ? Math.round(somaLTPonderado / somaVolumeLT) : null;
-    let dataChegadaPrevista: string | null = null;
+    let dataChegadaPrevistaPrimeiroLote: string | null = null;
     if (ltMedioPonderado !== null) {
       const dataEnvio = new Date();
       dataEnvio.setDate(dataEnvio.getDate() + ltMedioPonderado);
-      dataChegadaPrevista = dataEnvio.toISOString();
+      dataChegadaPrevistaPrimeiroLote = dataEnvio.toISOString();
     }
 
-    // KPI 5: Cobertura projetada na data de chegada
-    let coberturaDataChegadaDias: number | null = null;
-    if (ltMedioPonderado !== null) {
-      // Estoque projetado na chegada: estoque atual - (demanda diária × LT) + quantidade do pedido
-      let estoqueChegada = 0;
-      let demandaDiariaTotal = 0;
-      itens.forEach(item => {
-        const cad = cadastroMap.get(item.chave);
-        const proj = projecaoMap.get(item.chave);
-        if (!cad || !proj) return;
-        const sellOut = proj.meses[mesAtual]?.SELL_OUT ?? 0;
-        const demandaDiaria = sellOut / 30;
-        const lt = cad.LT || ltMedioPonderado;
-        estoqueChegada += Math.max(0, cad.ESTOQUE - (demandaDiaria * lt)) + item.totalQuantidade;
-        demandaDiariaTotal += demandaDiaria;
-      });
-      if (demandaDiariaTotal > 0) {
-        coberturaDataChegadaDias = Math.round(estoqueChegada / demandaDiariaTotal);
-      }
+    // Identificar a lista correta de meses gerados
+    const mesesParaAprovacao = [mesAtual];
+    for (let m = 1; m <= mesesProgramar; m++) {
+      if (mesesVisiveis[m]) mesesParaAprovacao.push(mesesVisiveis[m]);
     }
+
+    // ── Geração de KPIs Mensais Individuais ──────────────────────────────────
+    const kpisMensais: Record<string, any> = {};
+
+    mesesParaAprovacao.forEach((mesTarget) => {
+      let somaPonderadaPedMes = 0;
+      let somaVolumesPedMes = 0;
+      let okMes = 0;
+      let atencaoMes = 0;
+      let criticosMes = 0;
+
+      let estoqueObjetivoMesTarget = 0;
+      let estoqueChegadaMesTarget = 0;
+      let skusCriticosHojeMesTarget = 0;
+      let skusCompradosSemNecessidadeMesTarget = 0;
+      
+      let estoqueChegadaMes = 0;
+      let demandaDiariaTotalMes = 0;
+
+      // Cobertura Fornecedor mensal (Hoje e Chegada)
+      let somaPondFornHojeMes = 0;
+      let somaVolFornHojeMes = 0;
+      let somaPondFornChegMes = 0;
+      let somaVolFornChegMes = 0;
+
+      // Cobertura Pedido mensal (Hoje)
+      let somaPondPedHojeMes = 0;
+      let somaVolPedHojeMes = 0;
+
+      // Primeiro: iterar todos os SKUs do fornecedor para cobertura do fornecedor mensal
+      projecoesComEdicoes.forEach(proj => {
+        const cad = cadastroMap.get(proj.CHAVE);
+        if (!cad || !fornecedoresNoPedido.has(cad['fornecedor comercial'])) return;
+        const sellOutMes = proj.meses[mesTarget]?.SELL_OUT ?? 0;
+        if (sellOutMes <= 0) return;
+        const dd = sellOutMes / 30;
+        
+        // Hoje
+        somaPondFornHojeMes += (cad.ESTOQUE / dd) * sellOutMes;
+        somaVolFornHojeMes += sellOutMes;
+
+        // Chegada (LT-based)
+        const ltF = cad.LT ?? 0;
+        const itemPed = itensPedidoMap.get(proj.CHAVE);
+        const qtdF = itemPed ? (itemPed.entregas[mesTarget] ?? 0) : 0;
+        const estChegF = Math.max(0, cad.ESTOQUE - (dd * ltF) + qtdF + (cad.PENDENCIA ?? 0));
+        somaPondFornChegMes += (estChegF / dd) * sellOutMes;
+        somaVolFornChegMes += sellOutMes;
+      });
+
+      // Depois: iterar os itens do pedido
+      itens.forEach(item => {
+        const proj = projecaoMap.get(item.chave);
+        const cad = cadastroMap.get(item.chave);
+        if (!proj || !cad) return;
+
+        const sellOutMes = proj.meses[mesTarget]?.SELL_OUT ?? 0;
+        const quantidadeCompradaMes = item.entregas[mesTarget] || 0;
+
+        // Saúde
+        const s = getStatusSKU(proj.meses, [mesTarget]);
+        if (s === 'ok') okMes++;
+        else if (s === 'warning') atencaoMes++;
+        else criticosMes++;
+
+        if (quantidadeCompradaMes > 0 && cad.ESTOQUE <= cad.EST_SEGURANCA) {
+          skusCriticosHojeMesTarget++;
+        }
+
+        if (sellOutMes > 0 && quantidadeCompradaMes > 0) {
+           somaPonderadaPedMes += (cad.ESTOQUE / (sellOutMes / 30)) * sellOutMes;
+           somaVolumesPedMes += sellOutMes;
+        }
+
+        const objetivoMesTarget = proj.meses[mesTarget]?.ESTOQUE_OBJETIVO ?? 0;
+        estoqueObjetivoMesTarget += objetivoMesTarget;
+        
+        // Estoque na chegada: LT-based
+        const demandaDiaria = sellOutMes > 0 ? sellOutMes / 30 : 0;
+        const ltItem = cad.LT ?? 0;
+        const consumo = demandaDiaria * ltItem;
+        const estoqueNaChegadaMes = Math.max(0, Math.round(cad.ESTOQUE - consumo + quantidadeCompradaMes + (cad.PENDENCIA ?? 0)));
+        estoqueChegadaMesTarget += estoqueNaChegadaMes;
+
+        // Sem pedido
+        const estoqueSemPedido = Math.max(0, Math.round(cad.ESTOQUE - consumo + (cad.PENDENCIA ?? 0)));
+        if (quantidadeCompradaMes > 0 || item.totalQuantidade > 0) {
+          if (estoqueSemPedido > 0 && estoqueSemPedido >= objetivoMesTarget && objetivoMesTarget > 0) {
+            skusCompradosSemNecessidadeMesTarget++;
+          }
+        }
+
+        if (demandaDiaria > 0) {
+          estoqueChegadaMes += estoqueNaChegadaMes;
+          demandaDiariaTotalMes += demandaDiaria;
+
+          // Cobertura do Pedido HOJE (mensal)
+          somaPondPedHojeMes += (cad.ESTOQUE / demandaDiaria) * sellOutMes;
+          somaVolPedHojeMes += sellOutMes;
+        }
+      });
+
+      const coberturaPedidoDiasMes = somaVolumesPedMes > 0 ? Math.round(somaPonderadaPedMes / somaVolumesPedMes) : null;
+      const coberturaDataChegadaDiasMes = demandaDiariaTotalMes > 0 ? Math.round(estoqueChegadaMes / demandaDiariaTotalMes) : null;
+
+      kpisMensais[mesTarget] = {
+        coberturaPedidoDias: coberturaPedidoDiasMes,
+        coberturaDataChegadaDias: coberturaDataChegadaDiasMes,
+        skusOk: okMes,
+        skusAtencao: atencaoMes,
+        skusCriticos: criticosMes,
+        estoqueObjetivoUnidades: estoqueObjetivoMesTarget,
+        estoqueChegadaUnidades: estoqueChegadaMesTarget,
+        skusCriticosHoje: skusCriticosHojeMesTarget,
+        skusCompradosSemNecessidade: skusCompradosSemNecessidadeMesTarget,
+        totalSkusFornecedor: totalSkusFornecedorGlobais,
+        coberturaFornecedorDiasHoje: somaVolFornHojeMes > 0 ? Math.round(somaPondFornHojeMes / somaVolFornHojeMes) : null,
+        coberturaFornecedorDiasChegada: somaVolFornChegMes > 0 ? Math.round(somaPondFornChegMes / somaVolFornChegMes) : null,
+        coberturaPedidoDiasHoje: somaVolPedHojeMes > 0 ? Math.round(somaPondPedHojeMes / somaVolPedHojeMes) : null,
+      };
+    });
 
     // Fornecedor(es) do pedido
     const fornecedoresUnicos = [...new Set(itens.map(it => it.fornecedor))];
     const fornecedorNome = fornecedoresUnicos.join(', ');
 
     const kpis: PedidoKPIs = {
-      coberturaFornecedorDias,
-      coberturaPedidoDias,
-      dataChegadaPrevista,
-      coberturaDataChegadaDias,
-      skusOk,
-      skusAtencao,
-      skusCriticos,
+      coberturaFornecedorDiasGlobais: coberturaFornecedorDiasHojeGlobais,
+      coberturaPedidoDiasGlobais: coberturaPedidoDiasHojeGlobais,
+      dataChegadaPrevistaPrimeiroLote,
+      coberturaDataChegadaDiasGlobais,
+      skusOkGlobais: skusOk,
+      skusAtencaoGlobais: skusAtencao,
+      skusCriticosGlobais: skusCriticos,
+      estoqueObjetivoUnidadesGlobais,
+      estoqueChegadaUnidadesGlobais,
+      skusCriticosHojeGlobais,
+      skusCompradosSemNecessidadeGlobais,
+      totalSkusFornecedorGlobais,
+      coberturaFornecedorDiasHojeGlobais,
+      coberturaFornecedorDiasChegadaGlobais,
+      coberturaPedidoDiasHojeGlobais,
+      meses: kpisMensais
     };
     // ── Fim KPIs ─────────────────────────────────────────────────────────────
 
     const pedido: PedidoAprovacao = {
       id: Date.now().toString(),
       criadoEm: new Date().toISOString(),
-      semanasSelecionadas,
+      mesesProgramados: mesesParaAprovacao,
       status: 'pendente',
       itens,
       totalSkus: itens.length,
@@ -254,12 +513,13 @@ export default function Home() {
     };
 
     adicionarPedido(pedido);
+    setDialogProgramarAberto(false);
     setSelectedWeeks(new Set());
     toast.success('Pedido enviado para aprovação', {
-      description: `${itens.length} SKUs · ${semanasSelecionadas.join(', ')}`
+      description: `${itens.length} SKUs · Programado para ${mesesParaAprovacao.length} ${mesesParaAprovacao.length === 1 ? 'mês' : 'meses'}`
     });
     navigate('/aprovacao');
-  }, [selectedWeeks, dados, mesesVisiveis, semanasInfo, dadosFiltrados, cadastroMap, projecoesComEdicoes, weeklyEdits, coverageWeeklyEdits, adicionarPedido, navigate]);
+  }, [selectedWeeks, dados, mesesVisiveis, semanasInfo, dadosFiltrados, cadastroMap, projecoesComEdicoes, weeklyEdits, coverageWeeklyEdits, adicionarPedido, navigate, mesesProgramar]);
 
   // Handler para aplicar pedidos de cobertura na tabela
   const handleAplicarCobertura = useCallback((
@@ -426,7 +686,7 @@ export default function Home() {
           dados={dados}
           selectedWeeks={selectedWeeks}
           semanasInfo={semanasInfo}
-          onEnviarParaAprovacao={handleEnviarParaAprovacao}
+          onEnviarParaAprovacao={handleAbrirDialogProgramar}
         />
       )}
 
@@ -450,6 +710,70 @@ export default function Home() {
         dataReferencia={dados.metadata.data_referencia}
         onAplicarCobertura={handleAplicarCobertura}
       />
+
+      {/* Dialog: Programar Compras */}
+      <Dialog open={dialogProgramarAberto} onOpenChange={setDialogProgramarAberto}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              Programar Compras
+            </DialogTitle>
+            <DialogDescription>
+              Você está prestes a enviar os pedidos das semanas selecionadas para aprovação. Deseja estender essas compras para meses futuros de forma programada?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <RadioGroup
+              value={String(mesesProgramar)}
+              onValueChange={(val) => setMesesProgramar(Number(val))}
+              className="flex flex-col gap-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar"
+            >
+              <div className="flex items-start space-x-3 border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors min-h-[4rem]">
+                <RadioGroupItem value="0" id="r0" className="mt-1" />
+                <Label htmlFor="r0" className="flex flex-col flex-1 cursor-pointer gap-1">
+                  <div className="font-semibold text-foreground text-sm">
+                    Apenas Mês Atual ({mesesVisiveis[0] ? mesesVisiveis[0].replace('_', '-').split('-').reverse().join('/') : ''})
+                  </div>
+                  <div className="text-xs text-muted-foreground font-normal leading-relaxed">
+                    Soma apenas as semanas selecionadas
+                  </div>
+                </Label>
+              </div>
+              
+              {/* Loop para gerar as opções baseado nos meses visíveis disponíveis */}
+              {mesesVisiveis.slice(1).map((_, index) => {
+                const addMonths = index + 1;
+                // Vamos limitar as opções ao máximo disponível no horizonte, ou num teto razoável como 11
+                if (addMonths > 11) return null;
+                
+                return (
+                  <div key={addMonths} className="flex items-start space-x-3 border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors min-h-[4rem]">
+                    <RadioGroupItem value={String(addMonths)} id={`r${addMonths}`} className="mt-1" />
+                    <Label htmlFor={`r${addMonths}`} className="flex flex-col flex-1 cursor-pointer gap-1">
+                      <div className="font-semibold text-foreground text-sm">
+                        +{addMonths} {addMonths === 1 ? 'Mês Programado' : 'Meses Programados'}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-normal leading-relaxed">
+                        Inclui o total projetado para {addMonths === 1 ? 'o próximo mês inteiro' : `os próximos ${addMonths} meses`}
+                      </div>
+                    </Label>
+                  </div>
+                );
+              })}
+            </RadioGroup>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogProgramarAberto(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmarEnvioAprovacao} className="gap-1.5 min-w-[120px]">
+              <Send className="w-4 h-4" />
+              Confirmar Envio
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

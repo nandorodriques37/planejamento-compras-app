@@ -37,7 +37,7 @@ export function usePedidosAprovacao() {
   }, []);
 
   const atualizarStatus = useCallback(
-    (id: string, status: 'aprovado' | 'rejeitado') => {
+    (id: string, status: 'aprovado' | 'rejeitado' | 'cancelado') => {
       setPedidos(prev => {
         const next = prev.map(p => (p.id === id ? { ...p, status } : p));
         persistir(next);
