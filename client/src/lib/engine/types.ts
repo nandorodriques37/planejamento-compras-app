@@ -15,6 +15,8 @@ export interface SKUCadastro {
   EST_SEGURANCA: number;
   IMPACTO: number;
   PREECHIMENTO_DEMANDA_LOJA: number;
+  MULTIPLO_EMBALAGEM: number;
+  CUSTO_LIQUIDO: number;
 }
 
 export interface MesData {

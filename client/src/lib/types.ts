@@ -25,6 +25,8 @@ export interface PedidoItem {
   estoqueProjetadoChegada?: number;
   /** Cobertura em dias NA CHEGADA (estoque projetado / demanda diária) */
   coberturaDiasChegada?: number | null;
+  /** Custo liquido da unidade do produto */
+  custoLiquido?: number;
 }
 
 export interface PedidoKPIs {
@@ -62,7 +64,7 @@ export interface PedidoKPIs {
   coberturaFornecedorDiasChegadaGlobais?: number | null;
   /** Cobertura do Pedido HOJE (em dias) */
   coberturaPedidoDiasHojeGlobais?: number | null;
-  
+
   /** Dados específicos recalculados mês a mês */
   meses: Record<string, {
     coberturaPedidoDias: number | null;
@@ -93,4 +95,6 @@ export interface PedidoAprovacao {
   fornecedorNome?: string;
   /** KPIs calculados no momento do envio. Ausente em pedidos antigos (backward compat). */
   kpis?: PedidoKPIs;
+  /** Valor financeiro total do pedido (soma da quantidade de cada sku pelo seu custo liquido) */
+  totalValorPedidos?: number;
 }

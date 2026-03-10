@@ -6,7 +6,7 @@
 
 import { Package, ShoppingCart, TrendingDown, AlertTriangle, Clock, Timer, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import type { ProjecaoSKU, SKUCadastro } from '../lib/calculationEngine';
-import { formatNumber, getStatusSKU } from '../lib/calculationEngine';
+import { formatNumber, formatCurrency, getStatusSKU } from '../lib/calculationEngine';
 import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
 import { Progress } from '@/components/ui/progress';
 import type { LucideIcon } from 'lucide-react';
@@ -44,6 +44,7 @@ export default function SummaryCards({ projecoes, cadastroMap, meses }: SummaryC
   const stats = useMemo(() => {
     let totalEstoque = 0;
     let totalPedidos = 0;
+    let totalValorPedidos = 0;
     let skusCriticos = 0;
     let skusAtencao = 0;
     let totalSellOutMes1 = 0;
@@ -51,7 +52,7 @@ export default function SummaryCards({ projecoes, cadastroMap, meses }: SummaryC
     let totalLT = 0;
     let countComLT = 0;
 
-    const mes1 = meses[0];
+    const ultimoMes = meses[meses.length - 1];
 
     projecoes.forEach(proj => {
       const cad = cadastroMap.get(proj.CHAVE);
@@ -65,14 +66,19 @@ export default function SummaryCards({ projecoes, cadastroMap, meses }: SummaryC
 
       meses.forEach(mes => {
         const d = proj.meses[mes];
-        if (d) totalPedidos += d.PEDIDO;
+        if (d) {
+          totalPedidos += d.PEDIDO;
+          totalSellOutMes1 += d.SELL_OUT; // Acumular sellout do horizonte inteiro
+          if (cad) {
+            totalValorPedidos += d.PEDIDO * (cad.CUSTO_LIQUIDO || 0);
+          }
+        }
       });
 
-      if (mes1) {
-        const dadosMes1 = proj.meses[mes1];
-        if (dadosMes1) {
-          totalSellOutMes1 += dadosMes1.SELL_OUT;
-          totalEstProjMes1 += dadosMes1.ESTOQUE_PROJETADO;
+      if (ultimoMes) {
+        const dadosUltimoMes = proj.meses[ultimoMes];
+        if (dadosUltimoMes) {
+          totalEstProjMes1 += dadosUltimoMes.ESTOQUE_PROJETADO;
         }
       }
 
@@ -81,7 +87,9 @@ export default function SummaryCards({ projecoes, cadastroMap, meses }: SummaryC
       if (status === 'warning') skusAtencao++;
     });
 
-    const demandaDiaria = totalSellOutMes1 / DIAS_MES;
+    // Demanda diária média durante todo o horizonte filtrado
+    const totalDiasNoHorizonte = (meses.length || 1) * DIAS_MES;
+    const demandaDiaria = totalSellOutMes1 / totalDiasNoHorizonte;
     const coberturaAtualDias = demandaDiaria > 0 ? Math.round(totalEstoque / demandaDiaria) : null;
     const coberturaProjetadaDias = demandaDiaria > 0 ? Math.round(totalEstProjMes1 / demandaDiaria) : null;
     const ltMedio = countComLT > 0 ? Math.round(totalLT / countComLT) : null;
@@ -94,24 +102,24 @@ export default function SummaryCards({ projecoes, cadastroMap, meses }: SummaryC
     const coverageProgress = coberturaAtualDias !== null ? Math.min(100, (coberturaAtualDias / targetCoverageDays) * 100) : 0;
 
     return {
-      totalEstoque, totalPedidos, skusCriticos, skusAtencao,
+      totalEstoque, totalPedidos, totalValorPedidos, skusCriticos, skusAtencao,
       coberturaAtualDias, coberturaProjetadaDias, ltMedio, countComLT,
       stockChange, coverageProgress,
     };
   }, [projecoes, cadastroMap, meses]);
 
   const {
-    totalEstoque, totalPedidos, skusCriticos, skusAtencao,
+    totalEstoque, totalPedidos, totalValorPedidos, skusCriticos, skusAtencao,
     coberturaAtualDias, coberturaProjetadaDias, ltMedio, countComLT,
     stockChange, coverageProgress,
   } = stats;
 
   const cards: CardConfig[] = [
     { icon: Package, label: 'Estoque Total Atual', numericValue: totalEstoque, displayValue: formatNumber(totalEstoque), sublabel: `${projecoes.length} SKU/CD`, color: 'text-primary', bg: 'bg-primary/5', change: stockChange, formatter: formatNumber },
-    { icon: ShoppingCart, label: 'Total Pedidos Sugeridos', numericValue: totalPedidos, displayValue: formatNumber(totalPedidos), sublabel: `Horizonte: ${meses.length} meses`, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/30', formatter: formatNumber },
+    { icon: ShoppingCart, label: 'Valor Total Pedidos', numericValue: totalValorPedidos, displayValue: formatCurrency(totalValorPedidos), sublabel: `Horizonte: ${meses.length} ${meses.length === 1 ? 'mês' : 'meses'}`, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', formatter: formatCurrency },
     { icon: AlertTriangle, label: 'SKUs em Atenção', numericValue: skusAtencao, displayValue: String(skusAtencao), sublabel: 'Abaixo do objetivo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', formatter: (n: number) => String(n) },
     { icon: TrendingDown, label: 'SKUs Críticos', numericValue: skusCriticos, displayValue: String(skusCriticos), sublabel: 'Estoque negativo projetado', color: 'text-destructive', bg: 'bg-red-50 dark:bg-red-950/30', formatter: (n: number) => String(n) },
-    { icon: Clock, label: 'Cobertura em Dias', numericValue: coberturaAtualDias, displayValue: coberturaAtualDias !== null ? `${coberturaAtualDias}d` : '—', sublabel: coberturaProjetadaDias !== null ? `Projetado fim mês: ${coberturaProjetadaDias}d` : 'Sem demanda no período', color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-950/30', showProgress: true, progressValue: coverageProgress, formatter: (n: number) => `${n}d` },
+    { icon: Clock, label: 'Cobertura em Dias', numericValue: coberturaAtualDias, displayValue: coberturaAtualDias !== null ? `${coberturaAtualDias}d` : '—', sublabel: coberturaProjetadaDias !== null ? `Projetado no fim do horizonte: ${coberturaProjetadaDias}d` : 'Sem demanda no período', color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-950/30', showProgress: true, progressValue: coverageProgress, formatter: (n: number) => `${n}d` },
     { icon: Timer, label: 'Lead Time Médio', numericValue: ltMedio, displayValue: ltMedio !== null ? `${ltMedio} dias` : '—', sublabel: `${countComLT} SKUs com LT`, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-950/30', formatter: (n: number) => `${n} dias` }
   ];
 
@@ -133,8 +141,8 @@ export default function SummaryCards({ projecoes, cadastroMap, meses }: SummaryC
               </p>
               {card.change != null && card.change !== 0 && (
                 <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1 py-0.5 rounded ${card.change > 0
-                    ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30'
-                    : 'text-destructive bg-red-50 dark:bg-red-950/30'
+                  ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30'
+                  : 'text-destructive bg-red-50 dark:bg-red-950/30'
                   }`}>
                   {card.change > 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
                   {Math.abs(card.change)}%

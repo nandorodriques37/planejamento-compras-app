@@ -136,18 +136,18 @@ export default function Home() {
 
       const entregas: Record<string, number> = {};
       let totalQuantidade = 0;
-      
+
       // Mês atual é a soma das semanas flegadas
       let somaSemanas = 0;
       for (const i of selectedWeeks) {
         somaSemanas += valores[i] ?? 0;
       }
-      
+
       if (somaSemanas > 0 || mesesProgramar > 0) {
         entregas[mesAtual] = somaSemanas;
         totalQuantidade += somaSemanas;
       }
-      
+
       // Adicionar próximos meses programados
       for (let m = 1; m <= mesesProgramar; m++) {
         const proxMes = mesesVisiveis[m];
@@ -188,6 +188,7 @@ export default function Home() {
         coberturaDiasHoje,
         estoqueProjetadoChegada,
         coberturaDiasChegada,
+        custoLiquido: cad.CUSTO_LIQUIDO,
       }];
     });
 
@@ -211,7 +212,7 @@ export default function Home() {
     // KPI 1 & Novo KPI: Cobertura do Fornecedor — TODOS os SKUs do(s) fornecedor(es) (Hoje vs Chegada)
     let somaPonderadaFornHoje = 0;
     let somaVolumesFornHoje = 0;
-    
+
     let somaPonderadaFornChegada = 0;
     let somaVolumesFornChegada = 0;
 
@@ -221,11 +222,11 @@ export default function Home() {
     projecoesComEdicoes.forEach(proj => {
       const cad = cadastroMap.get(proj.CHAVE);
       if (!cad || !fornecedoresNoPedido.has(cad['fornecedor comercial'])) return;
-      
+
       const sellOutAtual = proj.meses[mesAtual]?.SELL_OUT ?? 0;
       if (sellOutAtual <= 0) return;
       const demandaDiaria = sellOutAtual / 30;
-      
+
       // Cobertura HOJE
       const cobHoje = cad.ESTOQUE / demandaDiaria;
       somaPonderadaFornHoje += cobHoje * sellOutAtual;
@@ -244,12 +245,12 @@ export default function Home() {
 
     const coberturaFornecedorDiasHojeGlobais: number | null = somaVolumesFornHoje > 0
       ? Math.round(somaPonderadaFornHoje / somaVolumesFornHoje) : null;
-    
+
     const coberturaFornecedorDiasChegadaGlobais: number | null = somaVolumesFornChegada > 0
       ? Math.round(somaPonderadaFornChegada / somaVolumesFornChegada) : null;
-    
+
     // Antigo KPI retrocompatível
-    const coberturaFornecedorDiasGlobais = coberturaFornecedorDiasHojeGlobais; 
+    const coberturaFornecedorDiasGlobais = coberturaFornecedorDiasHojeGlobais;
 
 
     // KPI 2: Cobertura do Pedido — apenas SKUs sendo comprados (Hoje vs Chegada GLOBAL)
@@ -273,7 +274,7 @@ export default function Home() {
       const cad = cadastroMap.get(item.chave);
       const proj = projecaoMap.get(item.chave);
       if (!cad || !proj) return;
-      
+
       const quantidadeMesAtual = item.entregas[mesAtual] || 0;
 
       // Saúde & Urgências
@@ -303,7 +304,7 @@ export default function Home() {
 
       // Sem pedido = sem a quantidade comprada
       const estoqueSemPedido = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + (cad.PENDENCIA ?? 0)));
-      
+
       if (estoqueSemPedido > 0 && estoqueSemPedido >= objetivoMes && objetivoMes > 0) {
         skusCompradosSemNecessidadeGlobais++;
         item.motivoCompraCEO = 'excesso';
@@ -325,7 +326,7 @@ export default function Home() {
 
     const coberturaPedidoDiasHojeGlobais: number | null = somaVolumesPedHoje > 0
       ? Math.round(somaPonderadaPedHoje / somaVolumesPedHoje) : null;
-    
+
     const coberturaDataChegadaDiasGlobais: number | null = somaVolumesPedChegada > 0
       ? Math.round(somaPonderadaPedChegada / somaVolumesPedChegada) : null;
 
@@ -369,7 +370,7 @@ export default function Home() {
       let estoqueChegadaMesTarget = 0;
       let skusCriticosHojeMesTarget = 0;
       let skusCompradosSemNecessidadeMesTarget = 0;
-      
+
       let estoqueChegadaMes = 0;
       let demandaDiariaTotalMes = 0;
 
@@ -390,7 +391,7 @@ export default function Home() {
         const sellOutMes = proj.meses[mesTarget]?.SELL_OUT ?? 0;
         if (sellOutMes <= 0) return;
         const dd = sellOutMes / 30;
-        
+
         // Hoje
         somaPondFornHojeMes += (cad.ESTOQUE / dd) * sellOutMes;
         somaVolFornHojeMes += sellOutMes;
@@ -424,13 +425,13 @@ export default function Home() {
         }
 
         if (sellOutMes > 0 && quantidadeCompradaMes > 0) {
-           somaPonderadaPedMes += (cad.ESTOQUE / (sellOutMes / 30)) * sellOutMes;
-           somaVolumesPedMes += sellOutMes;
+          somaPonderadaPedMes += (cad.ESTOQUE / (sellOutMes / 30)) * sellOutMes;
+          somaVolumesPedMes += sellOutMes;
         }
 
         const objetivoMesTarget = proj.meses[mesTarget]?.ESTOQUE_OBJETIVO ?? 0;
         estoqueObjetivoMesTarget += objetivoMesTarget;
-        
+
         // Estoque na chegada: LT-based
         const demandaDiaria = sellOutMes > 0 ? sellOutMes / 30 : 0;
         const ltItem = cad.LT ?? 0;
@@ -508,6 +509,7 @@ export default function Home() {
       itens,
       totalSkus: itens.length,
       totalQuantidade: itens.reduce((acc, it) => acc + it.totalQuantidade, 0),
+      totalValorPedidos: itens.reduce((acc, it) => acc + (it.totalQuantidade * (it.custoLiquido || 0)), 0),
       fornecedorNome,
       kpis,
     };
@@ -643,7 +645,7 @@ export default function Home() {
           <SummaryCards
             projecoes={dadosFiltrados}
             cadastroMap={cadastroMap}
-            meses={dados.metadata.meses}
+            meses={mesesVisiveis}
           />
 
           {/* Filter Bar */}
@@ -740,13 +742,13 @@ export default function Home() {
                   </div>
                 </Label>
               </div>
-              
+
               {/* Loop para gerar as opções baseado nos meses visíveis disponíveis */}
               {mesesVisiveis.slice(1).map((_, index) => {
                 const addMonths = index + 1;
                 // Vamos limitar as opções ao máximo disponível no horizonte, ou num teto razoável como 11
                 if (addMonths > 11) return null;
-                
+
                 return (
                   <div key={addMonths} className="flex items-start space-x-3 border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors min-h-[4rem]">
                     <RadioGroupItem value={String(addMonths)} id={`r${addMonths}`} className="mt-1" />

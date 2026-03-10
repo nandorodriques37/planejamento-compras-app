@@ -30,7 +30,7 @@ import AppSidebar from '../components/AppSidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { usePedidosAprovacao } from '../hooks/usePedidosAprovacao';
-import { formatDateBR, formatNumber } from '../lib/calculationEngine';
+import { formatDateBR, formatNumber, formatCurrency } from '../lib/calculationEngine';
 import type { PedidoAprovacao, PedidoKPIs } from '../lib/types';
 
 type StatusFilter = 'todos' | 'pendente' | 'aprovado' | 'rejeitado' | 'cancelado';
@@ -321,6 +321,12 @@ function PedidoCard({
           <span><strong className="text-foreground">{pedido.totalSkus}</strong> SKUs</span>
           <span className="mx-1">·</span>
           <span><strong className="text-foreground">{formatNumber(pedido.totalQuantidade)}</strong> unidades</span>
+          {pedido.totalValorPedidos !== undefined && (
+            <>
+              <span className="mx-1">·</span>
+              <span><strong className="text-foreground">{formatCurrency(pedido.totalValorPedidos)}</strong></span>
+            </>
+          )}
         </div>
 
         {/* Right: status + chevron */}
@@ -340,9 +346,12 @@ function PedidoCard({
       {isExpanded && (
         <div className="border-t border-border px-4 py-3">
           {/* Mobile summary */}
-          <div className="sm:hidden mb-3 text-xs text-muted-foreground">
+          <div className="sm:hidden mb-3 text-xs text-muted-foreground flex flex-wrap gap-1">
             <span><strong className="text-foreground">{pedido.totalSkus}</strong> SKUs · </span>
             <span><strong className="text-foreground">{formatNumber(pedido.totalQuantidade)}</strong> unidades</span>
+            {pedido.totalValorPedidos !== undefined && (
+              <span> · <strong className="text-foreground">{formatCurrency(pedido.totalValorPedidos)}</strong></span>
+            )}
           </div>
 
           {/* Items table */}
@@ -360,7 +369,8 @@ function PedidoCard({
                   {(pedido.mesesProgramados || (pedido as any).semanasSelecionadas || []).map(s => (
                     <th key={s} className="text-right px-2 py-1.5 font-semibold text-primary">{s}</th>
                   ))}
-                  <th className="text-right px-2 py-1.5 font-semibold text-foreground">Total</th>
+                  <th className="text-right px-2 py-1.5 font-semibold text-foreground">Total Qtd</th>
+                  <th className="text-right px-2 py-1.5 font-semibold text-foreground">Total (R$)</th>
                   <th className="text-right px-2 py-1.5 font-semibold text-muted-foreground" title="Estoque Projetado na Chegada">Est.Proj.</th>
                   <th className="text-right px-2 py-1.5 font-semibold text-muted-foreground rounded-tr-sm" title="Cobertura em dias NA CHEGADA">Cob.Cheg.</th>
                 </tr>
@@ -372,7 +382,7 @@ function PedidoCard({
                   const cobHojeColor = cobHoje === null || cobHoje === undefined ? 'text-muted-foreground' : cobHoje < 15 ? 'text-rose-600 dark:text-rose-400 font-bold' : cobHoje < 30 ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400';
                   const cobChegColor = cobCheg === null || cobCheg === undefined ? 'text-muted-foreground' : cobCheg < 15 ? 'text-rose-600 dark:text-rose-400 font-bold' : cobCheg < 30 ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400';
                   const estoqueBaixo = (item.estoqueAtual ?? 0) <= (item.estoqueSeguranca ?? 0);
-                  
+
                   return (
                     <tr key={item.chave} className={idx % 2 === 1 ? 'bg-muted/20' : ''}>
                       <td className="px-2 py-1.5 font-medium text-foreground max-w-[180px] truncate" title={item.nomeProduto}>
@@ -408,6 +418,9 @@ function PedidoCard({
                       <td className="px-2 py-1.5 text-right font-mono tabular-nums font-bold text-foreground">
                         {formatNumber(item.totalQuantidade)}
                       </td>
+                      <td className="px-2 py-1.5 text-right font-mono tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
+                        {item.custoLiquido ? formatCurrency(item.totalQuantidade * item.custoLiquido) : '—'}
+                      </td>
                       <td className="px-2 py-1.5 text-right font-mono tabular-nums text-foreground">
                         {formatNumber(item.estoqueProjetadoChegada ?? 0)}
                       </td>
@@ -430,6 +443,9 @@ function PedidoCard({
                   ))}
                   <td className="px-2 py-1.5 text-right font-mono tabular-nums font-bold text-primary">
                     {formatNumber(pedido.totalQuantidade)}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-mono tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
+                    {pedido.totalValorPedidos !== undefined ? formatCurrency(pedido.totalValorPedidos) : '—'}
                   </td>
                   <td colSpan={2}></td>
                 </tr>

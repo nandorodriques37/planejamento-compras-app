@@ -9,6 +9,17 @@ export function formatNumber(value: number): string {
 }
 
 /**
+ * Formata valor monetário para exibição (R$)
+ */
+export function formatCurrency(value: number): string {
+    if (value === 0) return 'R$ 0,00';
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value);
+}
+
+/**
  * Formata mês de YYYY_MM para Mmm/AA
  */
 export function formatMes(mesAno: string): string {
