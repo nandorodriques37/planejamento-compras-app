@@ -1,18 +1,15 @@
 /**
  * Cards de resumo/KPIs no topo da página
  * Design: Pharma Enterprise
- * v4: animação de contagem, badges de variação, barra de progresso cobertura
+ * v5: API-driven (Mock Data Lake) - Não faz mais cálculos pesados no navegador
  */
 
-import { Package, ShoppingCart, TrendingDown, AlertTriangle, Clock, Timer, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import type { ProjecaoSKU, SKUCadastro } from '../lib/calculationEngine';
-import { formatNumber, formatCurrency, getStatusSKU } from '../lib/calculationEngine';
+import { Package, AlertTriangle, Clock, Activity, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { formatNumber } from '../lib/calculationEngine';
 import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
 import { Progress } from '@/components/ui/progress';
 import type { LucideIcon } from 'lucide-react';
-import { useMemo } from 'react';
-
-const DIAS_MES = 30;
+import type { HomeKPIs } from '../lib/api/types';
 
 function AnimatedValue({ value, formatter }: { value: number; formatter: (n: number) => string }) {
   const animated = useAnimatedCounter(value);
@@ -20,9 +17,9 @@ function AnimatedValue({ value, formatter }: { value: number; formatter: (n: num
 }
 
 interface SummaryCardsProps {
-  projecoes: ProjecaoSKU[];
-  cadastroMap: Map<string, SKUCadastro>;
-  meses: string[];
+  kpis: HomeKPIs | null;
+  loading: boolean;
+  totalSKUs: number; // For the sublabel context
 }
 
 interface CardConfig {
@@ -39,92 +36,29 @@ interface CardConfig {
   formatter?: (n: number) => string;
 }
 
-export default function SummaryCards({ projecoes, cadastroMap, meses }: SummaryCardsProps) {
-  // Todos os cálculos pesados memoizados — só recalcula quando inputs mudam
-  const stats = useMemo(() => {
-    let totalEstoque = 0;
-    let totalPedidos = 0;
-    let totalValorPedidos = 0;
-    let skusCriticos = 0;
-    let skusAtencao = 0;
-    let totalSellOutMes1 = 0;
-    let totalEstProjMes1 = 0;
-    let totalLT = 0;
-    let countComLT = 0;
-
-    const ultimoMes = meses[meses.length - 1];
-
-    projecoes.forEach(proj => {
-      const cad = cadastroMap.get(proj.CHAVE);
-      if (cad) {
-        totalEstoque += cad.ESTOQUE;
-        if (cad.LT > 0) {
-          totalLT += cad.LT;
-          countComLT++;
-        }
-      }
-
-      meses.forEach(mes => {
-        const d = proj.meses[mes];
-        if (d) {
-          totalPedidos += d.PEDIDO;
-          totalSellOutMes1 += d.SELL_OUT; // Acumular sellout do horizonte inteiro
-          if (cad) {
-            totalValorPedidos += d.PEDIDO * (cad.CUSTO_LIQUIDO || 0);
-          }
-        }
-      });
-
-      if (ultimoMes) {
-        const dadosUltimoMes = proj.meses[ultimoMes];
-        if (dadosUltimoMes) {
-          totalEstProjMes1 += dadosUltimoMes.ESTOQUE_PROJETADO;
-        }
-      }
-
-      const status = getStatusSKU(proj.meses, meses);
-      if (status === 'critical') skusCriticos++;
-      if (status === 'warning') skusAtencao++;
-    });
-
-    // Demanda diária média durante todo o horizonte filtrado
-    const totalDiasNoHorizonte = (meses.length || 1) * DIAS_MES;
-    const demandaDiaria = totalSellOutMes1 / totalDiasNoHorizonte;
-    const coberturaAtualDias = demandaDiaria > 0 ? Math.round(totalEstoque / demandaDiaria) : null;
-    const coberturaProjetadaDias = demandaDiaria > 0 ? Math.round(totalEstProjMes1 / demandaDiaria) : null;
-    const ltMedio = countComLT > 0 ? Math.round(totalLT / countComLT) : null;
-
-    const stockChange = totalEstoque > 0 && totalEstProjMes1 > 0
-      ? Math.round(((totalEstProjMes1 - totalEstoque) / totalEstoque) * 100)
-      : null;
-
-    const targetCoverageDays = 90;
-    const coverageProgress = coberturaAtualDias !== null ? Math.min(100, (coberturaAtualDias / targetCoverageDays) * 100) : 0;
-
-    return {
-      totalEstoque, totalPedidos, totalValorPedidos, skusCriticos, skusAtencao,
-      coberturaAtualDias, coberturaProjetadaDias, ltMedio, countComLT,
-      stockChange, coverageProgress,
-    };
-  }, [projecoes, cadastroMap, meses]);
+export default function SummaryCards({ kpis, loading, totalSKUs }: SummaryCardsProps) {
+  if (loading || !kpis) {
+    // Show skeleton layout similar to the parent one to keep it seamless, or let parent handle skeleton
+    return null; // Will be handled by the skeleton loader in Home.tsx when loading
+  }
 
   const {
-    totalEstoque, totalPedidos, totalValorPedidos, skusCriticos, skusAtencao,
-    coberturaAtualDias, coberturaProjetadaDias, ltMedio, countComLT,
-    stockChange, coverageProgress,
-  } = stats;
+    totalEstoque, skusCritical: skusCriticos, skusWarning,
+    coberturaGlobalDias, totalSKUs: filteredSKUsCount
+  } = kpis;
+
+  const targetCoverageDays = 90;
+  const coverageProgress = Math.min(100, (coberturaGlobalDias / targetCoverageDays) * 100);
 
   const cards: CardConfig[] = [
-    { icon: Package, label: 'Estoque Total Atual', numericValue: totalEstoque, displayValue: formatNumber(totalEstoque), sublabel: `${projecoes.length} SKU/CD`, color: 'text-primary', bg: 'bg-primary/5', change: stockChange, formatter: formatNumber },
-    { icon: ShoppingCart, label: 'Valor Total Pedidos', numericValue: totalValorPedidos, displayValue: formatCurrency(totalValorPedidos), sublabel: `Horizonte: ${meses.length} ${meses.length === 1 ? 'mês' : 'meses'}`, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', formatter: formatCurrency },
-    { icon: AlertTriangle, label: 'SKUs em Atenção', numericValue: skusAtencao, displayValue: String(skusAtencao), sublabel: 'Abaixo do objetivo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', formatter: (n: number) => String(n) },
-    { icon: TrendingDown, label: 'SKUs Críticos', numericValue: skusCriticos, displayValue: String(skusCriticos), sublabel: 'Estoque negativo projetado', color: 'text-destructive', bg: 'bg-red-50 dark:bg-red-950/30', formatter: (n: number) => String(n) },
-    { icon: Clock, label: 'Cobertura em Dias', numericValue: coberturaAtualDias, displayValue: coberturaAtualDias !== null ? `${coberturaAtualDias}d` : '—', sublabel: coberturaProjetadaDias !== null ? `Projetado no fim do horizonte: ${coberturaProjetadaDias}d` : 'Sem demanda no período', color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-950/30', showProgress: true, progressValue: coverageProgress, formatter: (n: number) => `${n}d` },
-    { icon: Timer, label: 'Lead Time Médio', numericValue: ltMedio, displayValue: ltMedio !== null ? `${ltMedio} dias` : '—', sublabel: `${countComLT} SKUs com LT`, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-950/30', formatter: (n: number) => `${n} dias` }
+    { icon: Package, label: 'Estoque Total Atual', numericValue: totalEstoque, displayValue: formatNumber(totalEstoque), sublabel: `${filteredSKUsCount} SKU(s) filtrado(s)`, color: 'text-primary', bg: 'bg-primary/5', formatter: formatNumber },
+    { icon: AlertTriangle, label: 'SKUs em Atenção', numericValue: skusWarning, displayValue: String(skusWarning), sublabel: 'Abaixo do objetivo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', formatter: (n: number) => String(n) },
+    { icon: Activity, label: 'SKUs Críticos', numericValue: skusCriticos, displayValue: String(skusCriticos), sublabel: 'Estoque negativo projetado', color: 'text-destructive', bg: 'bg-red-50 dark:bg-red-950/30', formatter: (n: number) => String(n) },
+    { icon: Clock, label: 'Cobertura Global Atual', numericValue: coberturaGlobalDias, displayValue: `${coberturaGlobalDias}d`, sublabel: 'Baseado no Sell Out Projetado (Mês 1)', color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-950/30', showProgress: true, progressValue: coverageProgress, formatter: (n: number) => `${n}d` }
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map(card => (
         <div key={card.label} className="bg-card border border-border rounded-lg p-4 flex items-start gap-3 shadow-card hover:shadow-card-hover transition-shadow">
           <div className={`${card.bg} p-2 rounded-lg`}>
@@ -159,3 +93,4 @@ export default function SummaryCards({ projecoes, cadastroMap, meses }: SummaryC
     </div>
   );
 }
+

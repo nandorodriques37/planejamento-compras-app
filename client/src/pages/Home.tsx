@@ -36,6 +36,7 @@ import { usePedidosAprovacao } from '../hooks/usePedidosAprovacao';
 import { exportarParaCSV } from '../lib/dataAdapter';
 import { calcularSemanasRestantes, parseMesAno, distribuirPedidoSimples, getStatusSKU } from '../lib/calculationEngine';
 import type { PedidoAprovacao, PedidoItem, PedidoKPIs } from '../lib/types';
+import { useHomeKPIs } from '../hooks/useHomeKPIs';
 
 export default function Home() {
   const {
@@ -60,6 +61,9 @@ export default function Home() {
 
   const [, navigate] = useLocation();
   const { adicionarPedido } = usePedidosAprovacao();
+
+  // New API layer call for KPIs
+  const { kpis, loading: loadingKpis } = useHomeKPIs(filters);
   const pedidosPendentes = (() => {
     try {
       const raw = localStorage.getItem('pedidos_aprovacao');
@@ -643,9 +647,9 @@ export default function Home() {
         <div className="px-6 py-5 space-y-5 pb-24">
           {/* Summary Cards */}
           <SummaryCards
-            projecoes={dadosFiltrados}
-            cadastroMap={cadastroMap}
-            meses={mesesVisiveis}
+            kpis={kpis}
+            loading={loadingKpis}
+            totalSKUs={dadosFiltrados.length}
           />
 
           {/* Filter Bar */}

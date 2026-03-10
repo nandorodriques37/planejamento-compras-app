@@ -9,7 +9,7 @@
  * - Tabela detalhada de saúde do estoque por SKU
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Package,
@@ -69,14 +69,6 @@ interface CDSummary {
     sellOut: number;
     pedido: number;
     entrada: number;
-  }>;
-  skus: Array<{
-    chave: string;
-    cadastro: SKUCadastro;
-    projecao: ProjecaoSKU;
-    status: 'ok' | 'warning' | 'critical';
-    coberturaDias: number;
-    tendencia: 'up' | 'down' | 'stable';
   }>;
 }
 
@@ -145,12 +137,14 @@ function CDCard({
   cd,
   isExpanded,
   onToggle,
+  filters,
   onViewDetail,
 }: {
   cd: CDSummary;
   isExpanded: boolean;
   onToggle: () => void;
-  onViewDetail: () => void;
+  filters: any;
+  onViewDetail: (sku: string) => void;
 }) {
   const healthPercent = cd.skuCount > 0 ? Math.round((cd.skusOk / cd.skuCount) * 100) : 0;
   const warningPercent = cd.skuCount > 0 ? Math.round((cd.skusWarning / cd.skuCount) * 100) : 0;
@@ -290,7 +284,7 @@ function CDCard({
         {isExpanded ? 'Recolher SKUs' : `Ver ${cd.skuCount} SKUs`}
       </button>
 
-      {/* Expanded SKU list */}
+      {/* Expanded SKU list - Lazy Loaded */}
       <AnimatePresence>
         {isExpanded && (
           <motion.div
@@ -300,66 +294,7 @@ function CDCard({
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="border-t border-border bg-muted/20 overflow-hidden"
           >
-            <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
-                  <tr className="text-[10px] text-muted-foreground">
-                    <th className="text-left px-3 py-2 font-medium">Produto</th>
-                    <th className="text-right px-3 py-2 font-medium">Estoque</th>
-                    <th className="text-right px-3 py-2 font-medium">Cobertura</th>
-                    <th className="text-right px-3 py-2 font-medium">Tendência</th>
-                    <th className="text-center px-3 py-2 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cd.skus
-                    .sort((a, b) => {
-                      const order = { critical: 0, warning: 1, ok: 2 };
-                      return order[a.status] - order[b.status];
-                    })
-                    .map((sku) => (
-                      <tr
-                        key={sku.chave}
-                        className="border-t border-border/50 hover:bg-muted/30 transition-colors"
-                      >
-                        <td className="px-3 py-2">
-                          <p className="font-medium text-foreground truncate max-w-[180px]">
-                            {sku.cadastro['nome produto']}
-                          </p>
-                          <p className="text-[9px] text-muted-foreground">
-                            SKU {sku.cadastro.codigo_produto} · LT {sku.cadastro.LT}d
-                          </p>
-                        </td>
-                        <td className="text-right px-3 py-2 font-mono tabular-nums font-semibold">
-                          {formatNumber(sku.cadastro.ESTOQUE)}
-                        </td>
-                        <td className="text-right px-3 py-2 font-mono tabular-nums">
-                          {sku.coberturaDias}d
-                        </td>
-                        <td className="text-right px-3 py-2">
-                          <span className="inline-flex items-center gap-0.5">
-                            {sku.tendencia === 'up' && <ArrowUpRight className="w-3 h-3 text-emerald-500" />}
-                            {sku.tendencia === 'down' && <ArrowDownRight className="w-3 h-3 text-destructive" />}
-                            {sku.tendencia === 'stable' && <Minus className="w-3 h-3 text-muted-foreground" />}
-                          </span>
-                        </td>
-                        <td className="text-center px-3 py-2">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold ${sku.status === 'ok'
-                              ? 'badge-ok'
-                              : sku.status === 'warning'
-                                ? 'badge-warning'
-                                : 'badge-critical'
-                              }`}
-                          >
-                            {sku.status === 'ok' ? 'OK' : sku.status === 'warning' ? 'Atenção' : 'Crítico'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+            <CDSkusTable cdKey={cd.cd} filters={filters} onRowClick={onViewDetail} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -545,14 +480,106 @@ function SKUDetailPanel({
 // Main Page Component
 // ============================================================================
 
+import { useHomeKPIs } from '../hooks/useHomeKPIs';
+import { useCDSummaries } from '../hooks/useCDSummaries';
+import { getSkusPaginated } from '../lib/api/mockDataLake';
+import type { AugmentedSKU } from '../lib/api/types';
+
+// ============================================================================
+// CD Skus Table (Lazy Loaded)
+// ============================================================================
+
+function CDSkusTable({ cdKey, filters, onRowClick }: { cdKey: string, filters: any, onRowClick: (sku: string) => void }) {
+  const [skus, setSkus] = useState<AugmentedSKU[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    getSkusPaginated({ ...filters, cd: cdKey }, { page: 1, pageSize: 100 }).then(res => {
+      if (active) {
+        setSkus(res.data);
+        setLoading(false);
+      }
+    });
+    return () => { active = false; };
+  }, [cdKey, filters]);
+
+  if (loading) {
+    return (
+      <div className="p-4 text-center text-xs text-muted-foreground animate-pulse">
+        Carregando SKUs...
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+      <table className="w-full text-xs">
+        <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+          <tr className="text-[10px] text-muted-foreground">
+            <th className="text-left px-3 py-2 font-medium">Produto</th>
+            <th className="text-right px-3 py-2 font-medium">Estoque</th>
+            <th className="text-right px-3 py-2 font-medium">Cobertura</th>
+            <th className="text-center px-3 py-2 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {skus.map((sku) => (
+            <tr
+              key={sku.chave}
+              className="border-t border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() => onRowClick(sku.chave)}
+            >
+              <td className="px-3 py-2">
+                <p className="font-medium text-foreground truncate max-w-[180px]">
+                  {sku.nome}
+                </p>
+                <p className="text-[9px] text-muted-foreground">
+                  SKU {sku.chave} · LT {sku.lt}d
+                </p>
+              </td>
+              <td className="text-right px-3 py-2 font-mono tabular-nums font-semibold">
+                {formatNumber(sku.estoqueAtual)}
+              </td>
+              <td className="text-right px-3 py-2 font-mono tabular-nums">
+                {sku.coberturaDias}d
+              </td>
+              <td className="text-center px-3 py-2">
+                <span
+                  className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold ${sku.status === 'ok'
+                    ? 'badge-ok'
+                    : sku.status === 'warning'
+                      ? 'badge-warning'
+                      : 'badge-critical'
+                    }`}
+                >
+                  {sku.status === 'ok' ? 'OK' : sku.status === 'warning' ? 'Atenção' : 'Crítico'}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function EstoquePlanning() {
   const {
     dados,
-    loading,
-    error,
+    loading: baseLoading,
+    error: baseError,
     cadastroMap,
     projecoesComEdicoes,
+    filters
   } = useProjectionData();
+
+  const { kpis, loading: kpisLoading } = useHomeKPIs(filters);
+  const { cdSummaries, loading: cdsLoading } = useCDSummaries(filters);
+
+  const loading = baseLoading || kpisLoading || cdsLoading;
+  const error = baseError;
 
   const [expandedCDs, setExpandedCDs] = useState<Set<string>>(new Set());
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
@@ -572,178 +599,77 @@ export default function EstoquePlanning() {
   // Use full horizon (all months)
   const meses = dados?.metadata.meses ?? [];
 
+  const [criticalSkus, setCriticalSkus] = useState<AugmentedSKU[]>([]);
+  const [criticalSkusLoading, setCriticalSkusLoading] = useState(true);
+
+  // Load Critical SKUs global list
+  useEffect(() => {
+    let active = true;
+    setCriticalSkusLoading(true);
+    getSkusPaginated(
+      { ...filters, status: 'critical', cd: cdFilter || undefined, fornecedor: fornecedorFilter || undefined },
+      { page: 1, pageSize: 50 }
+    ).then(res => {
+      if (active) {
+        setCriticalSkus(res.data);
+        setCriticalSkusLoading(false);
+      }
+    });
+    return () => { active = false; };
+  }, [filters, cdFilter, fornecedorFilter]);
+
   // ============================================================================
   // Compute aggregated data
   // ============================================================================
 
+  // Agregate global mock chart data manually for now since API doesn't return the full array yet,
+  // or we can build it from cdSummaries. Let's build it from cdSummaries.
+  const chartDataGlobal = useMemo(() => {
+    if (!cdSummaries || !meses.length) return [];
+
+    return meses.map(mes => {
+      let estoqueProjetado = 0;
+      let estoqueObjetivo = 0;
+      let sellOut = 0;
+      let pedido = 0;
+      let entrada = 0;
+
+      cdSummaries.forEach(cd => {
+        const d = cd.projecaoMensal.find(m => m.mesKey === mes);
+        if (d) {
+          estoqueProjetado += d.estoqueProjetado;
+          estoqueObjetivo += d.estoqueObjetivo;
+          sellOut += d.sellOut;
+          pedido += d.pedido;
+          entrada += d.entrada;
+        }
+      });
+
+      return {
+        mes: formatMes(mes),
+        mesKey: mes,
+        'Estoque Projetado': estoqueProjetado,
+        'Estoque Objetivo': estoqueObjetivo,
+        'Sell Out': sellOut,
+        Pedido: pedido,
+        Entrada: entrada
+      };
+    });
+  }, [cdSummaries, meses]);
+
   const aggregated = useMemo(() => {
-    if (!dados) return null;
-
-    let totalEstoque = 0;
-    let totalSellOutMes1 = 0;
-    let skusOk = 0;
-    let skusWarning = 0;
-    let skusCritical = 0;
-
-    const projecoes = projecoesComEdicoes;
-
-    // Per-month aggregation
-    const porMes: Record<
-      string,
-      { estoqueProjetado: number; estoqueObjetivo: number; sellOut: number; pedido: number; entrada: number }
-    > = {};
-    meses.forEach((mes) => {
-      porMes[mes] = { estoqueProjetado: 0, estoqueObjetivo: 0, sellOut: 0, pedido: 0, entrada: 0 };
-    });
-
-    // Per-CD aggregation
-    const cdMap: Record<string, {
-      skuCount: number;
-      totalEstoque: number;
-      totalSellOut: number;
-      skusOk: number;
-      skusWarning: number;
-      skusCritical: number;
-      porMes: Record<string, { estoqueProjetado: number; estoqueObjetivo: number; sellOut: number; pedido: number; entrada: number }>;
-      skus: Array<{
-        chave: string;
-        cadastro: SKUCadastro;
-        projecao: ProjecaoSKU;
-        status: 'ok' | 'warning' | 'critical';
-        coberturaDias: number;
-        tendencia: 'up' | 'down' | 'stable';
-      }>;
-    }> = {};
-
-    projecoes.forEach((proj) => {
-      const cad = cadastroMap.get(proj.CHAVE);
-      if (!cad) return;
-
-      const cdKey = String(cad.codigo_deposito_pd);
-      if (!cdMap[cdKey]) {
-        cdMap[cdKey] = {
-          skuCount: 0,
-          totalEstoque: 0,
-          totalSellOut: 0,
-          skusOk: 0,
-          skusWarning: 0,
-          skusCritical: 0,
-          porMes: {},
-          skus: [],
-        };
-        meses.forEach((mes) => {
-          cdMap[cdKey].porMes[mes] = { estoqueProjetado: 0, estoqueObjetivo: 0, sellOut: 0, pedido: 0, entrada: 0 };
-        });
-      }
-
-      const cdData = cdMap[cdKey];
-      cdData.skuCount++;
-      cdData.totalEstoque += cad.ESTOQUE;
-      totalEstoque += cad.ESTOQUE;
-
-      const status = getStatusSKU(proj.meses, meses);
-      if (status === 'ok') { skusOk++; cdData.skusOk++; }
-      if (status === 'warning') { skusWarning++; cdData.skusWarning++; }
-      if (status === 'critical') { skusCritical++; cdData.skusCritical++; }
-
-      // SKU-level sell out for coverage calc
-      const sellOutMes1 = proj.meses[meses[0]]?.SELL_OUT ?? 0;
-      totalSellOutMes1 += sellOutMes1;
-      cdData.totalSellOut += sellOutMes1;
-
-      // Tendencia: compare first and last projected stock
-      const firstProj = proj.meses[meses[0]]?.ESTOQUE_PROJETADO ?? 0;
-      const lastProj = proj.meses[meses[meses.length - 1]]?.ESTOQUE_PROJETADO ?? 0;
-      const tendencia: 'up' | 'down' | 'stable' =
-        lastProj > firstProj * 1.05 ? 'up' : lastProj < firstProj * 0.95 ? 'down' : 'stable';
-
-      // Coverage in days
-      const demandaDiaria = sellOutMes1 / 30;
-      const coberturaDias = demandaDiaria > 0 ? Math.round(cad.ESTOQUE / demandaDiaria) : 999;
-
-      cdData.skus.push({
-        chave: proj.CHAVE,
-        cadastro: cad,
-        projecao: proj,
-        status,
-        coberturaDias,
-        tendencia,
-      });
-
-      // Aggregate monthly data
-      meses.forEach((mes) => {
-        const d = proj.meses[mes];
-        if (!d) return;
-        porMes[mes].estoqueProjetado += d.ESTOQUE_PROJETADO;
-        porMes[mes].estoqueObjetivo += d.ESTOQUE_OBJETIVO;
-        porMes[mes].sellOut += d.SELL_OUT;
-        porMes[mes].pedido += d.PEDIDO;
-        porMes[mes].entrada += d.ENTRADA;
-
-        cdData.porMes[mes].estoqueProjetado += d.ESTOQUE_PROJETADO;
-        cdData.porMes[mes].estoqueObjetivo += d.ESTOQUE_OBJETIVO;
-        cdData.porMes[mes].sellOut += d.SELL_OUT;
-        cdData.porMes[mes].pedido += d.PEDIDO;
-        cdData.porMes[mes].entrada += d.ENTRADA;
-      });
-    });
-
-    // Coverage in days (global)
-    const demandaDiariaGlobal = totalSellOutMes1 / 30;
-    const coberturaGlobalDias = demandaDiariaGlobal > 0 ? Math.round(totalEstoque / demandaDiariaGlobal) : 0;
-
-    // Chart data (global)
-    const chartDataGlobal = meses.map((mes) => ({
-      mes: formatMes(mes),
-      mesKey: mes,
-      'Estoque Projetado': porMes[mes].estoqueProjetado,
-      'Estoque Objetivo': porMes[mes].estoqueObjetivo,
-      'Sell Out': porMes[mes].sellOut,
-      Pedido: porMes[mes].pedido,
-      Entrada: porMes[mes].entrada,
-    }));
-
-    // CD summaries
-    const cdSummaries: CDSummary[] = Object.keys(cdMap)
-      .sort((a, b) => Number(a) - Number(b))
-      .map((cdKey) => {
-        const c = cdMap[cdKey];
-        const demandaDiariaCD = c.totalSellOut / 30;
-        const coberturaDiasCD = demandaDiariaCD > 0 ? Math.round(c.totalEstoque / demandaDiariaCD) : 0;
-
-        return {
-          cd: cdKey,
-          skuCount: c.skuCount,
-          totalEstoque: c.totalEstoque,
-          totalSellOut: c.totalSellOut,
-          coberturaDias: coberturaDiasCD,
-          skusOk: c.skusOk,
-          skusWarning: c.skusWarning,
-          skusCritical: c.skusCritical,
-          projecaoMensal: meses.map((mes) => ({
-            mes: formatMes(mes),
-            mesKey: mes,
-            estoqueProjetado: c.porMes[mes].estoqueProjetado,
-            estoqueObjetivo: c.porMes[mes].estoqueObjetivo,
-            sellOut: c.porMes[mes].sellOut,
-            pedido: c.porMes[mes].pedido,
-            entrada: c.porMes[mes].entrada,
-          })),
-          skus: c.skus,
-        };
-      });
-
+    if (!kpis || !cdSummaries) return null;
     return {
-      totalEstoque,
-      totalSKUs: projecoes.length,
-      coberturaGlobalDias,
-      skusOk,
-      skusWarning,
-      skusCritical,
+      totalEstoque: kpis.totalEstoque,
+      totalSKUs: kpis.totalSKUs,
+      coberturaGlobalDias: kpis.coberturaGlobalDias,
+      skusOk: kpis.skusOk,
+      skusWarning: kpis.skusWarning,
+      skusCritical: kpis.skusCritical,
       chartDataGlobal,
       cdSummaries,
     };
-  }, [dados, projecoesComEdicoes, cadastroMap, meses]);
+  }, [kpis, cdSummaries, chartDataGlobal]);
 
   // Y domain for main chart
   const yDomainMain = useMemo(() => {
@@ -790,14 +716,10 @@ export default function EstoquePlanning() {
     if (!aggregated) return [];
     return aggregated.cdSummaries.filter((cd) => {
       if (cdFilter && cd.cd !== cdFilter) return false;
-      if (fornecedorFilter) {
-        // Mantém apenas CDs que contêm ao menos 1 SKU do fornecedor
-        const temFornecedor = cd.skus.some(s => s.cadastro['fornecedor comercial'] === fornecedorFilter);
-        if (!temFornecedor) return false;
-      }
+      // We removed local fornecedor CD-card filtering as SKUs are now loaded lazily via API.
       return true;
     });
-  }, [aggregated, cdFilter, fornecedorFilter]);
+  }, [aggregated, cdFilter]);
 
   // Selected SKU for detail panel
   const selectedProjecao = selectedSKU ? projecoesComEdicoes.find((p) => p.CHAVE === selectedSKU) : null;
@@ -1094,11 +1016,8 @@ export default function EstoquePlanning() {
                   cd={cd}
                   isExpanded={expandedCDs.has(cd.cd)}
                   onToggle={() => toggleCD(cd.cd)}
-                  onViewDetail={() => {
-                    // Select first critical SKU, or first SKU
-                    const criticalSKU = cd.skus.find((s) => s.status === 'critical');
-                    setSelectedSKU(criticalSKU?.chave ?? cd.skus[0]?.chave ?? null);
-                  }}
+                  filters={filters}
+                  onViewDetail={(sku) => setSelectedSKU(sku)}
                 />
               ))}
             </div>
@@ -1131,69 +1050,61 @@ export default function EstoquePlanning() {
                       <th className="text-center px-4 py-2.5 font-medium">Ação</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {aggregated.cdSummaries
-                      .flatMap((cd) => cd.skus.filter((s) => s.status === 'critical'))
-                      .sort((a, b) => {
-                        // Sort by worst projected stock
-                        const aMin = Math.min(...meses.map((m) => a.projecao.meses[m]?.ESTOQUE_PROJETADO ?? 0));
-                        const bMin = Math.min(...meses.map((m) => b.projecao.meses[m]?.ESTOQUE_PROJETADO ?? 0));
-                        return aMin - bMin;
-                      })
-                      .map((sku) => {
-                        const minProj = Math.min(
-                          ...meses.map((m) => sku.projecao.meses[m]?.ESTOQUE_PROJETADO ?? 0)
-                        );
-                        const sellOut = sku.projecao.meses[meses[0]]?.SELL_OUT ?? 0;
-                        return (
-                          <tr
-                            key={sku.chave}
-                            className="border-t border-border/50 hover:bg-red-50/30 dark:hover:bg-red-950/20 transition-colors cursor-pointer"
-                            onClick={() => setSelectedSKU(sku.chave)}
+                  {criticalSkusLoading ? (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-8 text-center text-xs text-muted-foreground animate-pulse">
+                        Carregando itens críticos...
+                      </td>
+                    </tr>
+                  ) : (
+                    criticalSkus.map((sku) => (
+                      <tr
+                        key={sku.chave}
+                        className="border-t border-border/50 hover:bg-red-50/30 dark:hover:bg-red-950/20 transition-colors cursor-pointer"
+                        onClick={() => setSelectedSKU(sku.chave)}
+                      >
+                        <td className="px-4 py-2.5">
+                          <p className="font-medium text-foreground">{sku.nome}</p>
+                          <p className="text-[9px] text-muted-foreground">
+                            {sku.chave}
+                          </p>
+                        </td>
+                        <td className="px-4 py-2.5 text-muted-foreground">
+                          {sku.fornecedor}
+                        </td>
+                        <td className="text-center px-4 py-2.5 font-medium">
+                          {sku.cd}
+                        </td>
+                        <td className="text-right px-4 py-2.5 font-mono tabular-nums font-semibold">
+                          {formatNumber(sku.estoqueAtual)}
+                        </td>
+                        <td className="text-right px-4 py-2.5 font-mono tabular-nums">
+                          {formatNumber(sku.sellOutMes1)}
+                        </td>
+                        <td className="text-right px-4 py-2.5 font-mono tabular-nums">
+                          {sku.coberturaDias}d
+                        </td>
+                        <td className="text-right px-4 py-2.5 font-mono tabular-nums">
+                          {sku.lt}d
+                        </td>
+                        <td className="text-right px-4 py-2.5 font-mono tabular-nums text-destructive font-bold">
+                          {formatNumber(sku.minEstoqueProjetado)}
+                        </td>
+                        <td className="text-center px-4 py-2.5">
+                          <button
+                            className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSKU(sku.chave);
+                            }}
                           >
-                            <td className="px-4 py-2.5">
-                              <p className="font-medium text-foreground">{sku.cadastro['nome produto']}</p>
-                              <p className="text-[9px] text-muted-foreground">
-                                {sku.cadastro.CHAVE}
-                              </p>
-                            </td>
-                            <td className="px-4 py-2.5 text-muted-foreground">
-                              {sku.cadastro['fornecedor comercial']}
-                            </td>
-                            <td className="text-center px-4 py-2.5 font-medium">
-                              {sku.cadastro.codigo_deposito_pd}
-                            </td>
-                            <td className="text-right px-4 py-2.5 font-mono tabular-nums font-semibold">
-                              {formatNumber(sku.cadastro.ESTOQUE)}
-                            </td>
-                            <td className="text-right px-4 py-2.5 font-mono tabular-nums">
-                              {formatNumber(sellOut)}
-                            </td>
-                            <td className="text-right px-4 py-2.5 font-mono tabular-nums">
-                              {sku.coberturaDias}d
-                            </td>
-                            <td className="text-right px-4 py-2.5 font-mono tabular-nums">
-                              {sku.cadastro.LT}d
-                            </td>
-                            <td className="text-right px-4 py-2.5 font-mono tabular-nums text-destructive font-bold">
-                              {formatNumber(minProj)}
-                            </td>
-                            <td className="text-center px-4 py-2.5">
-                              <button
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedSKU(sku.chave);
-                                }}
-                              >
-                                <Eye className="w-3 h-3" />
-                                Detalhar
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
+                            <Eye className="w-3 h-3" />
+                            Detalhar
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </table>
               </div>
             </div>
