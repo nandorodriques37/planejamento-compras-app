@@ -65,6 +65,13 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
     let skusCritical = 0;
 
     const firstMonth = db.metadata.meses[0];
+    const mesesParaConsiderar = filters.mesesVisiveis && filters.mesesVisiveis.length > 0 ? filters.mesesVisiveis : db.metadata.meses;
+    const ultimoMes = mesesParaConsiderar[mesesParaConsiderar.length - 1];
+
+    let valorTotalPedidos = 0;
+    let somaLt = 0;
+    let countComLT = 0;
+    let estoqueProjetadoFinal = 0;
 
     filtered.forEach(proj => {
         const cad = dbCadastroMap.get(proj.CHAVE);
@@ -72,6 +79,18 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
 
         totalEstoque += cad.ESTOQUE;
         totalSellOutMes1 += proj.meses[firstMonth]?.SELL_OUT || 0;
+        estoqueProjetadoFinal += Math.max(0, proj.meses[ultimoMes]?.ESTOQUE_PROJETADO || 0);
+
+        if (cad.LT && cad.LT > 0) {
+            somaLt += cad.LT;
+            countComLT++;
+        }
+
+        mesesParaConsiderar.forEach(m => {
+            const pedido = proj.meses[m]?.PEDIDO || 0;
+            const custo = cad.CUSTO_LIQUIDO || 0;
+            valorTotalPedidos += pedido * custo;
+        });
 
         const status = getStatusSKU(proj.meses, db.metadata.meses);
         if (status === 'ok') skusOk++;
@@ -81,6 +100,8 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
 
     const demandaDiariaGlobal = totalSellOutMes1 / 30;
     const coberturaGlobalDias = demandaDiariaGlobal > 0 ? Math.round(totalEstoque / demandaDiariaGlobal) : 0;
+    const coberturaProjetadaDias = demandaDiariaGlobal > 0 ? Math.round(estoqueProjetadoFinal / demandaDiariaGlobal) : 0;
+    const ltMedio = countComLT > 0 ? Math.round(somaLt / countComLT) : 0;
 
     return {
         totalEstoque,
@@ -88,7 +109,11 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
         skusOk,
         skusWarning,
         skusCritical,
-        totalSKUs: filtered.length
+        totalSKUs: filtered.length,
+        valorTotalPedidos,
+        coberturaProjetadaDias,
+        ltMedio,
+        countComLT
     };
 }
 

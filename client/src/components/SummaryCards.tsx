@@ -4,8 +4,8 @@
  * v5: API-driven (Mock Data Lake) - Não faz mais cálculos pesados no navegador
  */
 
-import { Package, AlertTriangle, Clock, Activity, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { formatNumber } from '../lib/calculationEngine';
+import { Package, AlertTriangle, Clock, ArrowUpRight, ArrowDownRight, ShoppingCart, TrendingDown, Timer } from 'lucide-react';
+import { formatNumber, formatCurrency } from '../lib/calculationEngine';
 import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
 import { Progress } from '@/components/ui/progress';
 import type { LucideIcon } from 'lucide-react';
@@ -20,6 +20,7 @@ interface SummaryCardsProps {
   kpis: HomeKPIs | null;
   loading: boolean;
   totalSKUs: number; // For the sublabel context
+  horizonte?: number;
 }
 
 interface CardConfig {
@@ -36,7 +37,7 @@ interface CardConfig {
   formatter?: (n: number) => string;
 }
 
-export default function SummaryCards({ kpis, loading, totalSKUs }: SummaryCardsProps) {
+export default function SummaryCards({ kpis, loading, totalSKUs, horizonte }: SummaryCardsProps) {
   if (loading || !kpis) {
     // Show skeleton layout similar to the parent one to keep it seamless, or let parent handle skeleton
     return null; // Will be handled by the skeleton loader in Home.tsx when loading
@@ -51,14 +52,16 @@ export default function SummaryCards({ kpis, loading, totalSKUs }: SummaryCardsP
   const coverageProgress = Math.min(100, (coberturaGlobalDias / targetCoverageDays) * 100);
 
   const cards: CardConfig[] = [
-    { icon: Package, label: 'Estoque Total Atual', numericValue: totalEstoque, displayValue: formatNumber(totalEstoque), sublabel: `${filteredSKUsCount} SKU(s) filtrado(s)`, color: 'text-primary', bg: 'bg-primary/5', formatter: formatNumber },
-    { icon: AlertTriangle, label: 'SKUs em Atenção', numericValue: skusWarning, displayValue: String(skusWarning), sublabel: 'Abaixo do objetivo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', formatter: (n: number) => String(n) },
-    { icon: Activity, label: 'SKUs Críticos', numericValue: skusCriticos, displayValue: String(skusCriticos), sublabel: 'Estoque negativo projetado', color: 'text-destructive', bg: 'bg-red-50 dark:bg-red-950/30', formatter: (n: number) => String(n) },
-    { icon: Clock, label: 'Cobertura Global Atual', numericValue: coberturaGlobalDias, displayValue: `${coberturaGlobalDias}d`, sublabel: 'Baseado no Sell Out Projetado (Mês 1)', color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-950/30', showProgress: true, progressValue: coverageProgress, formatter: (n: number) => `${n}d` }
+    { icon: Package, label: 'Estoque Total Atual', numericValue: totalEstoque, displayValue: formatNumber(totalEstoque), sublabel: `${filteredSKUsCount} SKU${filteredSKUsCount !== 1 ? 's' : ''}/CD`, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', formatter: formatNumber },
+    { icon: ShoppingCart, label: 'Valor Total Pedidos', numericValue: kpis.valorTotalPedidos, displayValue: formatCurrency(kpis.valorTotalPedidos), sublabel: `Horizonte: ${horizonte || 6} meses`, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', formatter: formatCurrency },
+    { icon: AlertTriangle, label: 'SKUs em Atenção', numericValue: skusWarning, displayValue: String(skusWarning), sublabel: 'Abaixo do objetivo', color: 'text-amber-500 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', formatter: (n: number) => String(n) },
+    { icon: TrendingDown, label: 'SKUs Críticos', numericValue: skusCriticos, displayValue: String(skusCriticos), sublabel: 'Estoque negativo projetado', color: 'text-destructive', bg: 'bg-destructive/10', formatter: (n: number) => String(n) },
+    { icon: Clock, label: 'Cobertura em Dias', numericValue: coberturaGlobalDias, displayValue: `${coberturaGlobalDias}d`, sublabel: `Projetado no fim do horizonte: ${kpis.coberturaProjetadaDias}d`, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-950/30', showProgress: true, progressValue: coverageProgress, formatter: (n: number) => `${n}d` },
+    { icon: Timer, label: 'Lead Time Médio', numericValue: kpis.ltMedio, displayValue: `${kpis.ltMedio} dias`, sublabel: `${kpis.countComLT} SKUs com LT`, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/30', formatter: (n: number) => `${n} dias` }
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
       {cards.map(card => (
         <div key={card.label} className="bg-card border border-border rounded-lg p-4 flex items-start gap-3 shadow-card hover:shadow-card-hover transition-shadow">
           <div className={`${card.bg} p-2 rounded-lg`}>

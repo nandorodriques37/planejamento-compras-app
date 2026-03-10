@@ -63,7 +63,8 @@ export default function Home() {
   const { adicionarPedido } = usePedidosAprovacao();
 
   // New API layer call for KPIs
-  const { kpis, loading: loadingKpis } = useHomeKPIs(filters);
+  const kpisFilters = useMemo(() => ({ ...filters, mesesVisiveis }), [filters, mesesVisiveis]);
+  const { kpis, loading: loadingKpis } = useHomeKPIs(kpisFilters);
   const pedidosPendentes = (() => {
     try {
       const raw = localStorage.getItem('pedidos_aprovacao');
@@ -650,6 +651,7 @@ export default function Home() {
             kpis={kpis}
             loading={loadingKpis}
             totalSKUs={dadosFiltrados.length}
+            horizonte={mesesVisiveis.length}
           />
 
           {/* Filter Bar */}

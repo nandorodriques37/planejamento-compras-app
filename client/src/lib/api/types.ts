@@ -18,6 +18,7 @@ export interface Filters {
     cd?: string;
     busca?: string;
     status?: string;
+    mesesVisiveis?: string[];
 }
 
 export interface HomeKPIs {
@@ -27,6 +28,10 @@ export interface HomeKPIs {
     skusWarning: number;
     skusCritical: number;
     totalSKUs: number;
+    valorTotalPedidos: number;
+    coberturaProjetadaDias: number;
+    ltMedio: number;
+    countComLT: number;
 }
 
 export interface CDSummary {
