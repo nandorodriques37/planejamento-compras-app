@@ -2,6 +2,41 @@ import { SKUCadastro, MesData } from '../types';
 import { parseMesAno, diasNoMes } from '../utils/dates';
 
 /**
+ * Verifica se um estoque projetado em um mês gera risco de vencimento.
+ * Risco = cobertura em dias >= 80% do shelf life.
+ */
+export function hasShelfLifeRisk(
+    estoqueProjetado: number,
+    sellOut: number,
+    diasMes: number,
+    shelfLife: number
+): boolean {
+    if (shelfLife <= 0 || sellOut <= 0 || estoqueProjetado <= 0) return false;
+    const demandaDiaria = sellOut / diasMes;
+    const coberturaDias = estoqueProjetado / demandaDiaria;
+    return coberturaDias >= shelfLife * 0.80;
+}
+
+/**
+ * Verifica se qualquer mês da projeção tem risco de shelf life.
+ */
+export function getShelfLifeRiskStatus(
+    projecao: Record<string, MesData>,
+    meses: string[],
+    shelfLife: number
+): boolean {
+    if (shelfLife <= 0) return false;
+    return meses.some((mes, i) => {
+        if (i === 0) return false;
+        const d = projecao[mes];
+        if (!d) return false;
+        const { ano, mes: mesNum } = parseMesAno(mes);
+        const dias = diasNoMes(ano, mesNum);
+        return hasShelfLifeRisk(d.ESTOQUE_PROJETADO, d.SELL_OUT, dias, shelfLife);
+    });
+}
+
+/**
  * Calcula o índice do mês de chegada baseado na data real do pedido.
  * Utiliza estritamente funções UTC para manter a consistência de fusos.
  */

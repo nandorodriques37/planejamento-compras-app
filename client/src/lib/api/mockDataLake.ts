@@ -1,7 +1,7 @@
 import type { PaginatedRequest, PaginatedResponse, Filters, HomeKPIs, CDSummary, AugmentedSKU } from './types';
 import type { DadosCompletos } from '../engine/types';
 import { obterProjecaoInicial } from '../dataAdapter';
-import { getStatusSKU, formatMes } from '../calculationEngine';
+import { getStatusSKU, getShelfLifeRiskStatus, formatMes } from '../calculationEngine';
 
 // "Database" state
 let dbDados: DadosCompletos | null = null;
@@ -63,6 +63,7 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
     let skusOk = 0;
     let skusWarning = 0;
     let skusCritical = 0;
+    let skusShelfLifeRisk = 0;
 
     const firstMonth = db.metadata.meses[0];
     const mesesParaConsiderar = filters.mesesVisiveis && filters.mesesVisiveis.length > 0 ? filters.mesesVisiveis : db.metadata.meses;
@@ -96,6 +97,10 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
         if (status === 'ok') skusOk++;
         if (status === 'warning') skusWarning++;
         if (status === 'critical') skusCritical++;
+
+        if (cad.SHELF_LIFE > 0 && getShelfLifeRiskStatus(proj.meses, db.metadata.meses, cad.SHELF_LIFE)) {
+            skusShelfLifeRisk++;
+        }
     });
 
     const demandaDiariaGlobal = totalSellOutMes1 / 30;
@@ -113,7 +118,8 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
         valorTotalPedidos,
         coberturaProjetadaDias,
         ltMedio,
-        countComLT
+        countComLT,
+        skusShelfLifeRisk
     };
 }
 
