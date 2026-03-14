@@ -27,6 +27,10 @@ export interface PedidoItem {
   coberturaDiasChegada?: number | null;
   /** Custo liquido da unidade do produto */
   custoLiquido?: number;
+  /** Se este item tem risco de shelf life (cobertura > 80% do shelf life) */
+  shelfLifeRisk?: boolean;
+  /** Shelf life do produto em dias */
+  shelfLifeDias?: number;
 }
 
 export interface PedidoKPIs {
@@ -54,6 +58,8 @@ export interface PedidoKPIs {
   skusCriticosHojeGlobais?: number;
   /** Contagem de SKUs cujo estoque na chegada (SEM o pedido) já é >= ao Estoque Objetivo */
   skusCompradosSemNecessidadeGlobais?: number;
+  /** Contagem de SKUs com risco de shelf life (cobertura > 80% do shelf life) */
+  skusShelfLifeRiskGlobais?: number;
 
   // KPIs Evolução de Cobertura
   /** Contagem total de SKUs dos fornecedores envolvidos no pedido */
@@ -80,6 +86,7 @@ export interface PedidoKPIs {
     coberturaFornecedorDiasHoje?: number | null;
     coberturaFornecedorDiasChegada?: number | null;
     coberturaPedidoDiasHoje?: number | null;
+    skusShelfLifeRisk?: number;
   }>;
 }
 

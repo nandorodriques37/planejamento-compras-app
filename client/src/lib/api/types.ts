@@ -32,6 +32,7 @@ export interface HomeKPIs {
     coberturaProjetadaDias: number;
     ltMedio: number;
     countComLT: number;
+    skusShelfLifeRisk: number;
 }
 
 export interface CDSummary {

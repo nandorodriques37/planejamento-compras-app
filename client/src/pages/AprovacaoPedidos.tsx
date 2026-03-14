@@ -24,7 +24,8 @@ import {
   Flame,
   Wallet,
   AlertTriangle,
-  Trash2
+  Trash2,
+  Hourglass
 } from 'lucide-react';
 import AppSidebar from '../components/AppSidebar';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,7 @@ function KpiPanel({ kpis, fornecedorNome }: { kpis: PedidoKPIs; fornecedorNome?:
         coberturaFornecedorDiasHoje: kpis.coberturaFornecedorDiasHojeGlobais ?? kpis.coberturaFornecedorDiasGlobais ?? null,
         coberturaFornecedorDiasChegada: kpis.coberturaFornecedorDiasChegadaGlobais ?? null,
         coberturaPedidoDiasHoje: kpis.coberturaPedidoDiasHojeGlobais ?? kpis.coberturaPedidoDiasGlobais ?? null,
+        skusShelfLifeRisk: kpis.skusShelfLifeRiskGlobais ?? 0,
       };
     }
     const mesData = kpis.meses[activeTab];
@@ -84,6 +86,7 @@ function KpiPanel({ kpis, fornecedorNome }: { kpis: PedidoKPIs; fornecedorNome?:
       coberturaFornecedorDiasHoje: mesData.coberturaFornecedorDiasHoje ?? null,
       coberturaFornecedorDiasChegada: mesData.coberturaFornecedorDiasChegada ?? null,
       coberturaPedidoDiasHoje: mesData.coberturaPedidoDiasHoje ?? mesData.coberturaPedidoDias,
+      skusShelfLifeRisk: mesData.skusShelfLifeRisk ?? 0,
     };
   }, [kpis, activeTab]);
 
@@ -129,8 +132,8 @@ function KpiPanel({ kpis, fornecedorNome }: { kpis: PedidoKPIs; fornecedorNome?:
           )}
         </div>
 
-        {/* KPI Cards Grid - 6 cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        {/* KPI Cards Grid - 7 cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
 
           {/* Card 1: Cobertura Fornecedor Hoje ➔ Chegada */}
           <div className="rounded-lg border p-3 bg-card border-border" title="Cobertura Total do Portfólio do Fornecedor (Hoje ➔ Chegada)">
@@ -217,7 +220,23 @@ function KpiPanel({ kpis, fornecedorNome }: { kpis: PedidoKPIs; fornecedorNome?:
             </div>
           </div>
 
-          {/* Card 6: Geral */}
+          {/* Card 6: Risco Shelf Life */}
+          <div className={`rounded-lg border p-3 ${currentData.skusShelfLifeRisk > 0 ? 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800' : 'bg-card border-border'}`} title="SKUs com risco de vencimento (cobertura > 80% shelf life)">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Hourglass className={`w-4 h-4 ${currentData.skusShelfLifeRisk > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
+              <span className="text-xs font-medium text-muted-foreground line-clamp-1">Risco Shelf Life</span>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <div className={`text-2xl font-bold tabular-nums leading-none ${currentData.skusShelfLifeRisk > 0 ? 'text-orange-700 dark:text-orange-300' : 'text-foreground'}`}>
+                {currentData.skusShelfLifeRisk}
+              </div>
+              <span className="text-xs font-medium text-muted-foreground border-l pl-1.5 opacity-80">
+                {calcPerc(currentData.skusShelfLifeRisk, totalFornecedorSkus)}%
+              </span>
+            </div>
+          </div>
+
+          {/* Card 7: Geral */}
           <div className="rounded-lg border p-3 bg-muted/20 border-border" title="Informações Complementares">
             <div className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Geral</div>
             <div className="flex flex-col gap-1.5">
@@ -389,6 +408,7 @@ function PedidoCard({
                         <div className="flex items-center gap-1.5">
                           {item.motivoCompraCEO === 'urgente' && <span title="Compra Urgente (Crítico hoje)"><Flame className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" /></span>}
                           {item.motivoCompraCEO === 'excesso' && <span title="Compra em Excesso (Desnecessária agora)"><Wallet className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" /></span>}
+                          {item.shelfLifeRisk && <span title={`Risco de Vencimento (Shelf Life: ${item.shelfLifeDias}d)`}><Hourglass className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" /></span>}
                           <span className="truncate">{item.nomeProduto}</span>
                         </div>
                       </td>

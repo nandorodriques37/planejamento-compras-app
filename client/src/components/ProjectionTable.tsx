@@ -9,11 +9,11 @@
  */
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { AlertTriangle, AlertCircle, CheckCircle2, Pencil, BarChart3, ArrowUpDown, ArrowUp, ArrowDown, Sigma, Undo2, Package } from 'lucide-react';
+import { AlertTriangle, AlertCircle, CheckCircle2, Pencil, BarChart3, ArrowUpDown, ArrowUp, ArrowDown, Sigma, Undo2, Package, Hourglass } from 'lucide-react';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from './ui/empty';
 import { Checkbox } from './ui/checkbox';
 import type { ProjecaoSKU, SKUCadastro, SemanaInfo, WeekDistribution } from '../lib/calculationEngine';
-import { formatNumber, formatMes, getStatusSKU, calcularSemanasRestantes, calcularSemanasComLT, distribuirPedidoMultiMes, parseMesAno } from '../lib/calculationEngine';
+import { formatNumber, formatMes, getStatusSKU, hasShelfLifeRisk, getShelfLifeRiskStatus, calcularSemanasRestantes, calcularSemanasComLT, distribuirPedidoMultiMes, parseMesAno, diasNoMes } from '../lib/calculationEngine';
 
 interface ProjectionTableProps {
   projecoes: ProjecaoSKU[];
@@ -618,6 +618,7 @@ export default function ProjectionTable({
     const isSelected = selectedSKU === proj.CHAVE;
     const globalIdx = startIdx + rowIdx;
     const isCritical = status === 'critical';
+    const temRiscoShelfLife = cad.SHELF_LIFE > 0 && getShelfLifeRiskStatus(proj.meses, allMeses, cad.SHELF_LIFE);
 
     return (
       <div
@@ -632,8 +633,13 @@ export default function ProjectionTable({
         <div className="w-[28px] px-1 flex items-center justify-center">
           <BarChart3 className={`w-3.5 h-3.5 transition-colors ${isSelected ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/60'}`} />
         </div>
-        <div className="w-[62px] px-2 flex items-center">
+        <div className="w-[62px] px-2 flex items-center gap-0.5">
           <StatusBadge status={status} />
+          {temRiscoShelfLife && (
+            <span title="Risco de vencimento (Shelf Life)" className="flex-shrink-0">
+              <Hourglass className="w-3 h-3 text-orange-500" />
+            </span>
+          )}
         </div>
         <div className="px-2 flex flex-col justify-center overflow-hidden" style={{ width: produtoWidth }}>
           <p className="text-xs font-medium text-foreground truncate leading-tight" title={cad['nome produto']}>
@@ -719,6 +725,9 @@ export default function ProjectionTable({
           const isAbaixoObj = d.ESTOQUE_PROJETADO < d.ESTOQUE_OBJETIVO;
           const isNegativo = d.ESTOQUE_PROJETADO < 0;
           const coberturaDias = calcularCoberturaDias(d.ESTOQUE_PROJETADO, d.SELL_OUT);
+          const { ano: anoMes, mes: mesMesNum } = parseMesAno(mes);
+          const diasDoMes = diasNoMes(anoMes, mesMesNum);
+          const shelfLifeRisco = cad && cad.SHELF_LIFE > 0 && hasShelfLifeRisk(d.ESTOQUE_PROJETADO, d.SELL_OUT, diasDoMes, cad.SHELF_LIFE);
           const objDiasMes = d.SELL_OUT > 0 ? Math.round(d.ESTOQUE_OBJETIVO / (d.SELL_OUT / 30)) : fallbackObjDias;
           const coberturaColor = getCoberturaColor(coberturaDias, objDiasMes);
 
@@ -777,7 +786,10 @@ export default function ProjectionTable({
                   {formatNumber(d.ENTRADA)}
                 </span>
               </div>
-              <div style={{ width: colWidth }} className="px-2 flex items-center justify-end">
+              <div style={{ width: colWidth }} className="px-2 flex items-center justify-end gap-0.5">
+                {shelfLifeRisco && (
+                  <Hourglass className="w-3 h-3 text-orange-500 flex-shrink-0" title={`Risco de vencimento: cobertura ${coberturaDias}d excede 80% do shelf life (${cad!.SHELF_LIFE}d)`} />
+                )}
                 <span className={`text-xs font-mono tabular-nums font-semibold ${
                   isNegativo ? 'text-destructive' : isAbaixoObj ? 'text-amber-600' : 'text-foreground'
                 }`}>

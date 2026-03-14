@@ -4,7 +4,7 @@
  * v5: API-driven (Mock Data Lake) - Não faz mais cálculos pesados no navegador
  */
 
-import { Package, AlertTriangle, Clock, ArrowUpRight, ArrowDownRight, ShoppingCart, TrendingDown, Timer } from 'lucide-react';
+import { Package, AlertTriangle, Clock, ArrowUpRight, ArrowDownRight, ShoppingCart, TrendingDown, Timer, Hourglass } from 'lucide-react';
 import { formatNumber, formatCurrency } from '../lib/calculationEngine';
 import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
 import { Progress } from '@/components/ui/progress';
@@ -56,6 +56,7 @@ export default function SummaryCards({ kpis, loading, totalSKUs, horizonte }: Su
     { icon: ShoppingCart, label: 'Valor Total Pedidos', numericValue: kpis.valorTotalPedidos, displayValue: formatCurrency(kpis.valorTotalPedidos), sublabel: `Horizonte: ${horizonte || 6} meses`, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', formatter: formatCurrency },
     { icon: AlertTriangle, label: 'SKUs em Atenção', numericValue: skusWarning, displayValue: String(skusWarning), sublabel: 'Abaixo do objetivo', color: 'text-amber-500 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', formatter: (n: number) => String(n) },
     { icon: TrendingDown, label: 'SKUs Críticos', numericValue: skusCriticos, displayValue: String(skusCriticos), sublabel: 'Estoque negativo projetado', color: 'text-destructive', bg: 'bg-destructive/10', formatter: (n: number) => String(n) },
+    { icon: Hourglass, label: 'Risco Shelf Life', numericValue: kpis.skusShelfLifeRisk, displayValue: String(kpis.skusShelfLifeRisk), sublabel: 'Cobertura > 80% do shelf life', color: 'text-orange-500 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/30', formatter: (n: number) => String(n) },
     { icon: Clock, label: 'Cobertura em Dias', numericValue: coberturaGlobalDias, displayValue: `${coberturaGlobalDias}d`, sublabel: `Projetado no fim do horizonte: ${kpis.coberturaProjetadaDias}d`, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-950/30', showProgress: true, progressValue: coverageProgress, formatter: (n: number) => `${n}d` },
     { icon: Timer, label: 'Lead Time Médio', numericValue: kpis.ltMedio, displayValue: `${kpis.ltMedio} dias`, sublabel: `${kpis.countComLT} SKUs com LT`, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/30', formatter: (n: number) => `${n} dias` }
   ];

@@ -34,7 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useProjectionData } from '../hooks/useProjectionData';
 import { usePedidosAprovacao } from '../hooks/usePedidosAprovacao';
 import { exportarParaCSV } from '../lib/dataAdapter';
-import { calcularSemanasRestantes, parseMesAno, distribuirPedidoSimples, getStatusSKU } from '../lib/calculationEngine';
+import { calcularSemanasRestantes, parseMesAno, distribuirPedidoSimples, getStatusSKU, hasShelfLifeRisk } from '../lib/calculationEngine';
 import type { PedidoAprovacao, PedidoItem, PedidoKPIs } from '../lib/types';
 import { useHomeKPIs } from '../hooks/useHomeKPIs';
 
@@ -180,6 +180,9 @@ export default function Home() {
       const estoqueProjetadoChegada = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + qtdCompradaMes1 + (cad.PENDENCIA ?? 0)));
       const coberturaDiasChegada = demandaDiaria > 0 ? Math.round(estoqueProjetadoChegada / demandaDiaria) : null;
 
+      // Risco de shelf life: cobertura na chegada >= 80% do shelf life
+      const shelfLifeRisk = cad.SHELF_LIFE > 0 && sellOut > 0 && hasShelfLifeRisk(estoqueProjetadoChegada, sellOut, 30, cad.SHELF_LIFE);
+
       return [{
         chave: proj.CHAVE,
         nomeProduto: cad['nome produto'],
@@ -195,6 +198,8 @@ export default function Home() {
         estoqueProjetadoChegada,
         coberturaDiasChegada,
         custoLiquido: cad.CUSTO_LIQUIDO,
+        shelfLifeRisk,
+        shelfLifeDias: cad.SHELF_LIFE,
       }];
     });
 
@@ -271,6 +276,7 @@ export default function Home() {
     let estoqueObjetivoUnidadesGlobais = 0;
     let estoqueChegadaUnidadesGlobais = 0;
     let skusCompradosSemNecessidadeGlobais = 0;
+    let skusShelfLifeRiskGlobais = 0;
 
     // A chegada global (cobertura) usa a mesma lógica do fornecedor, mas restrito aos itens
     let somaPonderadaPedChegada = 0;
@@ -328,6 +334,11 @@ export default function Home() {
         somaPonderadaPedChegada += cobChegada * sellOut;
         somaVolumesPedChegada += sellOut;
       }
+
+      // Shelf Life Risk
+      if (item.shelfLifeRisk) {
+        skusShelfLifeRiskGlobais++;
+      }
     });
 
     const coberturaPedidoDiasHojeGlobais: number | null = somaVolumesPedHoje > 0
@@ -376,6 +387,7 @@ export default function Home() {
       let estoqueChegadaMesTarget = 0;
       let skusCriticosHojeMesTarget = 0;
       let skusCompradosSemNecessidadeMesTarget = 0;
+      let skusShelfLifeRiskMesTarget = 0;
 
       let estoqueChegadaMes = 0;
       let demandaDiariaTotalMes = 0;
@@ -461,6 +473,11 @@ export default function Home() {
           somaPondPedHojeMes += (cad.ESTOQUE / demandaDiaria) * sellOutMes;
           somaVolPedHojeMes += sellOutMes;
         }
+
+        // Shelf Life Risk (mensal)
+        if (cad.SHELF_LIFE > 0 && sellOutMes > 0 && hasShelfLifeRisk(estoqueNaChegadaMes, sellOutMes, 30, cad.SHELF_LIFE)) {
+          skusShelfLifeRiskMesTarget++;
+        }
       });
 
       const coberturaPedidoDiasMes = somaVolumesPedMes > 0 ? Math.round(somaPonderadaPedMes / somaVolumesPedMes) : null;
@@ -476,6 +493,7 @@ export default function Home() {
         estoqueChegadaUnidades: estoqueChegadaMesTarget,
         skusCriticosHoje: skusCriticosHojeMesTarget,
         skusCompradosSemNecessidade: skusCompradosSemNecessidadeMesTarget,
+        skusShelfLifeRisk: skusShelfLifeRiskMesTarget,
         totalSkusFornecedor: totalSkusFornecedorGlobais,
         coberturaFornecedorDiasHoje: somaVolFornHojeMes > 0 ? Math.round(somaPondFornHojeMes / somaVolFornHojeMes) : null,
         coberturaFornecedorDiasChegada: somaVolFornChegMes > 0 ? Math.round(somaPondFornChegMes / somaVolFornChegMes) : null,
@@ -499,6 +517,7 @@ export default function Home() {
       estoqueChegadaUnidadesGlobais,
       skusCriticosHojeGlobais,
       skusCompradosSemNecessidadeGlobais,
+      skusShelfLifeRiskGlobais,
       totalSkusFornecedorGlobais,
       coberturaFornecedorDiasHojeGlobais,
       coberturaFornecedorDiasChegadaGlobais,
