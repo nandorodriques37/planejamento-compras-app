@@ -43,7 +43,7 @@ function coverageColor(days: number | null): { bg: string; text: string; border:
   return { bg: 'bg-teal-50 dark:bg-teal-950/30', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800', icon: 'text-teal-500', label: 'Saudável' };
 }
 
-function KpiPanel({ kpis, fornecedorNome }: { kpis: PedidoKPIs; fornecedorNome?: string }) {
+function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }: { kpis: PedidoKPIs; fornecedorNome?: string; prazoPagamentoPadrao?: number; prazoPagamento?: number }) {
   const [activeTab, setActiveTab] = useState<string>('global');
 
   const mesesDisponiveis = kpis.meses ? Object.keys(kpis.meses) : [];
@@ -133,7 +133,7 @@ function KpiPanel({ kpis, fornecedorNome }: { kpis: PedidoKPIs; fornecedorNome?:
         </div>
 
         {/* KPI Cards Grid - 7 cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
 
           {/* Card 1: Cobertura Fornecedor Hoje ➔ Chegada */}
           <div className="rounded-lg border p-3 bg-card border-border" title="Cobertura Total do Portfólio do Fornecedor (Hoje ➔ Chegada)">
@@ -253,6 +253,27 @@ function KpiPanel({ kpis, fornecedorNome }: { kpis: PedidoKPIs; fornecedorNome?:
             </div>
           </div>
 
+          {/* Card 8: Prazo de Pagamento */}
+          {prazoPagamento != null && (
+            <div className="rounded-lg border p-3 bg-card border-border" title="Prazo de Pagamento">
+              <div className="flex items-center gap-2 mb-1.5">
+                <CalendarClock className="w-4 h-4 text-blue-500" />
+                <span className="text-xs font-medium text-muted-foreground line-clamp-1">Prazo Pgto</span>
+              </div>
+              <div className="text-lg font-bold tabular-nums text-foreground">
+                {prazoPagamentoPadrao != null && prazoPagamento !== prazoPagamentoPadrao ? (
+                  <>
+                    <span className="text-muted-foreground line-through text-sm">{prazoPagamentoPadrao}d</span>
+                    <span className="text-muted-foreground mx-1 text-sm font-normal">&raquo;</span>
+                    <span className="text-blue-600 dark:text-blue-400">{prazoPagamento}d</span>
+                  </>
+                ) : (
+                  <span>{prazoPagamento}d</span>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
@@ -359,7 +380,7 @@ function PedidoCard({
       </div>
 
       {/* KPI Panel — sempre visível antes da expansão */}
-      {pedido.kpis != null && <KpiPanel kpis={pedido.kpis} fornecedorNome={fornecedorNome} />}
+      {pedido.kpis != null && <KpiPanel kpis={pedido.kpis} fornecedorNome={fornecedorNome} prazoPagamentoPadrao={pedido.prazoPagamentoPadrao} prazoPagamento={pedido.prazoPagamento} />}
 
       {/* Expanded: detail table + actions */}
       {isExpanded && (

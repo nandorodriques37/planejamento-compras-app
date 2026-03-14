@@ -104,4 +104,8 @@ export interface PedidoAprovacao {
   kpis?: PedidoKPIs;
   /** Valor financeiro total do pedido (soma da quantidade de cada sku pelo seu custo liquido) */
   totalValorPedidos?: number;
+  /** Prazo de pagamento padrão do fornecedor (dias) */
+  prazoPagamentoPadrao?: number;
+  /** Prazo de pagamento efetivo — igual ao padrão ou alterado pelo comprador (dias) */
+  prazoPagamento?: number;
 }

@@ -8,10 +8,12 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { ShoppingCart, Download, Send, CalendarDays } from 'lucide-react';
+import { ShoppingCart, Download, Send, CalendarDays, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -90,6 +92,7 @@ export default function Home() {
   // Programar compras
   const [dialogProgramarAberto, setDialogProgramarAberto] = useState(false);
   const [mesesProgramar, setMesesProgramar] = useState(0);
+  const [prazoPagamentoOverride, setPrazoPagamentoOverride] = useState<number | null>(null);
 
   // Calcula as semanas do mês 1 (igual ao useMemo interno do ProjectionTable)
   const semanasInfo = useMemo(() => {
@@ -99,6 +102,24 @@ export default function Home() {
     if (refDate.getFullYear() !== ano || (refDate.getMonth() + 1) !== mes) return [];
     return calcularSemanasRestantes(ano, mes, refDate.getDate());
   }, [dados, mesesVisiveis]);
+
+  // Prazo de pagamento padrão do fornecedor (lookup)
+  const prazoPagamentoPadrao = useMemo(() => {
+    if (!dados || !dados.fornecedores?.length) return null;
+    const fornecedoresUnicos = [...new Set(
+      dadosFiltrados.flatMap(proj => {
+        const cad = cadastroMap.get(proj.CHAVE);
+        return cad ? [cad['fornecedor comercial']] : [];
+      })
+    )];
+    for (const nome of fornecedoresUnicos) {
+      const forn = dados.fornecedores.find(f => f.nome === nome);
+      if (forn) return forn.PRAZO_PAGAMENTO;
+    }
+    return null;
+  }, [dados, dadosFiltrados, cadastroMap]);
+
+  const prazoPagamentoEfetivo = prazoPagamentoOverride ?? prazoPagamentoPadrao;
 
   const handleToggleWeek = useCallback((weekIdx: number) => {
     setSelectedWeeks(prev => {
@@ -112,6 +133,7 @@ export default function Home() {
   const handleAbrirDialogProgramar = useCallback(() => {
     if (selectedWeeks.size === 0 || !dados) return;
     setMesesProgramar(0);
+    setPrazoPagamentoOverride(null);
     setDialogProgramarAberto(true);
   }, [selectedWeeks, dados]);
 
@@ -537,6 +559,8 @@ export default function Home() {
       totalValorPedidos: itens.reduce((acc, it) => acc + (it.totalQuantidade * (it.custoLiquido || 0)), 0),
       fornecedorNome,
       kpis,
+      prazoPagamentoPadrao: prazoPagamentoPadrao ?? undefined,
+      prazoPagamento: prazoPagamentoEfetivo ?? undefined,
     };
 
     adicionarPedido(pedido);
@@ -546,7 +570,7 @@ export default function Home() {
       description: `${itens.length} SKUs · Programado para ${mesesParaAprovacao.length} ${mesesParaAprovacao.length === 1 ? 'mês' : 'meses'}`
     });
     navigate('/aprovacao');
-  }, [selectedWeeks, dados, mesesVisiveis, semanasInfo, dadosFiltrados, cadastroMap, projecoesComEdicoes, weeklyEdits, coverageWeeklyEdits, adicionarPedido, navigate, mesesProgramar]);
+  }, [selectedWeeks, dados, mesesVisiveis, semanasInfo, dadosFiltrados, cadastroMap, projecoesComEdicoes, weeklyEdits, coverageWeeklyEdits, adicionarPedido, navigate, mesesProgramar, prazoPagamentoPadrao, prazoPagamentoEfetivo]);
 
   // Handler para aplicar pedidos de cobertura na tabela
   const handleAplicarCobertura = useCallback((
@@ -791,6 +815,47 @@ export default function Home() {
                 );
               })}
             </RadioGroup>
+
+            {/* Prazo de Pagamento */}
+            {prazoPagamentoPadrao !== null && (
+              <div className="border-t pt-4 mt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <CalendarClock className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Prazo de Pagamento</span>
+                </div>
+                <div className="text-xs text-muted-foreground mb-3">
+                  Padrão do fornecedor: <strong>{prazoPagamentoPadrao} dias</strong>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="alterarPrazo"
+                    checked={prazoPagamentoOverride !== null}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setPrazoPagamentoOverride(prazoPagamentoPadrao);
+                      } else {
+                        setPrazoPagamentoOverride(null);
+                      }
+                    }}
+                  />
+                  <Label htmlFor="alterarPrazo" className="text-xs cursor-pointer">
+                    Alterar prazo de pagamento
+                  </Label>
+                </div>
+                {prazoPagamentoOverride !== null && (
+                  <div className="flex items-center gap-2 mt-2 ml-6">
+                    <Input
+                      type="number"
+                      min={0}
+                      value={prazoPagamentoOverride}
+                      onChange={(e) => setPrazoPagamentoOverride(Number(e.target.value))}
+                      className="w-24 h-8 text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground">dias</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogProgramarAberto(false)}>
