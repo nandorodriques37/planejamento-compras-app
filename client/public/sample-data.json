@@ -39,7 +39,8 @@
       "IMPACTO": 77,
       "PREECHIMENTO_DEMANDA_LOJA": 61,
       "MULTIPLO_EMBALAGEM": 12,
-      "CUSTO_LIQUIDO": 28.5
+      "CUSTO_LIQUIDO": 28.5,
+      "SHELF_LIFE": 912
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -59,7 +60,8 @@
       "IMPACTO": 127,
       "PREECHIMENTO_DEMANDA_LOJA": 51,
       "MULTIPLO_EMBALAGEM": 3,
-      "CUSTO_LIQUIDO": 189.9
+      "CUSTO_LIQUIDO": 189.9,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -79,7 +81,8 @@
       "IMPACTO": 156,
       "PREECHIMENTO_DEMANDA_LOJA": 86,
       "MULTIPLO_EMBALAGEM": 1,
-      "CUSTO_LIQUIDO": 1250
+      "CUSTO_LIQUIDO": 1250,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -99,7 +102,8 @@
       "IMPACTO": 52,
       "PREECHIMENTO_DEMANDA_LOJA": 23,
       "MULTIPLO_EMBALAGEM": 1,
-      "CUSTO_LIQUIDO": 1189
+      "CUSTO_LIQUIDO": 1189,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -119,7 +123,8 @@
       "IMPACTO": 20,
       "PREECHIMENTO_DEMANDA_LOJA": 104,
       "MULTIPLO_EMBALAGEM": 3,
-      "CUSTO_LIQUIDO": 245.7
+      "CUSTO_LIQUIDO": 245.7,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -139,7 +144,8 @@
       "IMPACTO": 210,
       "PREECHIMENTO_DEMANDA_LOJA": 14,
       "MULTIPLO_EMBALAGEM": 1,
-      "CUSTO_LIQUIDO": 2350
+      "CUSTO_LIQUIDO": 2350,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -159,7 +165,8 @@
       "IMPACTO": 190,
       "PREECHIMENTO_DEMANDA_LOJA": 36,
       "MULTIPLO_EMBALAGEM": 1,
-      "CUSTO_LIQUIDO": 2150
+      "CUSTO_LIQUIDO": 2150,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -179,7 +186,8 @@
       "IMPACTO": 186,
       "PREECHIMENTO_DEMANDA_LOJA": 27,
       "MULTIPLO_EMBALAGEM": 1,
-      "CUSTO_LIQUIDO": 2450
+      "CUSTO_LIQUIDO": 2450,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -199,7 +207,8 @@
       "IMPACTO": 36,
       "PREECHIMENTO_DEMANDA_LOJA": 8,
       "MULTIPLO_EMBALAGEM": 12,
-      "CUSTO_LIQUIDO": 28.5
+      "CUSTO_LIQUIDO": 28.5,
+      "SHELF_LIFE": 912
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -219,7 +228,8 @@
       "IMPACTO": 0,
       "PREECHIMENTO_DEMANDA_LOJA": 11,
       "MULTIPLO_EMBALAGEM": 1,
-      "CUSTO_LIQUIDO": 1189
+      "CUSTO_LIQUIDO": 1189,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -239,7 +249,8 @@
       "IMPACTO": 17,
       "PREECHIMENTO_DEMANDA_LOJA": 35,
       "MULTIPLO_EMBALAGEM": 3,
-      "CUSTO_LIQUIDO": 245.7
+      "CUSTO_LIQUIDO": 245.7,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -259,7 +270,8 @@
       "IMPACTO": 187,
       "PREECHIMENTO_DEMANDA_LOJA": 10,
       "MULTIPLO_EMBALAGEM": 1,
-      "CUSTO_LIQUIDO": 2150
+      "CUSTO_LIQUIDO": 2150,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -279,7 +291,8 @@
       "IMPACTO": 195,
       "PREECHIMENTO_DEMANDA_LOJA": 21,
       "MULTIPLO_EMBALAGEM": 1,
-      "CUSTO_LIQUIDO": 2450
+      "CUSTO_LIQUIDO": 2450,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -299,7 +312,8 @@
       "IMPACTO": 23,
       "PREECHIMENTO_DEMANDA_LOJA": 1191,
       "MULTIPLO_EMBALAGEM": 12,
-      "CUSTO_LIQUIDO": 28.5
+      "CUSTO_LIQUIDO": 28.5,
+      "SHELF_LIFE": 912
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -319,7 +333,8 @@
       "IMPACTO": 35,
       "PREECHIMENTO_DEMANDA_LOJA": 7,
       "MULTIPLO_EMBALAGEM": 3,
-      "CUSTO_LIQUIDO": 245.7
+      "CUSTO_LIQUIDO": 245.7,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -339,7 +354,8 @@
       "IMPACTO": 111,
       "PREECHIMENTO_DEMANDA_LOJA": 1,
       "MULTIPLO_EMBALAGEM": 12,
-      "CUSTO_LIQUIDO": 28.5
+      "CUSTO_LIQUIDO": 28.5,
+      "SHELF_LIFE": 912
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -359,7 +375,8 @@
       "IMPACTO": 96,
       "PREECHIMENTO_DEMANDA_LOJA": 3,
       "MULTIPLO_EMBALAGEM": 3,
-      "CUSTO_LIQUIDO": 245.7
+      "CUSTO_LIQUIDO": 245.7,
+      "SHELF_LIFE": 730
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -379,7 +396,8 @@
       "IMPACTO": 30,
       "PREECHIMENTO_DEMANDA_LOJA": 24,
       "MULTIPLO_EMBALAGEM": 12,
-      "CUSTO_LIQUIDO": 28.5
+      "CUSTO_LIQUIDO": 28.5,
+      "SHELF_LIFE": 912
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -399,7 +417,8 @@
       "IMPACTO": 39,
       "PREECHIMENTO_DEMANDA_LOJA": 2,
       "MULTIPLO_EMBALAGEM": 12,
-      "CUSTO_LIQUIDO": 28.5
+      "CUSTO_LIQUIDO": 28.5,
+      "SHELF_LIFE": 912
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -419,7 +438,8 @@
       "IMPACTO": 78,
       "PREECHIMENTO_DEMANDA_LOJA": 0,
       "MULTIPLO_EMBALAGEM": 12,
-      "CUSTO_LIQUIDO": 28.5
+      "CUSTO_LIQUIDO": 28.5,
+      "SHELF_LIFE": 912
     }
   ],
   "projecao": [
