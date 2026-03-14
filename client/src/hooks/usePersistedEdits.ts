@@ -48,6 +48,17 @@ export function usePersistedEdits() {
         });
     }, []);
 
+    const editarLotePersistido = useCallback((edits: Array<{chave: string, mes: string, valor: number}>) => {
+        setEditedCells(prev => {
+            const next = new Map(prev);
+            for (const edit of edits) {
+                next.set(`${edit.chave}|${edit.mes}`, edit.valor);
+            }
+            persistirEdicoes(next);
+            return next;
+        });
+    }, []);
+
     const desfazerEdicaoPersistida = useCallback((chave: string, mes: string) => {
         setEditedCells(prev => {
             const next = new Map(prev);
@@ -71,6 +82,7 @@ export function usePersistedEdits() {
         editedCells,
         setEditedCells,
         editarPedidoPersistido,
+        editarLotePersistido,
         desfazerEdicaoPersistida,
         limparEdicoesPersistidas,
         isCellEdited,

@@ -9,7 +9,7 @@
  * - Export com edições aplicadas
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { DadosCompletos, ProjecaoSKU, SKUCadastro } from '../lib/calculationEngine';
 import { recalcularProjecaoSKU, getStatusSKU } from '../lib/calculationEngine';
 import { obterProjecaoInicial } from '../lib/dataAdapter';
@@ -46,6 +46,7 @@ export function useProjectionData() {
   const {
     editedCells,
     editarPedidoPersistido,
+    editarLotePersistido,
     desfazerEdicaoPersistida,
     limparEdicoesPersistidas,
     isCellEdited,
@@ -149,6 +150,61 @@ export function useProjectionData() {
     });
   }, [projecoesComEdicoes, dados, filters.fornecedor, filters.categoria, filters.cd, filters.status, debouncedBusca, cadastroMap]);
 
+  // Ref para acessar projeções atuais dentro do callback de cascata
+  const projecoesRef = useRef(projecoesComEdicoes);
+  projecoesRef.current = projecoesComEdicoes;
+
+  /**
+   * Edita um pedido mensal COM cascata: redistribui o delta entre meses subsequentes.
+   * - Se aumentou o pedido (delta > 0): subtrai o excedente dos meses seguintes
+   * - Se diminuiu o pedido (delta < 0): adiciona o liberado ao próximo mês
+   */
+  const editarPedidoComCascata = useCallback((chave: string, mes: string, novoValor: number) => {
+    if (!dados) return;
+
+    const meses = dados.metadata.meses;
+    const mesIdx = meses.indexOf(mes);
+    if (mesIdx === -1) {
+      editarPedidoPersistido(chave, mes, novoValor);
+      return;
+    }
+
+    // Buscar valor atual do PEDIDO (da projeção com edições já aplicadas)
+    const proj = projecoesRef.current.find(p => p.CHAVE === chave);
+    const valorAtual = proj?.meses[mes]?.PEDIDO || 0;
+    const delta = novoValor - valorAtual;
+
+    // Montar lote de edições: edição principal + cascata
+    const edits: Array<{chave: string, mes: string, valor: number}> = [
+      { chave, mes, valor: novoValor }
+    ];
+
+    if (delta !== 0) {
+      let deltaRestante = Math.abs(delta);
+      const isIncrease = delta > 0;
+
+      for (let i = mesIdx + 1; i < meses.length && deltaRestante > 0; i++) {
+        const mesFuturo = meses[i];
+        const pedidoAtual = proj?.meses[mesFuturo]?.PEDIDO || 0;
+
+        if (isIncrease) {
+          // Subtrair dos meses futuros
+          const absorvido = Math.min(deltaRestante, pedidoAtual);
+          if (absorvido > 0) {
+            edits.push({ chave, mes: mesFuturo, valor: pedidoAtual - absorvido });
+            deltaRestante -= absorvido;
+          }
+        } else {
+          // Adicionar ao próximo mês que tem pedido ou ao imediato
+          edits.push({ chave, mes: mesFuturo, valor: pedidoAtual + deltaRestante });
+          deltaRestante = 0;
+        }
+      }
+    }
+
+    editarLotePersistido(edits);
+  }, [dados, editarPedidoPersistido, editarLotePersistido]);
+
   const editarPedido = editarPedidoPersistido;
   const desfazerEdicao = desfazerEdicaoPersistida;
   const limparEdicoes = limparEdicoesPersistidas;
@@ -157,8 +213,8 @@ export function useProjectionData() {
 
   return {
     dados, loading, error, mesesVisiveis, filterOptions, filters, setFilters,
-    horizonte, setHorizonte, dadosFiltrados, editarPedido, desfazerEdicao,
-    isCellEdited, limparEdicoes, totalEdicoes, editedCells,
+    horizonte, setHorizonte, dadosFiltrados, editarPedido, editarPedidoComCascata,
+    desfazerEdicao, isCellEdited, limparEdicoes, totalEdicoes, editedCells,
     cadastroMap, projecoesComEdicoes
   };
 }
