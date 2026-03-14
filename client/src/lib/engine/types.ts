@@ -17,6 +17,7 @@ export interface SKUCadastro {
   PREECHIMENTO_DEMANDA_LOJA: number;
   MULTIPLO_EMBALAGEM: number;
   CUSTO_LIQUIDO: number;
+  SHELF_LIFE: number;
 }
 
 export interface MesData {
