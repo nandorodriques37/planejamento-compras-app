@@ -47,6 +47,11 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
     }
     const data: DadosCompletos = await response.json();
 
+    // Garantir compatibilidade: fornecedores pode não existir em JSONs antigos
+    if (!data.fornecedores) {
+      data.fornecedores = [];
+    }
+
     // Sobrescrever data_referencia com a data atual do sistema
     data.metadata.data_referencia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
