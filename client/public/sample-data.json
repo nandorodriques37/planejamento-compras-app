@@ -40,7 +40,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 61,
       "MULTIPLO_EMBALAGEM": 12,
       "CUSTO_LIQUIDO": 28.5,
-      "SHELF_LIFE": 912
+      "SHELF_LIFE": 912,
+      "COMPRIMENTO": 3.0,
+      "ALTURA": 7.5,
+      "LARGURA": 3.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -61,7 +64,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 51,
       "MULTIPLO_EMBALAGEM": 3,
       "CUSTO_LIQUIDO": 189.9,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 17.0,
+      "ALTURA": 4.0,
+      "LARGURA": 8.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -82,7 +88,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 86,
       "MULTIPLO_EMBALAGEM": 1,
       "CUSTO_LIQUIDO": 1250,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 17.0,
+      "ALTURA": 3.5,
+      "LARGURA": 3.5
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -103,7 +112,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 23,
       "MULTIPLO_EMBALAGEM": 1,
       "CUSTO_LIQUIDO": 1189,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 18.0,
+      "ALTURA": 5.0,
+      "LARGURA": 10.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -124,7 +136,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 104,
       "MULTIPLO_EMBALAGEM": 3,
       "CUSTO_LIQUIDO": 245.7,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 17.0,
+      "ALTURA": 3.5,
+      "LARGURA": 3.5
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -145,7 +160,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 14,
       "MULTIPLO_EMBALAGEM": 1,
       "CUSTO_LIQUIDO": 2350,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 18.0,
+      "ALTURA": 5.0,
+      "LARGURA": 10.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -166,7 +184,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 36,
       "MULTIPLO_EMBALAGEM": 1,
       "CUSTO_LIQUIDO": 2150,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 18.0,
+      "ALTURA": 5.0,
+      "LARGURA": 10.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -187,7 +208,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 27,
       "MULTIPLO_EMBALAGEM": 1,
       "CUSTO_LIQUIDO": 2450,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 18.0,
+      "ALTURA": 5.0,
+      "LARGURA": 10.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -208,7 +232,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 8,
       "MULTIPLO_EMBALAGEM": 12,
       "CUSTO_LIQUIDO": 28.5,
-      "SHELF_LIFE": 912
+      "SHELF_LIFE": 912,
+      "COMPRIMENTO": 3.0,
+      "ALTURA": 7.5,
+      "LARGURA": 3.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -229,7 +256,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 11,
       "MULTIPLO_EMBALAGEM": 1,
       "CUSTO_LIQUIDO": 1189,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 18.0,
+      "ALTURA": 5.0,
+      "LARGURA": 10.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -250,7 +280,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 35,
       "MULTIPLO_EMBALAGEM": 3,
       "CUSTO_LIQUIDO": 245.7,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 17.0,
+      "ALTURA": 3.5,
+      "LARGURA": 3.5
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -271,7 +304,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 10,
       "MULTIPLO_EMBALAGEM": 1,
       "CUSTO_LIQUIDO": 2150,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 18.0,
+      "ALTURA": 5.0,
+      "LARGURA": 10.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -292,7 +328,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 21,
       "MULTIPLO_EMBALAGEM": 1,
       "CUSTO_LIQUIDO": 2450,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 18.0,
+      "ALTURA": 5.0,
+      "LARGURA": 10.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -313,7 +352,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 1191,
       "MULTIPLO_EMBALAGEM": 12,
       "CUSTO_LIQUIDO": 28.5,
-      "SHELF_LIFE": 912
+      "SHELF_LIFE": 912,
+      "COMPRIMENTO": 3.0,
+      "ALTURA": 7.5,
+      "LARGURA": 3.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -334,7 +376,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 7,
       "MULTIPLO_EMBALAGEM": 3,
       "CUSTO_LIQUIDO": 245.7,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 17.0,
+      "ALTURA": 3.5,
+      "LARGURA": 3.5
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -355,7 +400,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 1,
       "MULTIPLO_EMBALAGEM": 12,
       "CUSTO_LIQUIDO": 28.5,
-      "SHELF_LIFE": 912
+      "SHELF_LIFE": 912,
+      "COMPRIMENTO": 3.0,
+      "ALTURA": 7.5,
+      "LARGURA": 3.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -376,7 +424,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 3,
       "MULTIPLO_EMBALAGEM": 3,
       "CUSTO_LIQUIDO": 245.7,
-      "SHELF_LIFE": 730
+      "SHELF_LIFE": 730,
+      "COMPRIMENTO": 17.0,
+      "ALTURA": 3.5,
+      "LARGURA": 3.5
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -397,7 +448,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 24,
       "MULTIPLO_EMBALAGEM": 12,
       "CUSTO_LIQUIDO": 28.5,
-      "SHELF_LIFE": 912
+      "SHELF_LIFE": 912,
+      "COMPRIMENTO": 3.0,
+      "ALTURA": 7.5,
+      "LARGURA": 3.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -418,7 +472,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 2,
       "MULTIPLO_EMBALAGEM": 12,
       "CUSTO_LIQUIDO": 28.5,
-      "SHELF_LIFE": 912
+      "SHELF_LIFE": 912,
+      "COMPRIMENTO": 3.0,
+      "ALTURA": 7.5,
+      "LARGURA": 3.0
     },
     {
       "fornecedor comercial": "NOVO NORDISK",
@@ -439,7 +496,10 @@
       "PREECHIMENTO_DEMANDA_LOJA": 0,
       "MULTIPLO_EMBALAGEM": 12,
       "CUSTO_LIQUIDO": 28.5,
-      "SHELF_LIFE": 912
+      "SHELF_LIFE": 912,
+      "COMPRIMENTO": 3.0,
+      "ALTURA": 7.5,
+      "LARGURA": 3.0
     }
   ],
   "projecao": [
@@ -2362,6 +2422,12 @@
           "ENTRADA": 1651
         }
       }
+    }
+  ],
+  "fornecedores": [
+    {
+      "nome": "NOVO NORDISK",
+      "PRAZO_PAGAMENTO": 60
     }
   ]
 }

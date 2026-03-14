@@ -18,6 +18,14 @@ export interface SKUCadastro {
   MULTIPLO_EMBALAGEM: number;
   CUSTO_LIQUIDO: number;
   SHELF_LIFE: number;
+  COMPRIMENTO: number;  // cm
+  ALTURA: number;       // cm
+  LARGURA: number;      // cm
+}
+
+export interface FornecedorCadastro {
+  nome: string;
+  PRAZO_PAGAMENTO: number; // dias
 }
 
 export interface MesData {
@@ -43,6 +51,7 @@ export interface DadosCompletos {
   };
   cadastro: SKUCadastro[];
   projecao: ProjecaoSKU[];
+  fornecedores: FornecedorCadastro[];
 }
 
 export interface DetalheMesCobertura {
