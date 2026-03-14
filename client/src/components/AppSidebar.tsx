@@ -10,6 +10,7 @@ import {
   TrendingUp,
   LayoutDashboard,
   ClipboardCheck,
+  Warehouse,
   ChevronLeft,
   ChevronRight,
   Moon,
@@ -27,6 +28,7 @@ const navItems = [
   { icon: Package, label: 'Planej. de Estoque', href: '/estoque', soon: false, badgeKey: 'estoque' as const },
   { icon: ShoppingCart, label: 'Planej. de Compras', href: '/compras', soon: false },
   { icon: ClipboardCheck, label: 'Aprovação de Pedidos', href: '/aprovacao', soon: false, badgeKey: 'aprovacao' as const },
+  { icon: Warehouse, label: 'Capacidade Armazéns', href: '/armazens', soon: false },
   { icon: BarChart3, label: 'KPIs & Diagnósticos', href: '/kpis', soon: true },
 ];
 

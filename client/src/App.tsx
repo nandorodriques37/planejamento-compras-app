@@ -11,6 +11,7 @@ import LoadingSpinner from "./components/LoadingSpinner";
 const Home = lazy(() => import("./pages/Home"));
 const EstoquePlanning = lazy(() => import("./pages/EstoquePlanning"));
 const AprovacaoPedidos = lazy(() => import("./pages/AprovacaoPedidos"));
+const CapacidadeArmazens = lazy(() => import("./pages/CapacidadeArmazens"));
 
 function Router() {
   return (
@@ -28,6 +29,13 @@ function Router() {
         {() => (
           <Suspense fallback={<LoadingSpinner />}>
             <AprovacaoPedidos />
+          </Suspense>
+        )}
+      </Route>
+      <Route path="/armazens">
+        {() => (
+          <Suspense fallback={<LoadingSpinner />}>
+            <CapacidadeArmazens />
           </Suspense>
         )}
       </Route>
