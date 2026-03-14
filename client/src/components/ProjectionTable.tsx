@@ -20,6 +20,7 @@ interface ProjectionTableProps {
   cadastroMap: Map<string, SKUCadastro>;
   meses: string[];
   onEditPedido: (chave: string, mes: string, valor: number) => void;
+  onEditPedidoComCascata?: (chave: string, mes: string, valor: number) => void;
   onUndoEdit?: (chave: string, mes: string) => void;
   isCellEdited: (chave: string, mes: string) => boolean;
   allMeses: string[];
@@ -195,6 +196,7 @@ export default function ProjectionTable({
   cadastroMap,
   meses,
   onEditPedido,
+  onEditPedidoComCascata,
   onUndoEdit,
   isCellEdited,
   allMeses,
@@ -283,7 +285,27 @@ export default function ProjectionTable({
   const handleWeekEdit = useCallback((chave: string, semanaIdx: number, novoValor: number, projecaoMeses: Record<string, import('../lib/calculationEngine').MesData>, ltDias: number) => {
     const currentDistribution = getWeeklyDistribution(chave, projecaoMeses, ltDias);
     const newValues = currentDistribution.map(d => d.valor);
+    const valorAnterior = newValues[semanaIdx];
+    const delta = novoValor - valorAnterior;
+
     newValues[semanaIdx] = novoValor;
+
+    // Fase 1: Cascata intra-semanal — redistribuir delta entre semanas subsequentes
+    let deltaRestante = Math.abs(delta);
+    const isIncrease = delta > 0;
+
+    if (delta !== 0) {
+      for (let i = semanaIdx + 1; i < newValues.length && deltaRestante > 0; i++) {
+        if (isIncrease) {
+          const absorvido = Math.min(deltaRestante, newValues[i]);
+          newValues[i] -= absorvido;
+          deltaRestante -= absorvido;
+        } else {
+          newValues[i] += deltaRestante;
+          deltaRestante = 0;
+        }
+      }
+    }
 
     // Armazenar edição semanal
     const nextWeeklyEdits = new Map(weeklyEdits);
@@ -305,11 +327,27 @@ export default function ProjectionTable({
     // Rastrear meses afetados para undo
     weeklyAffectedMonths.current.set(chave, new Set(totalsByMonth.keys()));
 
-    // Atualizar PEDIDO de cada mês afetado
+    // Atualizar PEDIDO de cada mês afetado pelas semanas
     totalsByMonth.forEach((total, monthKey) => {
       onEditPedido(chave, monthKey, total);
     });
-  }, [getWeeklyDistribution, onEditPedido, meses, weeklyEdits, onWeeklyEditsChange, dataReferencia]);
+
+    // Fase 2: Overflow para meses subsequentes (se delta não foi absorvido pelas semanas)
+    if (deltaRestante > 0 && isIncrease && onEditPedidoComCascata) {
+      // Encontrar meses fora do alcance semanal
+      const mesesAfetadosPorSemanas = new Set(totalsByMonth.keys());
+      for (let i = 1; i < allMeses.length && deltaRestante > 0; i++) {
+        const mesFuturo = allMeses[i];
+        if (mesesAfetadosPorSemanas.has(mesFuturo)) continue;
+        const pedidoMes = projecaoMeses[mesFuturo]?.PEDIDO || 0;
+        const absorvido = Math.min(deltaRestante, pedidoMes);
+        if (absorvido > 0) {
+          onEditPedido(chave, mesFuturo, pedidoMes - absorvido);
+          deltaRestante -= absorvido;
+        }
+      }
+    }
+  }, [getWeeklyDistribution, onEditPedido, onEditPedidoComCascata, meses, allMeses, weeklyEdits, onWeeklyEditsChange, dataReferencia]);
 
   // Virtualization state
   const [scrollTop, setScrollTop] = useState(0);
@@ -728,7 +766,7 @@ export default function ProjectionTable({
                     <EditableCell
                       value={d.PEDIDO}
                       isEdited={isCellEdited(proj.CHAVE, mes)}
-                      onEdit={(val) => onEditPedido(proj.CHAVE, mes, val)}
+                      onEdit={(val) => (onEditPedidoComCascata || onEditPedido)(proj.CHAVE, mes, val)}
                       onUndo={onUndoEdit ? () => onUndoEdit(proj.CHAVE, mes) : undefined}
                     />
                   </div>

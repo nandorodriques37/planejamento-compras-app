@@ -51,6 +51,7 @@ export default function Home() {
     setHorizonte,
     dadosFiltrados,
     editarPedido,
+    editarPedidoComCascata,
     desfazerEdicao,
     isCellEdited,
     limparEdicoes,
@@ -671,6 +672,7 @@ export default function Home() {
             cadastroMap={cadastroMap}
             meses={mesesVisiveis}
             onEditPedido={editarPedido}
+            onEditPedidoComCascata={editarPedidoComCascata}
             onUndoEdit={desfazerEdicao}
             isCellEdited={isCellEdited}
             allMeses={dados.metadata.meses}
