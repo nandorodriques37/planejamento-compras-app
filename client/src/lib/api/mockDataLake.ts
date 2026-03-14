@@ -31,6 +31,7 @@ async function getFilteredSKUs(filters: Filters) {
 
         if (filters.fornecedor && cad['fornecedor comercial'] !== filters.fornecedor) return false;
         if (filters.categoria && cad['nome nível 3'] !== filters.categoria) return false;
+        if (filters.categoriaNivel4 && cad['nome nível 4'] !== filters.categoriaNivel4) return false;
         if (filters.cd && String(cad.codigo_deposito_pd) !== filters.cd) return false;
 
         if (search) {

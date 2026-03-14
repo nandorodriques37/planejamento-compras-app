@@ -25,6 +25,7 @@ export interface EditedCell {
 export interface Filters {
   fornecedor: string;
   categoria: string;
+  categoriaNivel4: string;
   cd: string;
   busca: string;
   status: string;
@@ -38,6 +39,7 @@ export function useProjectionData() {
   const [filters, setFilters] = useState<Filters>({
     fornecedor: '',
     categoria: '',
+    categoriaNivel4: '',
     cd: '',
     busca: '',
     status: ''
@@ -84,11 +86,12 @@ export function useProjectionData() {
   }, [dados, horizonte]);
 
   const filterOptions = useMemo(() => {
-    if (!dados) return { fornecedores: [], categorias: [], cds: [] };
+    if (!dados) return { fornecedores: [], categorias: [], categoriasNivel4: [], cds: [] };
     const fornecedores = Array.from(new Set(dados.cadastro.map(c => c['fornecedor comercial']))).sort();
     const categorias = Array.from(new Set(dados.cadastro.map(c => c['nome nível 3']))).sort();
+    const categoriasNivel4 = Array.from(new Set(dados.cadastro.map(c => c['nome nível 4']))).sort();
     const cds = Array.from(new Set(dados.cadastro.map(c => String(c.codigo_deposito_pd)))).sort((a, b) => Number(a) - Number(b));
-    return { fornecedores, categorias, cds };
+    return { fornecedores, categorias, categoriasNivel4, cds };
   }, [dados]);
 
   // Projeções com edições aplicadas
@@ -134,6 +137,7 @@ export function useProjectionData() {
       if (!cadastro) return false;
       if (filters.fornecedor && cadastro['fornecedor comercial'] !== filters.fornecedor) return false;
       if (filters.categoria && cadastro['nome nível 3'] !== filters.categoria) return false;
+      if (filters.categoriaNivel4 && cadastro['nome nível 4'] !== filters.categoriaNivel4) return false;
       if (filters.cd && String(cadastro.codigo_deposito_pd) !== filters.cd) return false;
       if (debouncedBusca) {
         const busca = debouncedBusca.toLowerCase();
@@ -148,7 +152,7 @@ export function useProjectionData() {
       }
       return true;
     });
-  }, [projecoesComEdicoes, dados, filters.fornecedor, filters.categoria, filters.cd, filters.status, debouncedBusca, cadastroMap]);
+  }, [projecoesComEdicoes, dados, filters.fornecedor, filters.categoria, filters.categoriaNivel4, filters.cd, filters.status, debouncedBusca, cadastroMap]);
 
   // Ref para acessar projeções atuais dentro do callback de cascata
   const projecoesRef = useRef(projecoesComEdicoes);
