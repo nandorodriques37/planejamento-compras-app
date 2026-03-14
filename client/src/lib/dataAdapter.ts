@@ -156,7 +156,7 @@ export function exportarParaCSV(dados: DadosCompletos, projecoesEditadas?: Proje
   const rows: string[] = [];
 
   const headers = [
-    'CHAVE', 'Fornecedor', 'Produto', 'CD', 'SKU', 'Categoria',
+    'CHAVE', 'Fornecedor', 'Produto', 'CD', 'SKU', 'Categoria Nível 3', 'Categoria Nível 4',
     'Estoque', 'Pendência', 'LT', 'NNA', 'Frequência', 'Est.Seg.',
     'Impacto', 'Preenchimento',
     'Mês', 'Sell Out', 'Pedido', 'Entrada', 'Est.Projetado', 'Est.Objetivo'
@@ -178,6 +178,7 @@ export function exportarParaCSV(dados: DadosCompletos, projecoesEditadas?: Proje
         cad.codigo_deposito_pd,
         cad.codigo_produto,
         cad['nome nível 3'],
+        cad['nome nível 4'],
         cad.ESTOQUE,
         cad.PENDENCIA,
         cad.LT,

@@ -12,6 +12,7 @@ interface FilterBarProps {
   filterOptions: {
     fornecedores: string[];
     categorias: string[];
+    categoriasNivel4: string[];
     cds: string[];
   };
   horizonte: number;
@@ -29,17 +30,17 @@ export default function FilterBar({
   totalSKUs,
   totalFiltrados
 }: FilterBarProps) {
-  const hasActiveFilters = filters.fornecedor || filters.categoria || filters.cd || filters.busca || filters.status;
+  const hasActiveFilters = filters.fornecedor || filters.categoria || filters.categoriaNivel4 || filters.cd || filters.busca || filters.status;
 
   // Conta filtros dropdown ativos (exceto busca, que já é visível no input)
-  const activeFiltersCount = [filters.fornecedor, filters.categoria, filters.cd, filters.status].filter(Boolean).length;
+  const activeFiltersCount = [filters.fornecedor, filters.categoria, filters.categoriaNivel4, filters.cd, filters.status].filter(Boolean).length;
 
   const updateFilter = (key: keyof Filters, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
   };
 
   const clearFilters = () => {
-    onFiltersChange({ fornecedor: '', categoria: '', cd: '', busca: '', status: '' });
+    onFiltersChange({ fornecedor: '', categoria: '', categoriaNivel4: '', cd: '', busca: '', status: '' });
   };
 
   return (
@@ -101,14 +102,26 @@ export default function FilterBar({
           ))}
         </select>
 
-        {/* Categoria */}
+        {/* Categoria Nível 3 */}
         <select
           value={filters.categoria}
           onChange={(e) => updateFilter('categoria', e.target.value)}
           className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[140px]"
         >
-          <option value="">Todas Categorias</option>
+          <option value="">Todas Cat. Nível 3</option>
           {filterOptions.categorias.map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        {/* Categoria Nível 4 */}
+        <select
+          value={filters.categoriaNivel4}
+          onChange={(e) => updateFilter('categoriaNivel4', e.target.value)}
+          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[140px]"
+        >
+          <option value="">Todas Cat. Nível 4</option>
+          {filterOptions.categoriasNivel4.map(c => (
             <option key={c} value={c}>{c}</option>
           ))}
         </select>

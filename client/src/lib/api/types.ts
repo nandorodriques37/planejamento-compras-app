@@ -15,6 +15,7 @@ export interface PaginatedResponse<T> {
 export interface Filters {
     fornecedor?: string;
     categoria?: string;
+    categoriaNivel4?: string;
     cd?: string;
     busca?: string;
     status?: string;
