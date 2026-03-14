@@ -312,42 +312,30 @@ export default function ProjectionTable({
     nextWeeklyEdits.set(chave, newValues);
     onWeeklyEditsChange(nextWeeklyEdits);
 
-    // Agrupar valores editados por mês de chegada (via LT)
+    // Todas as semanas são pedidos COLOCADOS no mês 1 — o engine calcula a chegada via LT
     const mesAtual = meses[0];
-    const refDate = new Date(dataReferencia! + 'T00:00:00');
-    const { ano, mes } = parseMesAno(mesAtual);
-    const semanasComLT = calcularSemanasComLT(ano, mes, refDate.getDate(), ltDias);
+    const totalMes1 = newValues.reduce((acc, val) => acc + val, 0);
+    const affectedMonths = new Set<string>([mesAtual]);
 
-    const totalsByMonth = new Map<string, number>();
-    newValues.forEach((val, i) => {
-      const monthKey = semanasComLT[i]?.mesChegada || mesAtual;
-      totalsByMonth.set(monthKey, (totalsByMonth.get(monthKey) || 0) + val);
-    });
-
-    // Rastrear meses afetados para undo
-    weeklyAffectedMonths.current.set(chave, new Set(totalsByMonth.keys()));
-
-    // Atualizar PEDIDO de cada mês afetado pelas semanas
-    totalsByMonth.forEach((total, monthKey) => {
-      onEditPedido(chave, monthKey, total);
-    });
+    onEditPedido(chave, mesAtual, totalMes1);
 
     // Fase 2: Overflow para meses subsequentes (se delta não foi absorvido pelas semanas)
     if (deltaRestante > 0 && isIncrease && onEditPedidoComCascata) {
-      // Encontrar meses fora do alcance semanal
-      const mesesAfetadosPorSemanas = new Set(totalsByMonth.keys());
       for (let i = 1; i < allMeses.length && deltaRestante > 0; i++) {
         const mesFuturo = allMeses[i];
-        if (mesesAfetadosPorSemanas.has(mesFuturo)) continue;
         const pedidoMes = projecaoMeses[mesFuturo]?.PEDIDO || 0;
         const absorvido = Math.min(deltaRestante, pedidoMes);
         if (absorvido > 0) {
           onEditPedido(chave, mesFuturo, pedidoMes - absorvido);
+          affectedMonths.add(mesFuturo);
           deltaRestante -= absorvido;
         }
       }
     }
-  }, [getWeeklyDistribution, onEditPedido, onEditPedidoComCascata, meses, allMeses, weeklyEdits, onWeeklyEditsChange, dataReferencia]);
+
+    // Rastrear meses afetados para undo
+    weeklyAffectedMonths.current.set(chave, affectedMonths);
+  }, [getWeeklyDistribution, onEditPedido, onEditPedidoComCascata, meses, allMeses, weeklyEdits, onWeeklyEditsChange]);
 
   // Virtualization state
   const [scrollTop, setScrollTop] = useState(0);
