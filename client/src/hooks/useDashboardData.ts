@@ -25,6 +25,22 @@ export interface CoverageDistribution {
   color: string;
 }
 
+export interface RuptureTreeNode {
+  name: string;
+  size: number;
+  color: string;
+}
+
+export interface RuptureTreeCategory {
+  name: string;
+  children: RuptureTreeNode[];
+}
+
+export interface RuptureTreeData {
+  name: string;
+  children: RuptureTreeCategory[];
+}
+
 interface DashboardData {
   supplierLossRanking: SupplierLossData[];
   totalPerdaDiaria: number;
@@ -33,6 +49,7 @@ interface DashboardData {
   diasNoMesAtual: number;
   skuStatusDistribution: SKUStatusDistribution;
   coverageDistribution: CoverageDistribution[];
+  ruptureTreeData: RuptureTreeData;
   loading: boolean;
 }
 
@@ -57,6 +74,7 @@ export function useDashboardData(): DashboardData {
         diasNoMesAtual: 30,
         skuStatusDistribution: { ok: 0, warning: 0, critical: 0, total: 0 },
         coverageDistribution: [],
+        ruptureTreeData: { name: 'Ruptura', children: [] },
         loading,
       };
     }
@@ -76,6 +94,10 @@ export function useDashboardData(): DashboardData {
 
     let totalSkusRuptura = 0;
     let totalSkusCriticos = 0;
+    let rupturaComPedido = 0;
+    let rupturaSemPedido = 0;
+    let pontoRupturaComPedido = 0;
+    let pontoRupturaSemPedido = 0;
 
     dados.projecao.forEach(proj => {
       const cad = cadastroMap.get(proj.CHAVE);
@@ -102,6 +124,11 @@ export function useDashboardData(): DashboardData {
         entry.perdaRupturaTotal += demandaDiaria * cad.CUSTO_LIQUIDO;
         entry.skusRupturaTotal++;
         totalSkusRuptura++;
+
+        const temPedido = cad.PENDENCIA > 0 ||
+          dados.metadata.meses.some(m => (proj.meses[m]?.PEDIDO ?? 0) > 0);
+        if (temPedido) rupturaComPedido++;
+        else rupturaSemPedido++;
       } else {
         // Check if critical
         const status = getStatusSKU(proj.meses, dados.metadata.meses, cad);
@@ -112,6 +139,11 @@ export function useDashboardData(): DashboardData {
           entry.perdaRiscoCritico += perdaDiaria;
           entry.skusRiscoCritico++;
           totalSkusCriticos++;
+
+          const temPedido = cad.PENDENCIA > 0 ||
+            dados.metadata.meses.some(m => (proj.meses[m]?.PEDIDO ?? 0) > 0);
+          if (temPedido) pontoRupturaComPedido++;
+          else pontoRupturaSemPedido++;
         }
       }
     });
@@ -174,6 +206,27 @@ export function useDashboardData(): DashboardData {
     allSuppliers.sort((a, b) => b.perdaTotal - a.perdaTotal);
     const supplierLossRanking = allSuppliers.slice(0, 20);
 
+    // Rupture tree data
+    const ruptureTreeData: RuptureTreeData = {
+      name: 'Ruptura',
+      children: [
+        {
+          name: 'Em Ruptura',
+          children: [
+            { name: 'Com Pedido', size: rupturaComPedido, color: 'oklch(0.637 0.237 25.331)' },
+            { name: 'Sem Pedido', size: rupturaSemPedido, color: 'oklch(0.50 0.25 25)' },
+          ].filter(c => c.size > 0),
+        },
+        {
+          name: 'Ponto de Ruptura',
+          children: [
+            { name: 'Com Pedido', size: pontoRupturaComPedido, color: 'oklch(0.769 0.188 70.08)' },
+            { name: 'Sem Pedido', size: pontoRupturaSemPedido, color: 'oklch(0.60 0.2 70)' },
+          ].filter(c => c.size > 0),
+        },
+      ].filter(c => c.children.length > 0),
+    };
+
     return {
       supplierLossRanking,
       totalPerdaDiaria,
@@ -182,6 +235,7 @@ export function useDashboardData(): DashboardData {
       diasNoMesAtual: diasMes,
       skuStatusDistribution,
       coverageDistribution,
+      ruptureTreeData,
       loading,
     };
   }, [dados, loading]);

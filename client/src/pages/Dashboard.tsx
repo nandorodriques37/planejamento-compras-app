@@ -12,6 +12,7 @@ import AppSidebar from '../components/AppSidebar';
 import SalesLossChart from '../components/dashboard/SalesLossChart';
 import SKUStatusPieChart from '../components/dashboard/SKUStatusPieChart';
 import CoverageDistributionChart from '../components/dashboard/CoverageDistributionChart';
+import StockRuptureTreeChart from '../components/dashboard/StockRuptureTreeChart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { formatCurrency, formatNumber } from '../lib/calculationEngine';
@@ -58,6 +59,7 @@ export default function Dashboard() {
     diasNoMesAtual,
     skuStatusDistribution,
     coverageDistribution,
+    ruptureTreeData,
     loading,
   } = useDashboardData();
 
@@ -92,6 +94,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+          <Skeleton className="h-[320px] w-full rounded-lg" />
           <Skeleton className="h-[420px] w-full rounded-lg" />
         </main>
       </div>
@@ -174,6 +177,19 @@ export default function Dashboard() {
             </div>
             <CoverageDistributionChart data={coverageDistribution} />
           </div>
+        </div>
+
+        {/* Stock Rupture Tree */}
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold text-foreground">
+              Árvore de Ruptura
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Distribuição de SKUs em ruptura e ponto de ruptura, por situação de pedido
+            </p>
+          </div>
+          <StockRuptureTreeChart data={ruptureTreeData} />
         </div>
 
         {/* Sales Loss Chart */}
