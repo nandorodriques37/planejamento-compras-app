@@ -226,10 +226,10 @@ function CDCard({
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> {cd.skusOk} OK
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> {cd.skusWarning} Atenção
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> {cd.skusWarning} Ponto de Pedido
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> {cd.skusCritical} Crítico
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> {cd.skusCritical} Ruptura
             </span>
           </div>
         </div>
@@ -554,7 +554,7 @@ function CDSkusTable({ cdKey, filters, onRowClick }: { cdKey: string, filters: a
                       : 'badge-critical'
                     }`}
                 >
-                  {sku.status === 'ok' ? 'OK' : sku.status === 'warning' ? 'Atenção' : 'Crítico'}
+                  {sku.status === 'ok' ? 'OK' : sku.status === 'warning' ? 'Ponto de Pedido' : 'Ruptura'}
                 </span>
               </td>
             </tr>
@@ -823,17 +823,17 @@ export default function EstoquePlanning() {
             />
             <KPICard
               icon={AlertTriangle}
-              label="SKUs em Atenção"
+              label="SKUs em Ponto de Pedido"
               value={String(aggregated.skusWarning)}
-              sublabel="Abaixo de 80% do objetivo"
+              sublabel="Estoque abaixo do ponto de pedido"
               color="text-amber-600 dark:text-amber-400"
               bg="bg-amber-50 dark:bg-amber-950/30"
             />
             <KPICard
               icon={TrendingDown}
-              label="SKUs Críticos"
+              label="SKUs em Ponto de Ruptura"
               value={String(aggregated.skusCritical)}
-              sublabel="Estoque negativo projetado"
+              sublabel="Risco de ruptura de estoque"
               color="text-destructive"
               bg="bg-red-50 dark:bg-red-950/30"
             />
@@ -1029,10 +1029,10 @@ export default function EstoquePlanning() {
               <div className="px-5 py-4 border-b border-border bg-red-50/50 dark:bg-red-950/20">
                 <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-destructive" />
-                  SKUs com Estoque Crítico
+                  SKUs em Ponto de Ruptura
                 </h2>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Itens com projeção de estoque negativo que requerem atenção imediata
+                  Itens em ruptura ou prestes a entrar, urgência máxima
                 </p>
               </div>
               <div className="overflow-x-auto custom-scrollbar">

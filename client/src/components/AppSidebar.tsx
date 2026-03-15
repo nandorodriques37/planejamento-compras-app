@@ -33,7 +33,7 @@ const navItems = [
 ];
 
 interface AppSidebarProps {
-  /** Contagem de SKUs críticos (exibida como badge vermelho no item Estoque). */
+  /** Contagem de SKUs em ponto de ruptura (exibida como badge vermelho no item Estoque). */
   skusCriticos?: number;
   /** Contagem de pedidos pendentes (exibida como badge âmbar no item Aprovação). */
   pedidosPendentes?: number;
@@ -95,7 +95,7 @@ export default function AppSidebar({ skusCriticos, pedidosPendentes }: AppSideba
           >
             <span className="relative flex-shrink-0">
               <item.icon className={`w-4 h-4 ${isActive ? 'text-primary' : ''}`} />
-              {/* Badge dinâmico: SKUs críticos no estoque */}
+              {/* Badge dinâmico: SKUs em ponto de ruptura no estoque */}
               {item.badgeKey === 'estoque' && skusCriticos !== undefined && skusCriticos > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 rounded-full bg-destructive text-[8px] text-white font-bold flex items-center justify-center px-0.5">
                   {skusCriticos > 99 ? '99+' : skusCriticos}
