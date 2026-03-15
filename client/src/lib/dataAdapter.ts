@@ -18,8 +18,8 @@
  * corretamente, independente de como os dados foram gerados na origem.
  */
 
-import type { DadosCompletos, ProjecaoSKU } from './calculationEngine';
-import { recalcularProjecaoSKU } from './calculationEngine';
+import type { DadosCompletos, ProjecaoSKU, PedidoPendente } from './calculationEngine';
+import { recalcularProjecaoSKU, buildPendenciasPorSKU, agruparPendenciasPorMes } from './calculationEngine';
 
 /** Cache de dados já carregados e calculados. Resetado quando o mês de referência muda. */
 let cachedData: DadosCompletos | null = null;
@@ -77,6 +77,19 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
     data.metadata.meses = mesesAtualizados;
     data.metadata.horizonte_meses = mesesAtualizados.length;
 
+    // Carregar pedidos pendentes detalhados (com datas de chegada)
+    let pendenciasPorSKU = new Map<string, PedidoPendente[]>();
+    try {
+      const pendingResponse = await fetch('/pending-orders.json');
+      if (pendingResponse.ok) {
+        const pedidosPendentes: PedidoPendente[] = await pendingResponse.json();
+        data.pedidos_pendentes = pedidosPendentes;
+        pendenciasPorSKU = buildPendenciasPorSKU(pedidosPendentes);
+      }
+    } catch {
+      // Fallback: sem pedidos pendentes detalhados, usa PENDENCIA lump-sum
+    }
+
     // Constroi o map cadastro UMA vez para O(1) lookups em vez de O(n) por SKU
     const cadastroMap = new Map(data.cadastro.map(c => [c.CHAVE, c]));
 
@@ -103,13 +116,20 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
         pedidosOriginais[mes] = proj.meses[mes]?.PEDIDO || 0;
       });
 
+      // Agregar pendências por mês para este SKU
+      const pedidosSKU = pendenciasPorSKU.get(cadastro.CHAVE) || [];
+      const pendMes = pedidosSKU.length > 0
+        ? agruparPendenciasPorMes(pedidosSKU, data.metadata.meses)
+        : undefined;
+
       const novaProjecao = recalcularProjecaoSKU(
         cadastro,
         data.metadata.meses,
         sellOutPorMes,
         pedidosManuais,
         pedidosOriginais,
-        data.metadata.data_referencia
+        data.metadata.data_referencia,
+        pendMes
       );
 
       return {

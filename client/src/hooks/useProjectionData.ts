@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { DadosCompletos, ProjecaoSKU, SKUCadastro } from '../lib/calculationEngine';
-import { recalcularProjecaoSKU, getStatusSKU } from '../lib/calculationEngine';
+import { recalcularProjecaoSKU, getStatusSKU, buildPendenciasPorSKU, agruparPendenciasPorMes } from '../lib/calculationEngine';
 import { obterProjecaoInicial } from '../lib/dataAdapter';
 import { useDebounce } from './useDebounce';
 import { usePersistedEdits } from './usePersistedEdits';
@@ -97,6 +97,9 @@ export function useProjectionData() {
   // Projeções com edições aplicadas
   const projecoesComEdicoes = useMemo(() => {
     if (!dados) return [];
+    const pendSKUMap = dados.pedidos_pendentes
+      ? buildPendenciasPorSKU(dados.pedidos_pendentes)
+      : new Map();
     return dados.projecao.map(proj => {
       const edicoesDoSKU: Record<string, number | null> = {};
       let temEdicao = false;
@@ -121,9 +124,16 @@ export function useProjectionData() {
         pedidosOriginais[mes] = proj.meses[mes]?.PEDIDO || 0;
       });
 
+      // Agregar pendências distribuídas por mês para este SKU
+      const pedidosSKU = pendSKUMap.get(cadastro.CHAVE) || [];
+      const pendMes = pedidosSKU.length > 0
+        ? agruparPendenciasPorMes(pedidosSKU, dados.metadata.meses)
+        : undefined;
+
       const novaProjecao = recalcularProjecaoSKU(
         cadastro, dados.metadata.meses, sellOutOriginal,
-        edicoesDoSKU, pedidosOriginais, dados.metadata.data_referencia
+        edicoesDoSKU, pedidosOriginais, dados.metadata.data_referencia,
+        pendMes
       );
       return { ...proj, meses: novaProjecao };
     });

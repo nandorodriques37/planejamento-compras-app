@@ -52,6 +52,7 @@ export interface DadosCompletos {
   cadastro: SKUCadastro[];
   projecao: ProjecaoSKU[];
   fornecedores: FornecedorCadastro[];
+  pedidos_pendentes?: PedidoPendente[];
 }
 
 export interface DetalheMesCobertura {
@@ -95,6 +96,15 @@ export interface CoberturaResultado {
     totalReduzidoParaMes2: number;
   };
 }
+
+export interface PedidoPendente {
+  chave: string;
+  numero_pedido: string;
+  quantidade: number;
+  data_chegada_prevista: string; // "YYYY-MM-DD"
+}
+
+export type PendenciasPorMes = Record<string, number>;
 
 export interface SemanaInfo {
   /** Rótulo: "S1", "S2", ..., "S5" */
