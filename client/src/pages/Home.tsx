@@ -36,7 +36,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useProjectionData } from '../hooks/useProjectionData';
 import { usePedidosAprovacao } from '../hooks/usePedidosAprovacao';
 import { exportarParaCSV } from '../lib/dataAdapter';
-import { calcularSemanasRestantes, parseMesAno, distribuirPedidoSimples, getStatusSKU, hasShelfLifeRisk } from '../lib/calculationEngine';
+import { calcularSemanasRestantes, calcularSemanasComLT, parseMesAno, distribuirPedidoMultiMes, getStatusSKU, hasShelfLifeRisk } from '../lib/calculationEngine';
+import type { WeekDistribution } from '../lib/calculationEngine';
 import type { PedidoAprovacao, PedidoItem, PedidoKPIs } from '../lib/types';
 import { useHomeKPIs } from '../hooks/useHomeKPIs';
 
@@ -150,43 +151,69 @@ export default function Home() {
       const cad = cadastroMap.get(proj.CHAVE);
       if (!cad) return [];
 
-      const pedidoMes1 = proj.meses[mesAtual]?.PEDIDO || 0;
+      const ltDias = cad.LT ?? 0;
 
-      // Resolução de prioridade: weeklyEdits → coverageWeeklyEdits → distribuição proporcional
-      let valores: number[];
+      // Resolução de prioridade: weeklyEdits → coverageWeeklyEdits → distribuição LT-aware
+      // Replica exatamente a lógica do ProjectionTable.getWeeklyDistribution
+      let distribuicao: WeekDistribution[];
       const manual = weeklyEdits.get(proj.CHAVE);
       if (manual && manual.length === semanasInfo.length) {
-        valores = manual;
+        distribuicao = manual.map(val => ({
+          valor: val,
+          mesOrigem: mesAtual,
+          isCurrentMonth: true
+        }));
       } else {
         const coverage = coverageWeeklyEdits.get(proj.CHAVE);
         if (coverage && coverage.length === semanasInfo.length) {
-          valores = coverage;
+          distribuicao = coverage.map(val => ({
+            valor: val,
+            mesOrigem: mesAtual,
+            isCurrentMonth: true
+          }));
         } else {
-          valores = distribuirPedidoSimples(pedidoMes1, semanasInfo);
+          // Distribuição LT-aware — igual à ProjectionTable
+          const refDate = new Date(dados!.metadata.data_referencia + 'T00:00:00');
+          const { ano, mes } = parseMesAno(mesAtual);
+          const semanasComLT = calcularSemanasComLT(ano, mes, refDate.getDate(), ltDias);
+
+          // Montar pedido por mês: mês atual + meses futuros onde entregas caem
+          const pedidoPorMes: Record<string, number> = {};
+          pedidoPorMes[mesAtual] = proj.meses[mesAtual]?.PEDIDO || 0;
+          for (const sem of semanasComLT) {
+            if (sem.mesChegada && sem.mesChegada !== mesAtual && !(sem.mesChegada in pedidoPorMes)) {
+              pedidoPorMes[sem.mesChegada] = proj.meses[sem.mesChegada]?.PEDIDO || 0;
+            }
+          }
+
+          distribuicao = distribuirPedidoMultiMes(mesAtual, pedidoPorMes, semanasComLT);
         }
       }
 
       const entregas: Record<string, number> = {};
       let totalQuantidade = 0;
 
-      // Mês atual é a soma das semanas flegadas
-      let somaSemanas = 0;
+      // Somar semanas selecionadas, agrupando por mesOrigem (mês de chegada via LT)
       for (const i of selectedWeeks) {
-        somaSemanas += valores[i] ?? 0;
+        const dist = distribuicao[i];
+        if (!dist || dist.valor === 0) continue;
+        const targetMonth = dist.mesOrigem;
+        entregas[targetMonth] = (entregas[targetMonth] ?? 0) + dist.valor;
       }
+      totalQuantidade = Object.values(entregas).reduce((a, b) => a + b, 0);
 
-      if (somaSemanas > 0 || mesesProgramar > 0) {
-        entregas[mesAtual] = somaSemanas;
-        totalQuantidade += somaSemanas;
-      }
-
-      // Adicionar próximos meses programados
+      // Adicionar próximos meses programados, evitando dupla contagem
+      // Se semanas já contribuíram para um mês futuro via LT, não duplicar
       for (let m = 1; m <= mesesProgramar; m++) {
         const proxMes = mesesVisiveis[m];
         if (proxMes) {
-          const proxMesQty = proj.meses[proxMes]?.PEDIDO || 0;
-          entregas[proxMes] = proxMesQty;
-          totalQuantidade += proxMesQty;
+          const proxMesPedido = proj.meses[proxMes]?.PEDIDO || 0;
+          const jaContribuido = entregas[proxMes] ?? 0;
+          const adicional = Math.max(0, proxMesPedido - jaContribuido);
+          if (adicional > 0) {
+            entregas[proxMes] = jaContribuido + adicional;
+            totalQuantidade += adicional;
+          }
         }
       }
 
