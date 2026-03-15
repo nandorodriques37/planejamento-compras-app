@@ -399,6 +399,46 @@ export default function Home() {
       if (mesesVisiveis[m]) mesesParaAprovacao.push(mesesVisiveis[m]);
     }
 
+    // ── Pré-cálculo: estoque evolutivo por SKU/mês (para KPIs mensais) ──────
+    const arrivalDataMap = new Map<string, Map<string, { estoqueNaChegada: number; estoqueSemPedido: number }>>();
+
+    projecoesComEdicoes.forEach(proj => {
+      const cad = cadastroMap.get(proj.CHAVE);
+      if (!cad || !fornecedoresNoPedido.has(cad['fornecedor comercial'])) return;
+
+      const monthData = new Map<string, { estoqueNaChegada: number; estoqueSemPedido: number }>();
+      let runningStock = cad.ESTOQUE + (cad.PENDENCIA ?? 0);
+      const itemPed = itensPedidoMap.get(proj.CHAVE);
+      const lt = cad.LT ?? 0;
+
+      for (let mi = 0; mi < mesesParaAprovacao.length; mi++) {
+        const mes = mesesParaAprovacao[mi];
+        const sellOutMes = proj.meses[mes]?.SELL_OUT ?? 0;
+        const dd = sellOutMes > 0 ? sellOutMes / 30 : 0;
+        const qtdComprada = itemPed ? (itemPed.entregas[mes] ?? 0) : 0;
+        const consumo = dd * lt;
+
+        if (mi === 0) {
+          // Mês 1: fórmula LT original (apenas semanas flegadas)
+          monthData.set(mes, {
+            estoqueNaChegada: Math.max(0, Math.round(cad.ESTOQUE - consumo + qtdComprada + (cad.PENDENCIA ?? 0))),
+            estoqueSemPedido: Math.max(0, Math.round(cad.ESTOQUE - consumo + (cad.PENDENCIA ?? 0))),
+          });
+        } else {
+          // Mês 2+: usar estoque evolutivo (considera sell-out e entradas dos meses anteriores)
+          monthData.set(mes, {
+            estoqueNaChegada: Math.max(0, Math.round(runningStock - consumo + qtdComprada)),
+            estoqueSemPedido: Math.max(0, Math.round(runningStock - consumo)),
+          });
+        }
+
+        // Evoluir estoque para o próximo mês: subtrair sell-out total e adicionar entradas
+        runningStock = Math.max(0, runningStock - sellOutMes + qtdComprada);
+      }
+
+      arrivalDataMap.set(proj.CHAVE, monthData);
+    });
+
     // ── Geração de KPIs Mensais Individuais ──────────────────────────────────
     const kpisMensais: Record<string, any> = {};
 
@@ -440,11 +480,9 @@ export default function Home() {
         somaPondFornHojeMes += (cad.ESTOQUE / dd) * sellOutMes;
         somaVolFornHojeMes += sellOutMes;
 
-        // Chegada (LT-based)
-        const ltF = cad.LT ?? 0;
-        const itemPed = itensPedidoMap.get(proj.CHAVE);
-        const qtdF = itemPed ? (itemPed.entregas[mesTarget] ?? 0) : 0;
-        const estChegF = Math.max(0, cad.ESTOQUE - (dd * ltF) + qtdF + (cad.PENDENCIA ?? 0));
+        // Chegada (estoque evolutivo pré-calculado)
+        const arrDataForn = arrivalDataMap.get(proj.CHAVE)?.get(mesTarget);
+        const estChegF = arrDataForn?.estoqueNaChegada ?? 0;
         somaPondFornChegMes += (estChegF / dd) * sellOutMes;
         somaVolFornChegMes += sellOutMes;
       });
@@ -476,15 +514,14 @@ export default function Home() {
         const objetivoMesTarget = proj.meses[mesTarget]?.ESTOQUE_OBJETIVO ?? 0;
         estoqueObjetivoMesTarget += objetivoMesTarget;
 
-        // Estoque na chegada: LT-based
+        // Estoque na chegada: estoque evolutivo pré-calculado
         const demandaDiaria = sellOutMes > 0 ? sellOutMes / 30 : 0;
-        const ltItem = cad.LT ?? 0;
-        const consumo = demandaDiaria * ltItem;
-        const estoqueNaChegadaMes = Math.max(0, Math.round(cad.ESTOQUE - consumo + quantidadeCompradaMes + (cad.PENDENCIA ?? 0)));
+        const arrDataItem = arrivalDataMap.get(item.chave)?.get(mesTarget);
+        const estoqueNaChegadaMes = arrDataItem?.estoqueNaChegada ?? 0;
         estoqueChegadaMesTarget += estoqueNaChegadaMes;
 
         // Sem pedido
-        const estoqueSemPedido = Math.max(0, Math.round(cad.ESTOQUE - consumo + (cad.PENDENCIA ?? 0)));
+        const estoqueSemPedido = arrDataItem?.estoqueSemPedido ?? 0;
         if (quantidadeCompradaMes > 0 || item.totalQuantidade > 0) {
           if (estoqueSemPedido > 0 && estoqueSemPedido >= objetivoMesTarget && objetivoMesTarget > 0) {
             skusCompradosSemNecessidadeMesTarget++;
