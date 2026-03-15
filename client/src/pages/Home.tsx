@@ -36,8 +36,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useProjectionData } from '../hooks/useProjectionData';
 import { usePedidosAprovacao } from '../hooks/usePedidosAprovacao';
 import { exportarParaCSV } from '../lib/dataAdapter';
-import { calcularSemanasRestantes, calcularSemanasComLT, parseMesAno, distribuirPedidoMultiMes, getStatusSKU, hasShelfLifeRisk } from '../lib/calculationEngine';
-import type { WeekDistribution } from '../lib/calculationEngine';
+import { calcularSemanasRestantes, calcularSemanasComLT, parseMesAno, distribuirPedidoMultiMes, getStatusSKU, hasShelfLifeRisk, buildPendenciasPorSKU, calcularPendenciaAteData, agruparPendenciasPorMes } from '../lib/calculationEngine';
+import type { WeekDistribution, PedidoPendente } from '../lib/calculationEngine';
 import type { PedidoAprovacao, PedidoItem, PedidoKPIs } from '../lib/types';
 import { useHomeKPIs } from '../hooks/useHomeKPIs';
 
@@ -77,6 +77,21 @@ export default function Home() {
       return Array.isArray(lista) ? lista.filter((p: any) => p.status === 'pendente').length : 0;
     } catch { return 0; }
   })();
+
+  // Mapa de pedidos pendentes detalhados por SKU (para distribuição temporal)
+  const pendenciasSKUMap = useMemo(() => {
+    if (!dados?.pedidos_pendentes) return new Map<string, PedidoPendente[]>();
+    return buildPendenciasPorSKU(dados.pedidos_pendentes);
+  }, [dados?.pedidos_pendentes]);
+
+  // Helper: calcula pendência relevante até a data de chegada (hoje + LT)
+  const getPendenciaRelevante = useCallback((chave: string, ltDias: number, pendenciaTotal: number) => {
+    const pedidos = pendenciasSKUMap.get(chave);
+    if (!pedidos || pedidos.length === 0) return pendenciaTotal;
+    const dataCorte = new Date();
+    dataCorte.setDate(dataCorte.getDate() + ltDias);
+    return calcularPendenciaAteData(pedidos, dataCorte);
+  }, [pendenciasSKUMap]);
 
   // Contagem de SKUs críticos para badge do sidebar
   const skusCriticos = useMemo(() => {
@@ -227,10 +242,11 @@ export default function Home() {
       const coberturaDiasHoje = demandaDiaria > 0 ? Math.round(cad.ESTOQUE / demandaDiaria) : null;
 
       // Estoque projetado NA DATA DE CHEGADA (não no fim do mês!)
-      // Fórmula: estoque_atual - (demanda_diária × LT) + qtd_comprada + pendências
+      // Fórmula: estoque_atual - (demanda_diária × LT) + qtd_comprada + pendências relevantes
       const lt = cad.LT ?? 0;
       const consumoAteLT = demandaDiaria * lt;
-      const estoqueProjetadoChegada = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + qtdCompradaMes1 + (cad.PENDENCIA ?? 0)));
+      const pendenciaRelevante = getPendenciaRelevante(proj.CHAVE, lt, cad.PENDENCIA ?? 0);
+      const estoqueProjetadoChegada = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + qtdCompradaMes1 + pendenciaRelevante));
       const coberturaDiasChegada = demandaDiaria > 0 ? Math.round(estoqueProjetadoChegada / demandaDiaria) : null;
 
       // Risco de shelf life: cobertura na chegada >= 80% do shelf life
@@ -301,7 +317,8 @@ export default function Home() {
       const consumoAteLT = demandaDiaria * lt;
       const itemPedido = itensPedidoMap.get(proj.CHAVE);
       const qtdComprada = itemPedido ? (itemPedido.entregas[mesAtual] ?? 0) : 0;
-      const estoqueNaChegada = Math.max(0, cad.ESTOQUE - consumoAteLT + qtdComprada + (cad.PENDENCIA ?? 0));
+      const pendRelevante = getPendenciaRelevante(proj.CHAVE, lt, cad.PENDENCIA ?? 0);
+      const estoqueNaChegada = Math.max(0, cad.ESTOQUE - consumoAteLT + qtdComprada + pendRelevante);
       const cobChegada = estoqueNaChegada / demandaDiaria;
       somaPonderadaFornChegada += cobChegada * sellOutAtual;
       somaVolumesFornChegada += sellOutAtual;
@@ -364,11 +381,12 @@ export default function Home() {
       const demandaDiaria = sellOut > 0 ? sellOut / 30 : 0;
       const lt = cad.LT ?? 0;
       const consumoAteLT = demandaDiaria * lt;
-      const estoqueNaChegada = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + quantidadeMesAtual + (cad.PENDENCIA ?? 0)));
+      const pendRelevantePed = getPendenciaRelevante(item.chave, lt, cad.PENDENCIA ?? 0);
+      const estoqueNaChegada = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + quantidadeMesAtual + pendRelevantePed));
       estoqueChegadaUnidadesGlobais += estoqueNaChegada;
 
       // Sem pedido = sem a quantidade comprada
-      const estoqueSemPedido = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + (cad.PENDENCIA ?? 0)));
+      const estoqueSemPedido = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + pendRelevantePed));
 
       if (estoqueSemPedido > 0 && estoqueSemPedido >= objetivoMes && objetivoMes > 0) {
         skusCompradosSemNecessidadeGlobais++;
@@ -434,9 +452,18 @@ export default function Home() {
       if (!cad || !fornecedoresNoPedido.has(cad['fornecedor comercial'])) return;
 
       const monthData = new Map<string, { estoqueNaChegada: number; estoqueSemPedido: number }>();
-      let runningStock = cad.ESTOQUE + (cad.PENDENCIA ?? 0);
       const itemPed = itensPedidoMap.get(proj.CHAVE);
       const lt = cad.LT ?? 0;
+
+      // Pendências distribuídas por mês para este SKU
+      const pedidosSKU = pendenciasSKUMap.get(proj.CHAVE) || [];
+      const pendAgregadas = pedidosSKU.length > 0
+        ? agruparPendenciasPorMes(pedidosSKU, mesesParaAprovacao)
+        : null;
+      const pendMes1 = pendAgregadas
+        ? (pendAgregadas[mesesParaAprovacao[0]] || 0)
+        : (cad.PENDENCIA ?? 0);
+      let runningStock = cad.ESTOQUE + pendMes1;
 
       for (let mi = 0; mi < mesesParaAprovacao.length; mi++) {
         const mes = mesesParaAprovacao[mi];
@@ -446,10 +473,11 @@ export default function Home() {
         const consumo = dd * lt;
 
         if (mi === 0) {
-          // Mês 1: fórmula LT original (apenas semanas flegadas)
+          // Mês 1: fórmula LT original com pendências relevantes
+          const pendRel = getPendenciaRelevante(proj.CHAVE, lt, cad.PENDENCIA ?? 0);
           monthData.set(mes, {
-            estoqueNaChegada: Math.max(0, Math.round(cad.ESTOQUE - consumo + qtdComprada + (cad.PENDENCIA ?? 0))),
-            estoqueSemPedido: Math.max(0, Math.round(cad.ESTOQUE - consumo + (cad.PENDENCIA ?? 0))),
+            estoqueNaChegada: Math.max(0, Math.round(cad.ESTOQUE - consumo + qtdComprada + pendRel)),
+            estoqueSemPedido: Math.max(0, Math.round(cad.ESTOQUE - consumo + pendRel)),
           });
         } else {
           // Mês 2+: usar estoque evolutivo (considera sell-out e entradas dos meses anteriores)
@@ -459,8 +487,11 @@ export default function Home() {
           });
         }
 
-        // Evoluir estoque para o próximo mês: subtrair sell-out total e adicionar entradas
-        runningStock = Math.max(0, runningStock - sellOutMes + qtdComprada);
+        // Evoluir estoque: subtrair sell-out, adicionar entradas + pendências do próximo mês
+        const pendProxMes = (mi + 1 < mesesParaAprovacao.length && pendAgregadas)
+          ? (pendAgregadas[mesesParaAprovacao[mi + 1]] || 0)
+          : 0;
+        runningStock = Math.max(0, runningStock - sellOutMes + qtdComprada + pendProxMes);
       }
 
       arrivalDataMap.set(proj.CHAVE, monthData);

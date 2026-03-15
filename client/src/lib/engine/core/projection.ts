@@ -1,4 +1,4 @@
-import { SKUCadastro, MesData } from '../types';
+import { SKUCadastro, MesData, PendenciasPorMes } from '../types';
 import { parseMesAno, diasNoMes } from '../utils/dates';
 
 /**
@@ -83,7 +83,8 @@ export function recalcularProjecaoSKU(
     sellOutPorMes: Record<string, number>,
     pedidosManuais: Record<string, number | null>,
     _pedidosOriginais: Record<string, number>,
-    dataReferencia?: string
+    dataReferencia?: string,
+    pendenciasPorMes?: PendenciasPorMes
 ): Record<string, MesData> {
     const lt = cadastro.LT || 0;
     const frequencia = cadastro.FREQUENCIA || 0;
@@ -91,10 +92,12 @@ export function recalcularProjecaoSKU(
     const impacto = cadastro.IMPACTO || 0;
     const preenchimento = cadastro.PREECHIMENTO_DEMANDA_LOJA || 0;
 
+    const hasPendenciasDistribuidas = pendenciasPorMes && Object.keys(pendenciasPorMes).length > 0;
+
     const estoqueInicial = (cadastro.ESTOQUE || 0)
         - impacto
         - preenchimento
-        + (cadastro.PENDENCIA || 0)
+        + (hasPendenciasDistribuidas ? 0 : (cadastro.PENDENCIA || 0))
         + (cadastro.NNA || 0);
 
     // Pré-calcula os objetivos de estoque para não processar no loop
@@ -121,6 +124,15 @@ export function recalcularProjecaoSKU(
     const pedidosFinais: Record<string, number> = {};
     const entradas: Record<string, number> = {};
     meses.forEach(mes => { entradas[mes] = 0; });
+
+    // Semear entradas com pendências distribuídas por mês de chegada
+    if (hasPendenciasDistribuidas) {
+        for (const [mes, qty] of Object.entries(pendenciasPorMes!)) {
+            if (entradas[mes] !== undefined) {
+                entradas[mes] += qty;
+            }
+        }
+    }
 
     const estProj: Record<string, number> = {};
     let estAnterior = estoqueInicial;
@@ -172,6 +184,15 @@ export function recalcularProjecaoSKU(
     // Aglomerado das entradas
     const entradasFinais: Record<string, number> = {};
     meses.forEach(mes => { entradasFinais[mes] = 0; });
+
+    // Semear entradas finais com pendências distribuídas
+    if (hasPendenciasDistribuidas) {
+        for (const [mes, qty] of Object.entries(pendenciasPorMes!)) {
+            if (entradasFinais[mes] !== undefined) {
+                entradasFinais[mes] += qty;
+            }
+        }
+    }
 
     meses.forEach((mes, i) => {
         if (pedidosFinais[mes] > 0) {
