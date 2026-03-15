@@ -132,8 +132,8 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
           )}
         </div>
 
-        {/* KPI Cards Grid - 7 cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+        {/* KPI Cards Grid - 2 rows of 4 cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
           {/* Card 1: Cobertura Fornecedor Hoje ➔ Chegada */}
           <div className="rounded-lg border p-3 bg-card border-border" title="Cobertura Total do Portfólio do Fornecedor (Hoje ➔ Chegada)">
