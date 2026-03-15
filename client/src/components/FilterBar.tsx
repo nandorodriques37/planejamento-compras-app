@@ -146,8 +146,8 @@ export default function FilterBar({
         >
           <option value="">Todos Status</option>
           <option value="ok">OK</option>
-          <option value="warning">Atenção</option>
-          <option value="critical">Crítico</option>
+          <option value="warning">Ponto de Pedido</option>
+          <option value="critical">Ruptura</option>
         </select>
 
         {/* Clear filters */}

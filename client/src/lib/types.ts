@@ -44,9 +44,9 @@ export interface PedidoKPIs {
   coberturaDataChegadaDiasGlobais: number | null;
   /** Contagem de SKUs saudáveis (global) */
   skusOkGlobais: number;
-  /** Contagem de SKUs em atenção (global) */
+  /** Contagem de SKUs em ponto de pedido (global) */
   skusAtencaoGlobais: number;
-  /** Contagem de SKUs críticos (global) */
+  /** Contagem de SKUs em ponto de ruptura (global) */
   skusCriticosGlobais: number;
 
   // Novos KPIs visão CEO
@@ -54,7 +54,7 @@ export interface PedidoKPIs {
   estoqueObjetivoUnidadesGlobais?: number;
   /** Estoque projetado na chegada em unidades (dos SKUs do pedido), considerando a compra */
   estoqueChegadaUnidadesGlobais?: number;
-  /** Contagem de SKUs que estão críticos NO DIA DE HOJE (estoque atual <= segurança) */
+  /** Contagem de SKUs em ruptura NO DIA DE HOJE (estoque atual <= segurança) */
   skusCriticosHojeGlobais?: number;
   /** Contagem de SKUs cujo estoque na chegada (SEM o pedido) já é >= ao Estoque Objetivo */
   skusCompradosSemNecessidadeGlobais?: number;

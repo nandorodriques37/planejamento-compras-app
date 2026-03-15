@@ -80,8 +80,12 @@ export default function Home() {
   // Contagem de SKUs críticos para badge do sidebar
   const skusCriticos = useMemo(() => {
     if (!dados) return 0;
-    return dadosFiltrados.filter(proj => getStatusSKU(proj.meses, dados.metadata.meses) === 'critical').length;
-  }, [dadosFiltrados, dados]);
+    return dadosFiltrados.filter(proj => {
+      const cad = cadastroMap.get(proj.CHAVE);
+      if (!cad) return false;
+      return getStatusSKU(proj.meses, dados.metadata.meses, cad) === 'critical';
+    }).length;
+  }, [dadosFiltrados, dados, cadastroMap]);
 
   const [coveragePanelOpen, setCoveragePanelOpen] = useState(false);
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
@@ -313,7 +317,7 @@ export default function Home() {
 
       // Saúde & Urgências
       if (quantidadeMesAtual > 0) {
-        const s = getStatusSKU(proj.meses, [mesAtual]);
+        const s = getStatusSKU(proj.meses, [mesAtual], cad);
         if (s === 'ok') skusOk++;
         else if (s === 'warning') skusAtencao++;
         else skusCriticos++;
@@ -455,7 +459,7 @@ export default function Home() {
         const quantidadeCompradaMes = item.entregas[mesTarget] || 0;
 
         // Saúde
-        const s = getStatusSKU(proj.meses, [mesTarget]);
+        const s = getStatusSKU(proj.meses, [mesTarget], cad);
         if (s === 'ok') okMes++;
         else if (s === 'warning') atencaoMes++;
         else criticosMes++;

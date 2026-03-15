@@ -48,13 +48,13 @@ function StatusBadge({ status }: { status: 'ok' | 'warning' | 'critical' }) {
   if (status === 'warning') {
     return (
       <span className="badge-warning inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap">
-        <AlertTriangle className="w-3 h-3" /> Atenção
+        <AlertTriangle className="w-3 h-3" /> Ponto de Pedido
       </span>
     );
   }
   return (
     <span className="badge-critical inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap">
-      <AlertCircle className="w-3 h-3" /> Crítico
+      <AlertCircle className="w-3 h-3" /> Ruptura
     </span>
   );
 }
@@ -421,8 +421,8 @@ export default function ProjectionTable({
 
       switch (sortField) {
         case 'status': {
-          valA = statusToNum(getStatusSKU(a.meses, allMeses));
-          valB = statusToNum(getStatusSKU(b.meses, allMeses));
+          valA = statusToNum(getStatusSKU(a.meses, allMeses, cadA));
+          valB = statusToNum(getStatusSKU(b.meses, allMeses, cadB));
           break;
         }
         case 'produto':
@@ -602,7 +602,7 @@ export default function ProjectionTable({
   const renderFixedRow = (proj: ProjecaoSKU, rowIdx: number) => {
     const cad = cadastroMap.get(proj.CHAVE);
     if (!cad) return null;
-    const status = getStatusSKU(proj.meses, allMeses);
+    const status = getStatusSKU(proj.meses, allMeses, cad);
     const isSelected = selectedSKU === proj.CHAVE;
     const globalIdx = startIdx + rowIdx;
     const isCritical = status === 'critical';
@@ -646,7 +646,8 @@ export default function ProjectionTable({
 
   const renderScrollableRow = (proj: ProjecaoSKU, rowIdx: number) => {
     const cad = cadastroMap.get(proj.CHAVE);
-    const fallbackObjDias = cad ? (cad.LT || 0) + (cad.FREQUENCIA || 0) + (cad.EST_SEGURANCA || 0) : 0;
+    if (!cad) return null;
+    const fallbackObjDias = (cad.LT || 0) + (cad.FREQUENCIA || 0) + (cad.EST_SEGURANCA || 0);
     const mes1Data = proj.meses[meses[0]];
     const demandaDiariaMes1 = (mes1Data?.SELL_OUT || 0) / 30;
     const estObjDias = demandaDiariaMes1 > 0
@@ -656,7 +657,7 @@ export default function ProjectionTable({
     const cobEPDias = cad && demandaDiariaMes1 > 0 ? Math.round(((cad.ESTOQUE || 0) + (cad.PENDENCIA || 0)) / demandaDiariaMes1) : (((cad?.ESTOQUE || 0) + (cad?.PENDENCIA || 0)) > 0 ? 999 : 0);
     const isSelected = selectedSKU === proj.CHAVE;
     const globalIdx = startIdx + rowIdx;
-    const status = getStatusSKU(proj.meses, allMeses);
+    const status = getStatusSKU(proj.meses, allMeses, cad);
     const isCritical = status === 'critical';
 
     return (
@@ -808,7 +809,7 @@ export default function ProjectionTable({
         {sortedProjecoes.slice(0, 30).map(proj => {
           const cad = cadastroMap.get(proj.CHAVE);
           if (!cad) return null;
-          const status = getStatusSKU(proj.meses, allMeses);
+          const status = getStatusSKU(proj.meses, allMeses, cad);
           const firstMesData = proj.meses[meses[0]];
           return (
             <div key={proj.CHAVE} className="bg-background border border-border rounded-lg p-3 space-y-2" onClick={() => onSKUClick?.(proj.CHAVE)}>

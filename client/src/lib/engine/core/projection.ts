@@ -204,9 +204,21 @@ export function recalcularProjecaoSKU(
 }
 
 /**
- * Determina o status de um SKU baseado na relação estoque/objetivo
+ * Determina o status de um SKU baseado nos indicadores de criticidade:
+ * - PONTO DE PEDIDO = DEMANDA_DIA × (LT + EST_SEGURANCA)
+ *   → 'warning' (Ponto de Pedido): produto precisa ser pedido, mas ainda não está em ruptura
+ * - ESTOQUE CRÍTICO = DEMANDA_DIA × (FREQUENCIA + LT)
+ *   → 'critical' (Ruptura): produto em ruptura ou prestes a entrar, urgência máxima
  */
-export function getStatusSKU(projecao: Record<string, MesData>, meses: string[]): 'ok' | 'warning' | 'critical' {
+export function getStatusSKU(
+    projecao: Record<string, MesData>,
+    meses: string[],
+    cadastro: { LT: number; FREQUENCIA: number; EST_SEGURANCA: number }
+): 'ok' | 'warning' | 'critical' {
+    const lt = cadastro.LT || 0;
+    const frequencia = cadastro.FREQUENCIA || 0;
+    const estSeguranca = cadastro.EST_SEGURANCA || 0;
+
     let hasCritical = false;
     let hasWarning = false;
 
@@ -215,9 +227,16 @@ export function getStatusSKU(projecao: Record<string, MesData>, meses: string[])
         const data = projecao[mes];
         if (!data) return;
 
-        if (data.ESTOQUE_PROJETADO < 0) {
+        const { ano, mes: mesNum } = parseMesAno(mes);
+        const dias = diasNoMes(ano, mesNum);
+        const demandaDia = data.SELL_OUT / dias;
+
+        const estoqueCritico = demandaDia * (frequencia + lt);
+        const pontoPedido = demandaDia * (lt + estSeguranca);
+
+        if (data.ESTOQUE_PROJETADO <= estoqueCritico) {
             hasCritical = true;
-        } else if (data.ESTOQUE_PROJETADO < data.ESTOQUE_OBJETIVO * 0.8) {
+        } else if (data.ESTOQUE_PROJETADO <= pontoPedido) {
             hasWarning = true;
         }
     });

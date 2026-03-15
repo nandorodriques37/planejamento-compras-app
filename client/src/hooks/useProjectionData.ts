@@ -147,7 +147,9 @@ export function useProjectionData() {
         if (!match) return false;
       }
       if (filters.status) {
-        const status = getStatusSKU(proj.meses, dados.metadata.meses);
+        const cadastro = cadastroMap.get(proj.CHAVE);
+        if (!cadastro) return false;
+        const status = getStatusSKU(proj.meses, dados.metadata.meses, cadastro);
         if (status !== filters.status) return false;
       }
       return true;

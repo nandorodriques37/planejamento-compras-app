@@ -42,7 +42,7 @@ async function getFilteredSKUs(filters: Filters) {
         }
 
         if (filters.status) {
-            const status = getStatusSKU(proj.meses, db.metadata.meses);
+            const status = getStatusSKU(proj.meses, db.metadata.meses, cad);
             if (status !== filters.status) return false;
         }
 
@@ -94,7 +94,7 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
             valorTotalPedidos += pedido * custo;
         });
 
-        const status = getStatusSKU(proj.meses, db.metadata.meses);
+        const status = getStatusSKU(proj.meses, db.metadata.meses, cad);
         if (status === 'ok') skusOk++;
         if (status === 'warning') skusWarning++;
         if (status === 'critical') skusCritical++;
@@ -160,7 +160,7 @@ export async function getCDSummaries(filters: Filters): Promise<CDSummary[]> {
         cdData.skuCount++;
         cdData.totalEstoque += cad.ESTOQUE;
 
-        const status = getStatusSKU(proj.meses, meses);
+        const status = getStatusSKU(proj.meses, meses, cad);
         if (status === 'ok') cdData.skusOk++;
         if (status === 'warning') cdData.skusWarning++;
         if (status === 'critical') cdData.skusCritical++;
@@ -220,7 +220,7 @@ export async function getSkusPaginated(filters: Filters, req: PaginatedRequest):
 
     const augmentedList: AugmentedSKU[] = filtered.map(proj => {
         const cad = dbCadastroMap.get(proj.CHAVE)!;
-        const status = getStatusSKU(proj.meses, db.metadata.meses);
+        const status = getStatusSKU(proj.meses, db.metadata.meses, cad);
 
         const sellOutMes1 = proj.meses[meses[0]]?.SELL_OUT ?? 0;
         const demandaDiaria = sellOutMes1 / 30;
