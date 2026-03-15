@@ -10,6 +10,8 @@
 import { AlertTriangle, PackageX, TrendingDown, DollarSign } from 'lucide-react';
 import AppSidebar from '../components/AppSidebar';
 import SalesLossChart from '../components/dashboard/SalesLossChart';
+import SKUStatusPieChart from '../components/dashboard/SKUStatusPieChart';
+import CoverageDistributionChart from '../components/dashboard/CoverageDistributionChart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { formatCurrency, formatNumber } from '../lib/calculationEngine';
@@ -54,6 +56,8 @@ export default function Dashboard() {
     totalSkusRuptura,
     totalSkusCriticos,
     diasNoMesAtual,
+    skuStatusDistribution,
+    coverageDistribution,
     loading,
   } = useDashboardData();
 
@@ -145,7 +149,34 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Chart */}
+        {/* Status & Coverage Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-card border border-border rounded-lg p-5">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold text-foreground">
+                Distribuição de SKUs por Status
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Classificação atual: OK, Ponto de Pedido e Ruptura/Crítico
+              </p>
+            </div>
+            <SKUStatusPieChart data={skuStatusDistribution} />
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-5">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold text-foreground">
+                Distribuição por Cobertura de Estoque
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Dias de cobertura com base no estoque atual e demanda projetada
+              </p>
+            </div>
+            <CoverageDistributionChart data={coverageDistribution} />
+          </div>
+        </div>
+
+        {/* Sales Loss Chart */}
         <div className="bg-card border border-border rounded-lg p-5">
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-foreground">
