@@ -23,7 +23,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/', soon: true },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', soon: false },
   { icon: TrendingUp, label: 'Previsão de Demanda', href: '/demanda', soon: true },
   { icon: Package, label: 'Planej. de Estoque', href: '/estoque', soon: false, badgeKey: 'estoque' as const },
   { icon: ShoppingCart, label: 'Planej. de Compras', href: '/compras', soon: false },
@@ -47,6 +47,7 @@ export default function AppSidebar({ skusCriticos, pedidosPendentes }: AppSideba
   // Determine active item based on current route
   const getIsActive = (href: string) => {
     if (href === '/compras') return location === '/' || location === '/compras';
+    if (href === '/dashboard') return location === '/dashboard';
     return location === href;
   };
 
