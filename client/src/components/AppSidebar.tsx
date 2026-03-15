@@ -4,10 +4,8 @@
  */
 
 import {
-  BarChart3,
   ShoppingCart,
   Package,
-  TrendingUp,
   LayoutDashboard,
   ClipboardCheck,
   Warehouse,
@@ -23,13 +21,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', soon: false },
-  { icon: TrendingUp, label: 'Previsão de Demanda', href: '/demanda', soon: true },
-  { icon: Package, label: 'Planej. de Estoque', href: '/estoque', soon: false, badgeKey: 'estoque' as const },
-  { icon: ShoppingCart, label: 'Planej. de Compras', href: '/compras', soon: false },
-  { icon: ClipboardCheck, label: 'Aprovação de Pedidos', href: '/aprovacao', soon: false, badgeKey: 'aprovacao' as const },
-  { icon: Warehouse, label: 'Capacidade Armazéns', href: '/armazens', soon: false },
-  { icon: BarChart3, label: 'KPIs & Diagnósticos', href: '/kpis', soon: true },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', badgeKey: undefined as const },
+  { icon: Package, label: 'Planej. de Estoque', href: '/estoque', badgeKey: 'estoque' as const },
+  { icon: ShoppingCart, label: 'Planej. de Compras', href: '/compras', badgeKey: undefined as const },
+  { icon: ClipboardCheck, label: 'Aprovação de Pedidos', href: '/aprovacao', badgeKey: 'aprovacao' as const },
+  { icon: Warehouse, label: 'Capacidade Armazéns', href: '/armazens', badgeKey: undefined as const },
 ];
 
 interface AppSidebarProps {
@@ -55,30 +51,6 @@ export default function AppSidebar({ skusCriticos, pedidosPendentes }: AppSideba
     <nav className={`flex-1 py-4 px-2 space-y-1 ${isMobileNav ? 'flex-none' : ''}`}>
       {navItems.map((item) => {
         const isActive = getIsActive(item.href);
-
-        if (item.soon) {
-          return (
-            <button
-              key={item.label}
-              className={`
-                w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium
-                transition-all duration-150
-                text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground
-              `}
-              title={!isMobileNav && collapsed ? item.label : undefined}
-            >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
-              {(isMobileNav || !collapsed) && (
-                <span className="whitespace-nowrap">{item.label}</span>
-              )}
-              {(isMobileNav || !collapsed) && (
-                <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-sidebar-border text-sidebar-foreground/50">
-                  Em breve
-                </span>
-              )}
-            </button>
-          );
-        }
 
         return (
           <Link
