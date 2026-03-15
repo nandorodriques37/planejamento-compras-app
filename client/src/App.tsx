@@ -12,12 +12,20 @@ const Home = lazy(() => import("./pages/Home"));
 const EstoquePlanning = lazy(() => import("./pages/EstoquePlanning"));
 const AprovacaoPedidos = lazy(() => import("./pages/AprovacaoPedidos"));
 const CapacidadeArmazens = lazy(() => import("./pages/CapacidadeArmazens"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/compras" component={Home} />
+      <Route path="/dashboard">
+        {() => (
+          <Suspense fallback={<LoadingSpinner />}>
+            <Dashboard />
+          </Suspense>
+        )}
+      </Route>
       <Route path="/estoque">
         {() => (
           <Suspense fallback={<LoadingSpinner />}>
