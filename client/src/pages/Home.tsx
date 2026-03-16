@@ -214,11 +214,11 @@ export default function Home() {
       const entregas: Record<string, number> = {};
       let totalQuantidade = 0;
 
-      // Somar semanas selecionadas, agrupando por mesOrigem (mês de chegada via LT)
+      // Somar semanas selecionadas, todas pertencem ao mês de planejamento (mesAtual)
       for (const i of selectedWeeks) {
         const dist = distribuicao[i];
         if (!dist || dist.valor === 0) continue;
-        const targetMonth = dist.mesOrigem;
+        const targetMonth = mesAtual;
         entregas[targetMonth] = (entregas[targetMonth] ?? 0) + dist.valor;
       }
       totalQuantidade = Object.values(entregas).reduce((a, b) => a + b, 0);
