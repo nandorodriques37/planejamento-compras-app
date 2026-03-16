@@ -1,4 +1,4 @@
-import type { PaginatedRequest, PaginatedResponse, Filters, HomeKPIs, CDSummary, AugmentedSKU } from './types';
+import type { PaginatedRequest, PaginatedResponse, Filters, HomeKPIs, CDSummary, AugmentedSKU, CicloEstoqueData, MensalCicloItem, RankItem } from './types';
 import type { DadosCompletos } from '../engine/types';
 import { obterProjecaoInicial } from '../dataAdapter';
 import { getStatusSKU, getShelfLifeRiskStatus, formatMes } from '../calculationEngine';
@@ -308,5 +308,163 @@ export async function getSkusPaginated(filters: Filters, req: PaginatedRequest):
         totalItems: augmentedList.length,
         totalPages: Math.ceil(augmentedList.length / req.pageSize),
         currentPage: req.page
+    };
+}
+
+/**
+ * API ENDPOINT: GET /api/v1/ciclo-estoque
+ * Simulates a complex endpoint that calculates PME Loja, PME CD, and PMP Projetado over time,
+ * as well as generating financial-based rankings.
+ */
+export async function getCicloEstoqueData(filters: Filters): Promise<CicloEstoqueData> {
+    await delay(500);
+    const db = await getDB();
+    const filtered = await getFilteredSKUs(filters);
+    const mesesParaConsiderar = filters.mesesVisiveis && filters.mesesVisiveis.length > 0 ? filters.mesesVisiveis : db.metadata.meses;
+
+    const fornecedoresUnicos = new Set<string>();
+
+    // Caches and helpers
+    let somaPonderadaPmeLojaGlobal = 0;
+    let somaVolumesPmeGlobal = 0;
+    const firstMonth = db.metadata.meses[0];
+
+    const fornecedorR$: Record<string, number> = {};
+    const produtoR$: Record<string, number> = {};
+
+    // 1. Calcular PME Loja Global (é constante pro horizonte inteiro) 
+    // e inicializar rankings baseados na média do estoque R$ de todos os meses de projeção
+    filtered.forEach(proj => {
+        const cad = dbCadastroMap.get(proj.CHAVE);
+        if (!cad) return;
+
+        fornecedoresUnicos.add(cad['fornecedor comercial']);
+
+        // Apenas para PME Loja (usamos metricas iniciais da HOME)
+        const sellOutMes1 = proj.meses[firstMonth]?.SELL_OUT ?? 0;
+        if (sellOutMes1 > 0) {
+           const dbFull = db as any; // Using dynamic property as it might be stored
+           // For PME Loja we'd normally need estoqueLojaMap. For now, since mockDataLake does not 
+           // have direct access to local estoques de loja, we'll use a mocked percentage or cad.EST_LOJA if available.
+           // To keep it simple, we simulate PME Loja as roughly 30% of total PME or read if pre-stored.
+           const estoqueLoja = (cad as any).ESTOQUE_LOJA ?? (cad.ESTOQUE * 0.3); 
+           const demandaDiaria = sellOutMes1 / 30;
+           if (demandaDiaria > 0) {
+              somaPonderadaPmeLojaGlobal += (estoqueLoja / demandaDiaria) * sellOutMes1;
+           }
+           somaVolumesPmeGlobal += sellOutMes1;
+        }
+
+        // 2. Rankings de Estoque Médio Projetado (R$)
+        let somaEstoqueR$ = 0;
+        let countMeses = 0;
+        mesesParaConsiderar.forEach(mes => {
+            const mData = proj.meses[mes];
+            if (mData) {
+                somaEstoqueR$ += Math.max(0, mData.ESTOQUE_PROJETADO) * (cad.CUSTO_LIQUIDO || 0);
+                countMeses++;
+            }
+        });
+        const medioR$ = countMeses > 0 ? somaEstoqueR$ / countMeses : 0;
+
+        const fornecedor = cad['fornecedor comercial'];
+        fornecedorR$[fornecedor] = (fornecedorR$[fornecedor] || 0) + medioR$;
+        
+        const prodName = cad['nome produto'];
+        produtoR$[prodName] = (produtoR$[prodName] || 0) + medioR$;
+    });
+
+    const pmeLojaFixo = somaVolumesPmeGlobal > 0 ? Math.round(somaPonderadaPmeLojaGlobal / somaVolumesPmeGlobal) : 0;
+
+    // 3. Montar a série mensal de PME CD e PMP
+    const evolucaoMensal: MensalCicloItem[] = [];
+
+    // Primeiro mapeamos as faturas originais ativas
+    let faturasAberto = 0;
+    if (db.contas_a_pagar) {
+        db.contas_a_pagar.forEach(conta => {
+            if (fornecedoresUnicos.has(conta.nome_fornecedor)) {
+                faturasAberto += conta.valor_nota;
+            }
+        });
+    }
+
+    let accumulatedFaturas = faturasAberto;
+
+    mesesParaConsiderar.forEach((mes, index) => {
+        let somaPonderadaPmeCd = 0;
+        let somaVolumesPmeCd = 0;
+        let sellOutDiarioRSMes = 0;
+        let valorComprasMes = 0;
+
+        filtered.forEach(proj => {
+            const cad = dbCadastroMap.get(proj.CHAVE);
+            if (!cad) return;
+
+            const d = proj.meses[mes];
+            if (!d) return;
+
+            const diasRealMes = 30; // Pode-se extrair dias reais, mas para KPI global 30 serve
+            const sellOutMes = d.SELL_OUT;
+            const estoqueCdFimMes = Math.max(0, d.ESTOQUE_PROJETADO);
+            const entradaPlanejada = d.ENTRADA; // Volume que entra neste mês
+
+            if (sellOutMes > 0) {
+                const demandaDiaria = sellOutMes / diasRealMes;
+                somaPonderadaPmeCd += (estoqueCdFimMes / demandaDiaria) * sellOutMes;
+                somaVolumesPmeCd += sellOutMes;
+                
+                sellOutDiarioRSMes += demandaDiaria * (cad.CUSTO_LIQUIDO || 0);
+            }
+
+            valorComprasMes += entradaPlanejada * (cad.CUSTO_LIQUIDO || 0);
+        });
+
+        // Simulador muito simplificado do Passivo e Pagamentos ao longo do tempo:
+        // Supomos que a divida cai em X% de pagamentos efetuados e aumenta com novas compras
+        // PMP(t) = (Passivo Anterior - Pagamentos + Compras do Mês) / Demanda Diária
+        // Já que é um simulador frontend e não temos cronogramas de faturas futuros:
+        
+        // Simulação: Parte das faturas em aberto é paga no mês e o novo pedido entra no passivo
+        // A regra mais prática para não explodir infinitamente o PMP é usar a mesma regra da tela Home para simular o passivo
+        // Se as compras forem equivalentes a demanda, o pmp tende ao prazo médio geral (ex 30d ~ 60d)
+        // Se as faturas somam X e eu vendo D, PMP = X/D.
+        
+        let passivoDoMes = accumulatedFaturas;
+        if (index > 0) {
+            // Se estamos projetando mês a frente, abstração simples: 
+            // O montante do passivo tende ao montante recém comprado + uma sobra. 
+            // Aqui assumimos que metade do passivo anterior foi pago e novas entradas são assumidas a 60 dias (2 meses).
+            accumulatedFaturas = (accumulatedFaturas * 0.5) + valorComprasMes;
+            passivoDoMes = accumulatedFaturas;
+        }
+
+        const pmeCdMes = somaVolumesPmeCd > 0 ? Math.round(somaPonderadaPmeCd / somaVolumesPmeCd) : 0;
+        const pmpMes = sellOutDiarioRSMes > 0 ? Math.round(passivoDoMes / sellOutDiarioRSMes) : 0;
+
+        evolucaoMensal.push({
+            mes,
+            pmeLoja: pmeLojaFixo,
+            pmeCd: pmeCdMes,
+            pmp: pmpMes,
+            pmeMenosPmp: (pmeLojaFixo + pmeCdMes) - pmpMes
+        });
+    });
+
+    // 4. Rankings
+    const rankingFornecedores = Object.entries(fornecedorR$)
+        .map(([nome, valorFinanceiro]) => ({ id: nome, nome, valorFinanceiro }))
+        .sort((a, b) => b.valorFinanceiro - a.valorFinanceiro)
+        .slice(0, 20);
+
+    const rankingProdutos = Object.entries(produtoR$)
+        .map(([nome, valorFinanceiro]) => ({ id: nome, nome, valorFinanceiro }))
+        .sort((a, b) => b.valorFinanceiro - a.valorFinanceiro)
+        .slice(0, 20);
+
+    return {
+        evolucaoMensal,
+        rankingFornecedores,
+        rankingProdutos
     };
 }

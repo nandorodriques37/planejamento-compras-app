@@ -74,3 +74,23 @@ export interface AugmentedSKU {
     lt: number;
     minEstoqueProjetado: number;
 }
+
+export interface RankItem {
+    id: string;
+    nome: string;
+    valorFinanceiro: number;
+}
+
+export interface MensalCicloItem {
+    mes: string;
+    pmeLoja: number;
+    pmeCd: number;
+    pmp: number;
+    pmeMenosPmp: number;
+}
+
+export interface CicloEstoqueData {
+    evolucaoMensal: MensalCicloItem[];
+    rankingFornecedores: RankItem[];
+    rankingProdutos: RankItem[];
+}

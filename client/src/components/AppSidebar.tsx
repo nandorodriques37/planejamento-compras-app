@@ -13,7 +13,8 @@ import {
   ChevronRight,
   Moon,
   Sun,
-  Menu
+  Menu,
+  Activity
 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, Link } from 'wouter';
@@ -21,11 +22,12 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', badgeKey: undefined as const },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', badgeKey: undefined },
   { icon: Package, label: 'Planej. de Estoque', href: '/estoque', badgeKey: 'estoque' as const },
-  { icon: ShoppingCart, label: 'Planej. de Compras', href: '/compras', badgeKey: undefined as const },
+  { icon: ShoppingCart, label: 'Planej. de Compras', href: '/compras', badgeKey: undefined },
   { icon: ClipboardCheck, label: 'Aprovação de Pedidos', href: '/aprovacao', badgeKey: 'aprovacao' as const },
-  { icon: Warehouse, label: 'Capacidade Armazéns', href: '/armazens', badgeKey: undefined as const },
+  { icon: Activity, label: 'Projeção Ciclo de Estoque', href: '/ciclo-estoque', badgeKey: undefined },
+  { icon: Warehouse, label: 'Capacidade Armazéns', href: '/armazens', badgeKey: undefined },
 ];
 
 interface AppSidebarProps {

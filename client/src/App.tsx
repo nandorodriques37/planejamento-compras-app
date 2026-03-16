@@ -13,6 +13,7 @@ const EstoquePlanning = lazy(() => import("./pages/EstoquePlanning"));
 const AprovacaoPedidos = lazy(() => import("./pages/AprovacaoPedidos"));
 const CapacidadeArmazens = lazy(() => import("./pages/CapacidadeArmazens"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CicloEstoque = lazy(() => import("./pages/CicloEstoque"));
 
 function Router() {
   return (
@@ -44,6 +45,13 @@ function Router() {
         {() => (
           <Suspense fallback={<LoadingSpinner />}>
             <CapacidadeArmazens />
+          </Suspense>
+        )}
+      </Route>
+      <Route path="/ciclo-estoque">
+        {() => (
+          <Suspense fallback={<LoadingSpinner />}>
+            <CicloEstoque />
           </Suspense>
         )}
       </Route>
