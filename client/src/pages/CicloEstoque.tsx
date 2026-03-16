@@ -84,6 +84,30 @@ export default function CicloEstoque() {
     );
   }
 
+// Custom tick to force single line without svg word-wrap
+const CustomYAxisTick = (props: any) => {
+  const { x, y, payload, maxChars = 25 } = props;
+  const text = payload.value;
+  const truncated = text.length > maxChars ? text.substring(0, maxChars) + '...' : text;
+  
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={0}
+        y={0}
+        dy={4}
+        textAnchor="end"
+        fill="#666"
+        fontSize={10}
+        style={{ whiteSpace: 'nowrap' }}
+      >
+        <title>{text}</title>
+        {truncated}
+      </text>
+    </g>
+  );
+};
+
   return (
     <div className="flex bg-background h-screen font-sans text-foreground overflow-hidden">
       <AppSidebar />
@@ -185,7 +209,7 @@ export default function CicloEstoque() {
                       <BarChart 
                         layout="vertical" 
                         data={data.rankingFornecedores}
-                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                         <XAxis type="number" tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} />
@@ -193,7 +217,7 @@ export default function CicloEstoque() {
                           type="category" 
                           dataKey="nome" 
                           width={150} 
-                          tick={{ fontSize: 11 }} 
+                          tick={<CustomYAxisTick maxChars={22} />} 
                         />
                         <Tooltip 
                           formatter={(value: number) => [formatCurrency(value), "R$ Médio"]}
@@ -218,16 +242,15 @@ export default function CicloEstoque() {
                       <BarChart 
                         layout="vertical" 
                         data={data.rankingProdutos}
-                        margin={{ top: 5, right: 30, left: 180, bottom: 5 }}
+                        margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                         <XAxis type="number" tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} />
                         <YAxis 
                           type="category" 
                           dataKey="nome" 
-                          width={250} 
-                          tick={{ fontSize: 10 }}
-                          tickFormatter={(val) => val.length > 50 ? val.substring(0, 50) + '...' : val}
+                          width={200} 
+                          tick={<CustomYAxisTick maxChars={35} />}
                         />
                         <Tooltip 
                           formatter={(value: number) => [formatCurrency(value), "R$ Médio"]}
