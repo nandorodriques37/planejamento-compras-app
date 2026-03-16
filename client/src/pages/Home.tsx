@@ -400,11 +400,8 @@ export default function Home() {
       const lt = cad.LT ?? 0;
       const consumoAteLT = demandaDiaria * lt;
       const pendRelevantePed = getPendenciaRelevante(item.chave, lt, cad.PENDENCIA ?? 0);
-      // Estoque inicial alinhado com o engine: subtrai IMPACTO e PREENCHIMENTO, soma NNA
-      const estoqueInicialEngine = (cad.ESTOQUE || 0)
-        - (cad.IMPACTO || 0)
-        - (cad.PREECHIMENTO_DEMANDA_LOJA || 0)
-        + (cad.NNA || 0);
+      // Estoque inicial (Estoque Atual)
+      const estoqueInicialEngine = cad.ESTOQUE || 0;
       const estoqueNaChegada = Math.max(0, Math.round(estoqueInicialEngine - consumoAteLT + quantidadeMesAtual + pendRelevantePed));
       estoqueChegadaUnidadesGlobais += estoqueNaChegada;
 
@@ -491,12 +488,8 @@ export default function Home() {
       const pendMes1 = pendAgregadas
         ? (pendAgregadas[mesesParaAprovacao[0]] || 0)
         : (cad.PENDENCIA ?? 0);
-      // Estoque inicial alinhado com o engine (subtrai IMPACTO/PREENCHIMENTO, soma NNA)
-      const estoqueInicialEvol = (cad.ESTOQUE || 0)
-        - (cad.IMPACTO || 0)
-        - (cad.PREECHIMENTO_DEMANDA_LOJA || 0)
-        + (cad.NNA || 0);
-      let runningStock = estoqueInicialEvol + pendMes1;
+      // Estoque inicial (Estoque Atual)
+      const estoqueInicialEvol = cad.ESTOQUE || 0;
 
       for (let mi = 0; mi < mesesParaAprovacao.length; mi++) {
         const mes = mesesParaAprovacao[mi];
@@ -515,18 +508,16 @@ export default function Home() {
             estoqueSemPedido: Math.max(0, Math.round(estoqueInicialEvol - consumo + pendRel)),
           });
         } else {
-          // Mês 2+: usar estoque evolutivo (considera sell-out e entradas dos meses anteriores)
+          // Mês 2+: estoque final do motor de projeção para o mês anterior + pedido - sell out + pendências do mês
+          const mesAnterior = mesesParaAprovacao[mi - 1];
+          const estoqueFinalMesAnterior = proj.meses[mesAnterior]?.ESTOQUE_PROJETADO ?? 0;
+          const pendenciasMes = pendAgregadas ? (pendAgregadas[mes] || 0) : 0;
+          
           monthData.set(mes, {
-            estoqueNaChegada: Math.max(0, Math.round(runningStock - consumo + qtdComprada)),
-            estoqueSemPedido: Math.max(0, Math.round(runningStock - consumo)),
+            estoqueNaChegada: Math.max(0, Math.round(estoqueFinalMesAnterior + qtdComprada - sellOutMes + pendenciasMes)),
+            estoqueSemPedido: Math.max(0, Math.round(estoqueFinalMesAnterior - sellOutMes + pendenciasMes)),
           });
         }
-
-        // Evoluir estoque: subtrair sell-out, adicionar entradas + pendências do próximo mês
-        const pendProxMes = (mi + 1 < mesesParaAprovacao.length && pendAgregadas)
-          ? (pendAgregadas[mesesParaAprovacao[mi + 1]] || 0)
-          : 0;
-        runningStock = Math.max(0, runningStock - sellOutMes + qtdComprada + pendProxMes);
       }
 
       arrivalDataMap.set(proj.CHAVE, monthData);

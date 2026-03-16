@@ -599,24 +599,7 @@ export default function EstoquePlanning() {
   // Use full horizon (all months)
   const meses = dados?.metadata.meses ?? [];
 
-  const [criticalSkus, setCriticalSkus] = useState<AugmentedSKU[]>([]);
-  const [criticalSkusLoading, setCriticalSkusLoading] = useState(true);
 
-  // Load Critical SKUs global list
-  useEffect(() => {
-    let active = true;
-    setCriticalSkusLoading(true);
-    getSkusPaginated(
-      { ...filters, status: 'critical', cd: cdFilter || undefined, fornecedor: fornecedorFilter || undefined },
-      { page: 1, pageSize: 50 }
-    ).then(res => {
-      if (active) {
-        setCriticalSkus(res.data);
-        setCriticalSkusLoading(false);
-      }
-    });
-    return () => { active = false; };
-  }, [filters, cdFilter, fornecedorFilter]);
 
   // ============================================================================
   // Compute aggregated data
@@ -1023,92 +1006,7 @@ export default function EstoquePlanning() {
             </div>
           </div>
 
-          {/* Critical SKUs Table */}
-          {aggregated.skusCritical > 0 && (
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              <div className="px-5 py-4 border-b border-border bg-red-50/50 dark:bg-red-950/20">
-                <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-destructive" />
-                  SKUs em Ponto de Ruptura
-                </h2>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Itens em ruptura ou prestes a entrar, urgência máxima
-                </p>
-              </div>
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-[10px] text-muted-foreground bg-muted/50">
-                      <th className="text-left px-4 py-2.5 font-medium">Produto</th>
-                      <th className="text-left px-4 py-2.5 font-medium">Fornecedor</th>
-                      <th className="text-center px-4 py-2.5 font-medium">CD</th>
-                      <th className="text-right px-4 py-2.5 font-medium">Estoque Atual</th>
-                      <th className="text-right px-4 py-2.5 font-medium">Sell Out/Mês</th>
-                      <th className="text-right px-4 py-2.5 font-medium">Cobertura</th>
-                      <th className="text-right px-4 py-2.5 font-medium">LT</th>
-                      <th className="text-right px-4 py-2.5 font-medium">Mín. Projetado</th>
-                      <th className="text-center px-4 py-2.5 font-medium">Ação</th>
-                    </tr>
-                  </thead>
-                  {criticalSkusLoading ? (
-                    <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-xs text-muted-foreground animate-pulse">
-                        Carregando itens críticos...
-                      </td>
-                    </tr>
-                  ) : (
-                    criticalSkus.map((sku) => (
-                      <tr
-                        key={sku.chave}
-                        className="border-t border-border/50 hover:bg-red-50/30 dark:hover:bg-red-950/20 transition-colors cursor-pointer"
-                        onClick={() => setSelectedSKU(sku.chave)}
-                      >
-                        <td className="px-4 py-2.5">
-                          <p className="font-medium text-foreground">{sku.nome}</p>
-                          <p className="text-[9px] text-muted-foreground">
-                            {sku.chave}
-                          </p>
-                        </td>
-                        <td className="px-4 py-2.5 text-muted-foreground">
-                          {sku.fornecedor}
-                        </td>
-                        <td className="text-center px-4 py-2.5 font-medium">
-                          {sku.cd}
-                        </td>
-                        <td className="text-right px-4 py-2.5 font-mono tabular-nums font-semibold">
-                          {formatNumber(sku.estoqueAtual)}
-                        </td>
-                        <td className="text-right px-4 py-2.5 font-mono tabular-nums">
-                          {formatNumber(sku.sellOutMes1)}
-                        </td>
-                        <td className="text-right px-4 py-2.5 font-mono tabular-nums">
-                          {sku.coberturaDias}d
-                        </td>
-                        <td className="text-right px-4 py-2.5 font-mono tabular-nums">
-                          {sku.lt}d
-                        </td>
-                        <td className="text-right px-4 py-2.5 font-mono tabular-nums text-destructive font-bold">
-                          {formatNumber(sku.minEstoqueProjetado)}
-                        </td>
-                        <td className="text-center px-4 py-2.5">
-                          <button
-                            className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedSKU(sku.chave);
-                            }}
-                          >
-                            <Eye className="w-3 h-3" />
-                            Detalhar
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </table>
-              </div>
-            </div>
-          )}
+
         </div>
       </main>
 
