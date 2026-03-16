@@ -123,20 +123,22 @@ export function useProjectionData() {
         const lt = cad?.LT ?? 0;
 
         // Para cada mês de entrega, gerar uma pendência
-        Object.entries(item.entregas).forEach(([_mes, qtd]) => {
-          if (qtd <= 0) return;
-          // Data de chegada: hoje + LT
-          const chegada = new Date(hoje);
-          chegada.setDate(chegada.getDate() + lt);
-          const dataStr = `${chegada.getFullYear()}-${String(chegada.getMonth() + 1).padStart(2, '0')}-${String(chegada.getDate()).padStart(2, '0')}`;
-
-          sinteticos.push({
-            chave: item.chave,
-            numero_pedido: `SIM-${pedido.id}`,
-            quantidade: qtd,
-            data_chegada_prevista: dataStr,
+        if (item.entregas) {
+          Object.entries(item.entregas).forEach(([_mes, qtd]) => {
+            if (qtd <= 0) return;
+            // Data de chegada: hoje + LT
+            const chegada = new Date(hoje);
+            chegada.setDate(chegada.getDate() + lt);
+            const dataStr = `${chegada.getFullYear()}-${String(chegada.getMonth() + 1).padStart(2, '0')}-${String(chegada.getDate()).padStart(2, '0')}`;
+  
+            sinteticos.push({
+              chave: item.chave,
+              numero_pedido: `SIM-${pedido.id}`,
+              quantidade: qtd,
+              data_chegada_prevista: dataStr,
+            });
           });
-        });
+        }
       });
     });
 
