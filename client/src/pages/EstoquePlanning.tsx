@@ -482,7 +482,7 @@ function SKUDetailPanel({
 
 import { useHomeKPIs } from '../hooks/useHomeKPIs';
 import { useCDSummaries } from '../hooks/useCDSummaries';
-import { getSkusPaginated } from '../lib/api/mockDataLake';
+import { getSkusPaginated } from '../lib/api';
 import type { AugmentedSKU } from '../lib/api/types';
 
 // ============================================================================

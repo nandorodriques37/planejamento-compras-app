@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWarehouseCapacity } from '@/hooks/useWarehouseCapacity';
-import { obterProjecaoInicial } from '@/lib/dataAdapter';
+import { getFullDatabase } from '@/lib/api';
 import type { SKUCadastro } from '@/lib/engine/types';
 import WarehouseGroupCard from '@/components/warehouse/WarehouseGroupCard';
 
@@ -32,7 +32,7 @@ export default function CapacidadeArmazens() {
 
   // Carregar dados do cadastro para extrair CDs e categorias
   useEffect(() => {
-    obterProjecaoInicial()
+    getFullDatabase()
       .then(data => setCadastro(data.cadastro))
       .catch(err => console.error('Erro ao carregar cadastro:', err))
       .finally(() => setLoading(false));

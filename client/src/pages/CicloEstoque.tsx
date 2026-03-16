@@ -1,10 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import AppSidebar from '../components/AppSidebar';
 import FilterBar from '../components/FilterBar';
-import { getCicloEstoqueData } from '../lib/api/mockDataLake';
-import type { CicloEstoqueData, Filters } from '../lib/api/types';
-import { obterProjecaoInicial } from '../lib/dataAdapter';
-import type { DadosCompletos } from '../lib/engine/types';
+import { getCicloEstoqueData, getMetadata, getFilterOptions } from '../lib/api';
+import type { CicloEstoqueData, Filters, MetadataResponse, FilterOptionsResponse } from '../lib/api/types';
 import { formatCurrency } from '../lib/calculationEngine';
 import {
   ComposedChart,
@@ -22,7 +20,8 @@ import {
 export default function CicloEstoque() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<CicloEstoqueData | null>(null);
-  const [dadosBase, setDadosBase] = useState<DadosCompletos | null>(null);
+  const [metadata, setMetadata] = useState<MetadataResponse | null>(null);
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse>({ fornecedores: [], categorias: [], categoriasNivel4: [], cds: [] });
   const [horizonte, setHorizonte] = useState(13);
   const [filters, setFilters] = useState<Filters>({
     fornecedor: '',
@@ -34,25 +33,29 @@ export default function CicloEstoque() {
   });
 
   useEffect(() => {
-    const carregarBase = async () => {
+    const loadBaseData = async () => {
       try {
-        const base = await obterProjecaoInicial();
-        setDadosBase(base);
+        const [meta, options] = await Promise.all([
+          getMetadata(),
+          getFilterOptions()
+        ]);
+        setMetadata(meta);
+        setFilterOptions(options);
       } catch (err) {
         console.error(err);
       }
     };
-    carregarBase();
+    loadBaseData();
   }, []);
 
   const mesesVisiveis = useMemo(() => {
-    if (!dadosBase) return [];
-    return dadosBase.metadata.meses.slice(0, horizonte);
-  }, [dadosBase, horizonte]);
+    if (!metadata) return [];
+    return metadata.meses.slice(0, horizonte);
+  }, [metadata, horizonte]);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!dadosBase) return;
+      if (!metadata) return;
       setLoading(true);
       try {
         const result = await getCicloEstoqueData({ ...filters, mesesVisiveis });
@@ -65,18 +68,9 @@ export default function CicloEstoque() {
     };
 
     fetchData();
-  }, [filters, mesesVisiveis, dadosBase]);
+  }, [filters, mesesVisiveis, metadata]);
 
-  const filterOptions = useMemo(() => {
-    if (!dadosBase) return { fornecedores: [], categorias: [], categoriasNivel4: [], cds: [] };
-    const fornecedores = Array.from(new Set(dadosBase.cadastro.map(c => c['fornecedor comercial']))).sort();
-    const categorias = Array.from(new Set(dadosBase.cadastro.map(c => c['nome nível 3']))).sort();
-    const categoriasNivel4 = Array.from(new Set(dadosBase.cadastro.map(c => c['nome nível 4']))).sort();
-    const cds = Array.from(new Set(dadosBase.cadastro.map(c => String(c.codigo_deposito_pd)))).sort((a, b) => Number(a) - Number(b));
-    return { fornecedores, categorias, categoriasNivel4, cds };
-  }, [dadosBase]);
-
-  if (!dadosBase) {
+  if (!metadata) {
     return (
       <div className="flex bg-background h-screen font-sans text-foreground items-center justify-center">
         <p className="text-muted-foreground animate-pulse">Carregando métricas base...</p>
@@ -132,8 +126,8 @@ const CustomYAxisTick = (props: any) => {
             filterOptions={filterOptions}
             horizonte={horizonte}
             onHorizonteChange={setHorizonte}
-            totalSKUs={dadosBase?.projecao.length || 0}
-            totalFiltrados={dadosBase?.projecao.length || 0} // Simplify indicator
+            totalSKUs={metadata?.total_skus || 0}
+            totalFiltrados={metadata?.total_skus || 0} // Simplify indicator
           />
 
           {loading ? (

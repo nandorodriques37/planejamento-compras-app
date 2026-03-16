@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getCDSummaries } from '../lib/api/mockDataLake';
+import { getCDSummaries } from '../lib/api';
 import type { CDSummary, Filters } from '../lib/api/types';
 
 export function useCDSummaries(filters: Filters) {

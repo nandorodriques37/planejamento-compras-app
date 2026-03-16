@@ -13,7 +13,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { DadosCompletos, ProjecaoSKU, SKUCadastro } from '../lib/calculationEngine';
 import { recalcularProjecaoSKU, getStatusSKU, buildPendenciasPorSKU, agruparPendenciasPorMes } from '../lib/calculationEngine';
 import type { PedidoPendente } from '../lib/calculationEngine';
-import { obterProjecaoInicial } from '../lib/dataAdapter';
+import { getFullDatabase, getFilterOptions } from '../lib/api';
+import type { FilterOptionsResponse } from '../lib/api/types';
 import { useDebounce } from './useDebounce';
 import { usePersistedEdits } from './usePersistedEdits';
 import type { PedidoAprovacao } from '../lib/types';
@@ -46,6 +47,7 @@ export function useProjectionData() {
     busca: '',
     status: ''
   });
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse>({ fornecedores: [], categorias: [], categoriasNivel4: [], cds: [] });
 
   const {
     editedCells,
@@ -63,8 +65,12 @@ export function useProjectionData() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const data = await obterProjecaoInicial();
+        const [data, options] = await Promise.all([
+          getFullDatabase(),
+          getFilterOptions()
+        ]);
         setDados(data);
+        setFilterOptions(options);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro desconhecido');
       } finally {
@@ -86,15 +92,6 @@ export function useProjectionData() {
     if (!dados) return [];
     return dados.metadata.meses.slice(0, horizonte);
   }, [dados, horizonte]);
-
-  const filterOptions = useMemo(() => {
-    if (!dados) return { fornecedores: [], categorias: [], categoriasNivel4: [], cds: [] };
-    const fornecedores = Array.from(new Set(dados.cadastro.map(c => c['fornecedor comercial']))).sort();
-    const categorias = Array.from(new Set(dados.cadastro.map(c => c['nome nível 3']))).sort();
-    const categoriasNivel4 = Array.from(new Set(dados.cadastro.map(c => c['nome nível 4']))).sort();
-    const cds = Array.from(new Set(dados.cadastro.map(c => String(c.codigo_deposito_pd)))).sort((a, b) => Number(a) - Number(b));
-    return { fornecedores, categorias, categoriasNivel4, cds };
-  }, [dados]);
 
   // ── Pendencias: mock + pedidos ativos do dia (pendentes + aprovados) ────────
   const pedidosPendentesCompletos = useMemo(() => {

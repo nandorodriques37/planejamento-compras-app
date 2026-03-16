@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getHomeKPIs } from '../lib/api/mockDataLake';
+import { getHomeKPIs } from '../lib/api';
 import type { HomeKPIs, Filters } from '../lib/api/types';
 
 export function useHomeKPIs(filters: Filters) {

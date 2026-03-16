@@ -20,6 +20,39 @@ export interface Filters {
     busca?: string;
     status?: string;
     mesesVisiveis?: string[];
+    coverage?: string;
+    rupture?: { categoria: string; situacao: string };
+}
+
+export interface MetadataResponse {
+    data_referencia: string;
+    horizonte_meses: number;
+    meses: string[];
+    total_skus: number;
+    dias_mes: number;
+}
+
+export interface FilterOptionsResponse {
+    fornecedores: string[];
+    categorias: string[];
+    categoriasNivel4: string[];
+    cds: string[];
+}
+
+export interface ProjectionsResponse {
+    data: Array<{
+        projecao: ProjecaoSKU;
+        cadastro: SKUCadastro;
+    }>;
+    total: number;
+}
+
+export interface DatabaseOverviewResponse {
+    metadata: MetadataResponse;
+    fornecedores: any[]; // FornecedorCadastro
+    contas_a_pagar?: any[]; // ContaAPagar
+    pedidos_pendentes?: any[]; // PedidoPendente
+    estoque_loja?: any[]; // EstoqueLoja
 }
 
 export interface HomeKPIs {

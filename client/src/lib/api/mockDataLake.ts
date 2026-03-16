@@ -1,7 +1,7 @@
-import type { PaginatedRequest, PaginatedResponse, Filters, HomeKPIs, CDSummary, AugmentedSKU, CicloEstoqueData, MensalCicloItem, RankItem } from './types';
+import type { PaginatedRequest, PaginatedResponse, Filters, HomeKPIs, CDSummary, AugmentedSKU, CicloEstoqueData, MensalCicloItem, RankItem, MetadataResponse, FilterOptionsResponse, ProjectionsResponse, DatabaseOverviewResponse } from './types';
 import type { DadosCompletos } from '../engine/types';
 import { obterProjecaoInicial } from '../dataAdapter';
-import { getStatusSKU, getShelfLifeRiskStatus, formatMes } from '../calculationEngine';
+import { getStatusSKU, getShelfLifeRiskStatus, formatMes, parseMesAno, diasNoMes } from '../calculationEngine';
 
 // "Database" state
 let dbDados: DadosCompletos | null = null;
@@ -48,6 +48,273 @@ async function getFilteredSKUs(filters: Filters) {
 
         return true;
     });
+}
+
+/**
+ * API ENDPOINT: GET /api/v1/metadata
+ * Returns essential configuration for the projections including date boundaries
+ */
+export async function getMetadata(): Promise<MetadataResponse> {
+    await delay(100);
+    const db = await getDB();
+    return db.metadata;
+}
+
+/**
+ * API ENDPOINT: GET /api/v1/options
+ * Returns unique values to populate the frontend filter dropdowns
+ */
+export async function getFilterOptions(): Promise<FilterOptionsResponse> {
+    await delay(150);
+    const db = await getDB();
+    
+    const fornecedores = Array.from(new Set(db.cadastro.map(c => c['fornecedor comercial']))).sort();
+    const categorias = Array.from(new Set(db.cadastro.map(c => c['nome nível 3']))).sort();
+    const categoriasNivel4 = Array.from(new Set(db.cadastro.map(c => c['nome nível 4']))).sort();
+    const cds = Array.from(new Set(db.cadastro.map(c => String(c.codigo_deposito_pd))))
+        .sort((a, b) => Number(a) - Number(b));
+    
+    return { fornecedores, categorias, categoriasNivel4, cds };
+}
+
+/**
+ * API ENDPOINT: GET /api/v1/projections
+ * Returns raw projection array of the filtered items for table rendering
+ */
+export async function getProjections(filters: Filters): Promise<ProjectionsResponse> {
+    await delay(200);
+    const db = await getDB();
+    const filtered = await getFilteredSKUs(filters);
+    
+    // Convert to response format adding the cadastro explicitly
+    const data = filtered.map(proj => {
+        const cadastro = dbCadastroMap.get(proj.CHAVE)!;
+        return { projecao: proj, cadastro };
+    });
+    
+    return { data, total: data.length };
+}
+
+/**
+ * API ENDPOINT: GET /api/v1/dashboard-kpis
+ * Returns complex aggregations for the main dashboard (loss ranking, trees, etc)
+ */
+export async function getDashboardKPIs(filters: Filters): Promise<any> {
+    await delay(300);
+    const db = await getDB();
+    const filtered = await getFilteredSKUs(filters);
+    
+    // We recreate the aggregation logic that used to live in useDashboardData.ts
+    const mesAtual = db.metadata.meses[0];
+    const { ano, mes } = parseMesAno(mesAtual);
+    const diasMes = diasNoMes(ano, mes);
+    
+    const allDetails: any[] = [];
+    
+    filtered.forEach(proj => {
+      const cad = dbCadastroMap.get(proj.CHAVE);
+      if (!cad) return;
+
+      const sellOut = proj.meses[mesAtual]?.SELL_OUT ?? 0;
+      const demandaDiaria = sellOut > 0 ? sellOut / diasMes : 0;
+      const fornecedor = cad['fornecedor comercial'];
+      const status = getStatusSKU(proj.meses, db.metadata.meses, cad);
+      const coberturaDias = demandaDiaria > 0 ? cad.ESTOQUE / demandaDiaria : 999;
+
+      let perdaDiaria = 0;
+      if (cad.ESTOQUE === 0) {
+        perdaDiaria = demandaDiaria * cad.CUSTO_LIQUIDO;
+      } else if (status === 'critical') {
+        const diasAteRuptura = cad.ESTOQUE / demandaDiaria;
+        const diasEmRuptura = Math.max(0, diasMes - diasAteRuptura);
+        perdaDiaria = (diasEmRuptura / diasMes) * demandaDiaria * cad.CUSTO_LIQUIDO;
+      }
+      
+      const temPedido = cad.PENDENCIA > 0 || db.metadata.meses.some(m => (proj.meses[m]?.PEDIDO ?? 0) > 0);
+      let ruptureCategory = '';
+      let ruptureSituacao = temPedido ? 'Com Pedido' : 'Sem Pedido';
+      
+      if (cad.ESTOQUE === 0) {
+        ruptureCategory = 'Em Ruptura';
+      } else if (status === 'critical') {
+        ruptureCategory = 'Ponto de Ruptura';
+      }
+      
+      // The filter logic for coverage/rupture inside the dashboard
+      // Note: we're applying the visual dashboard filters here
+      let passFilter = true;
+      if (filters?.coverage) {
+        if (filters.coverage === '0–7 dias' && coberturaDias > 7) passFilter = false;
+        if (filters.coverage === '8–14 dias' && (coberturaDias <= 7 || coberturaDias > 14)) passFilter = false;
+        if (filters.coverage === '15–30 dias' && (coberturaDias <= 14 || coberturaDias > 30)) passFilter = false;
+        if (filters.coverage === '30+ dias' && coberturaDias <= 30) passFilter = false;
+      }
+
+      if ((filters as any)?.rupture) {
+        const ruptureFilter = (filters as any).rupture;
+        if (ruptureCategory !== ruptureFilter.categoria || ruptureSituacao !== ruptureFilter.situacao) {
+          passFilter = false;
+        }
+      }
+      
+      if (passFilter) {
+          allDetails.push({
+            sku: cad.CHAVE,
+            produto: cad['nome produto'],
+            fornecedor: fornecedor,
+            estoque: cad.ESTOQUE,
+            coberturaDias: coberturaDias,
+            status: status,
+            perdaDiaria: perdaDiaria
+          });
+      }
+    });
+
+    // Aggregate by supplier for KPIs and charts based on FILTERED details
+    const supplierMap = new Map<string, any>();
+
+    let totalSkusRuptura = 0;
+    let totalSkusCriticos = 0;
+    let rupturaComPedido = 0;
+    let rupturaSemPedido = 0;
+    let pontoRupturaComPedido = 0;
+    let pontoRupturaSemPedido = 0;
+
+    let skusOk = 0;
+    let skusWarning = 0;
+    let skusCritical = 0;
+    
+    let cov0to7 = 0;
+    let cov7to14 = 0;
+    let cov14to30 = 0;
+    let cov30plus = 0;
+
+    allDetails.forEach(detail => {
+      const cad = dbCadastroMap.get(detail.sku);
+      if (!cad) return;
+
+      const proj = filtered.find(p => p.CHAVE === detail.sku);
+      if (!proj) return;
+
+      const fornecedor = detail.fornecedor;
+
+      if (!supplierMap.has(fornecedor)) {
+        supplierMap.set(fornecedor, {
+          perdaRupturaTotal: 0,
+          perdaRiscoCritico: 0,
+          skusRupturaTotal: 0,
+          skusRiscoCritico: 0,
+          skusAtenção: 0,
+        });
+      }
+      const entry = supplierMap.get(fornecedor)!;
+
+      const temPedido = cad.PENDENCIA > 0 || db.metadata.meses.some(m => (proj.meses[m]?.PEDIDO ?? 0) > 0);
+
+      if (cad.ESTOQUE === 0) {
+        entry.perdaRupturaTotal += detail.perdaDiaria;
+        entry.skusRupturaTotal++;
+        totalSkusRuptura++;
+        
+        if (temPedido) rupturaComPedido++;
+        else rupturaSemPedido++;
+      } else if (detail.status === 'critical') {
+        entry.perdaRiscoCritico += detail.perdaDiaria;
+        entry.skusRiscoCritico++;
+        totalSkusCriticos++;
+        
+        if (temPedido) pontoRupturaComPedido++;
+        else pontoRupturaSemPedido++;
+      } else if (detail.status === 'warning') {
+        entry.skusAtenção++;
+      }
+
+      // Status
+      if (detail.status === 'ok') skusOk++;
+      else if (detail.status === 'warning') skusWarning++;
+      else if (detail.status === 'critical') skusCritical++;
+
+      // Coverage
+      const cov = detail.coberturaDias;
+      if (cov <= 7) cov0to7++;
+      else if (cov <= 14) cov7to14++;
+      else if (cov <= 30) cov14to30++;
+      else cov30plus++;
+    });
+
+    const skuStatusDistribution = {
+      ok: skusOk,
+      warning: skusWarning,
+      critical: skusCritical,
+      total: skusOk + skusWarning + skusCritical,
+    };
+
+    const coverageDistribution = [
+      { label: '0–7 dias', count: cov0to7, color: 'oklch(0.637 0.237 25.331)' },
+      { label: '8–14 dias', count: cov7to14, color: 'oklch(0.769 0.188 70.08)' },
+      { label: '15–30 dias', count: cov14to30, color: 'oklch(0.65 0.15 175)' },
+      { label: '30+ dias', count: cov30plus, color: 'oklch(0.7 0.1 145)' },
+    ];
+
+    const allSuppliers: any[] = [];
+    let totalPerdaDiaria = 0;
+
+    supplierMap.forEach((data, fornecedor) => {
+      const perdaTotal = data.perdaRupturaTotal + data.perdaRiscoCritico;
+      if (perdaTotal <= 0 && data.skusRupturaTotal === 0 && data.skusRiscoCritico === 0 && data.skusAtenção === 0) return;
+      totalPerdaDiaria += perdaTotal;
+      allSuppliers.push({ fornecedor, ...data, perdaTotal });
+    });
+
+    // 1. Ranking por Perda $
+    const sortedForLoss = [...allSuppliers].sort((a, b) => b.perdaTotal - a.perdaTotal);
+    const supplierLossRanking = sortedForLoss.slice(0, 20);
+
+    // 2. Ranking por SKUs em Ponto de Pedido (Atenção)
+    const sortedForWarning = [...allSuppliers]
+      .filter(s => s.skusAtenção > 0)
+      .sort((a, b) => b.skusAtenção - a.skusAtenção);
+    const supplierWarningRanking = sortedForWarning.slice(0, 20);
+
+    // 3. Ranking por SKUs Críticos (Ruptura + Risco)
+    const sortedForCritical = [...allSuppliers]
+      .filter(s => (s.skusRupturaTotal + s.skusRiscoCritico) > 0)
+      .sort((a, b) => (b.skusRupturaTotal + b.skusRiscoCritico) - (a.skusRupturaTotal + a.skusRiscoCritico));
+    const supplierCriticalRanking = sortedForCritical.slice(0, 20);
+
+    const ruptureTreeData = {
+      name: 'Ruptura',
+      children: [
+        {
+          name: 'Em Ruptura',
+          children: [
+            { name: 'Com Pedido', size: rupturaComPedido, color: 'oklch(0.637 0.237 25.331)' },
+            { name: 'Sem Pedido', size: rupturaSemPedido, color: 'oklch(0.50 0.25 25)' },
+          ].filter(c => c.size > 0),
+        },
+        {
+          name: 'Ponto de Ruptura',
+          children: [
+            { name: 'Com Pedido', size: pontoRupturaComPedido, color: 'oklch(0.769 0.188 70.08)' },
+            { name: 'Sem Pedido', size: pontoRupturaSemPedido, color: 'oklch(0.60 0.2 70)' },
+          ].filter(c => c.size > 0),
+        },
+      ].filter(c => c.children.length > 0),
+    };
+
+    return {
+      supplierLossRanking,
+      supplierWarningRanking,
+      supplierCriticalRanking,
+      totalPerdaDiaria,
+      totalSkusRuptura,
+      totalSkusCriticos,
+      diasNoMesAtual: diasMes,
+      skuStatusDistribution,
+      coverageDistribution,
+      ruptureTreeData,
+      filteredDetails: allDetails, // Ordem de apresentação na tabela
+    };
 }
 
 /**
@@ -467,4 +734,29 @@ export async function getCicloEstoqueData(filters: Filters): Promise<CicloEstoqu
         rankingFornecedores,
         rankingProdutos
     };
+}
+
+/**
+ * API ENDPOINT: GET /api/v1/overview
+ * Returns the non-projection data for components that need the full database context (e.g Home)
+ */
+export async function getDatabaseOverview(): Promise<DatabaseOverviewResponse> {
+    await delay(100);
+    const db = await getDB();
+    return {
+        metadata: db.metadata,
+        fornecedores: db.fornecedores,
+        contas_a_pagar: db.contas_a_pagar,
+        pedidos_pendentes: db.pedidos_pendentes,
+        estoque_loja: db.estoque_loja
+    };
+}
+
+/**
+ * API ENDPOINT: GET /api/v1/database
+ * Returns the entire database for the projection engine front-end local calculations.
+ */
+export async function getFullDatabase(): Promise<DadosCompletos> {
+    await delay(200);
+    return await getDB();
 }
