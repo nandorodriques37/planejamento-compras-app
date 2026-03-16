@@ -18,7 +18,7 @@
  * corretamente, independente de como os dados foram gerados na origem.
  */
 
-import type { DadosCompletos, ProjecaoSKU, PedidoPendente } from './calculationEngine';
+import type { DadosCompletos, ProjecaoSKU, PedidoPendente, EstoqueObjetivoDB } from './calculationEngine';
 import { recalcularProjecaoSKU, buildPendenciasPorSKU, agruparPendenciasPorMes } from './calculationEngine';
 
 /** Cache de dados já carregados e calculados. Resetado quando o mês de referência muda. */
@@ -35,7 +35,10 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
   // Verifica se o mês de referênCIA mudou (nova sessão em mês diferente = invalida cache)
   const hoje = new Date();
   const refMonth = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-  if (cachedData && cachedRefMonth === refMonth) return cachedData;
+  // Para garantir que o dev sempre carregue os mocks mais recentes, eu vou ignorar o cache temporariamente no Dev (Vite HMR). 
+  // O cache pode ser mantido para production se necessário (idealmente isso seria resolvido via invalidate flag)
+  // if (cachedData && cachedRefMonth === refMonth) return cachedData;
+  cachedData = null;
 
   // Reseta cache se chegou aqui (stale ou primeira carga)
   cachedData = null;
@@ -90,6 +93,19 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
       // Fallback: sem pedidos pendentes detalhados, usa PENDENCIA lump-sum
     }
 
+    // Carregar estoques objetivo mockados do DB
+    let estoquesObjetivoMap = new Map<string, Record<string, number>>();
+    try {
+      const objResponse = await fetch('/estoque-objetivo.json');
+      if (objResponse.ok) {
+        const estoquesObjetivo: EstoqueObjetivoDB[] = await objResponse.json();
+        data.estoques_objetivo = estoquesObjetivo;
+        estoquesObjetivo.forEach(eo => estoquesObjetivoMap.set(eo.chave, eo.meses));
+      }
+    } catch {
+      // Fallback: calcula dinamicamente
+    }
+
     // Constroi o map cadastro UMA vez para O(1) lookups em vez de O(n) por SKU
     const cadastroMap = new Map(data.cadastro.map(c => [c.CHAVE, c]));
 
@@ -129,7 +145,8 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
         pedidosManuais,
         pedidosOriginais,
         data.metadata.data_referencia,
-        pendMes
+        pendMes,
+        estoquesObjetivoMap.get(cadastro.CHAVE)
       );
 
       return {

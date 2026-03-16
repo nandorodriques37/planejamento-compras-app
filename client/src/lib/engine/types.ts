@@ -53,6 +53,11 @@ export interface EstoqueLoja {
   estoque_loja: number;
 }
 
+export interface EstoqueObjetivoDB {
+  chave: string;
+  meses: Record<string, number>;
+}
+
 export interface DadosCompletos {
   metadata: {
     data_referencia: string;
@@ -67,6 +72,7 @@ export interface DadosCompletos {
   pedidos_pendentes?: PedidoPendente[];
   contas_a_pagar?: ContaAPagar[];
   estoque_loja?: EstoqueLoja[];
+  estoques_objetivo?: EstoqueObjetivoDB[];
 }
 
 export interface DetalheMesCobertura {

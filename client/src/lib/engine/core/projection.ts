@@ -84,7 +84,8 @@ export function recalcularProjecaoSKU(
     pedidosManuais: Record<string, number | null>,
     _pedidosOriginais: Record<string, number>,
     dataReferencia?: string,
-    pendenciasPorMes?: PendenciasPorMes
+    pendenciasPorMes?: PendenciasPorMes,
+    estoquesObjetivoPorMes?: Record<string, number>
 ): Record<string, MesData> {
     const lt = cadastro.LT || 0;
     const frequencia = cadastro.FREQUENCIA || 0;
@@ -100,18 +101,22 @@ export function recalcularProjecaoSKU(
         + (hasPendenciasDistribuidas ? 0 : (cadastro.PENDENCIA || 0))
         + (cadastro.NNA || 0);
 
-    // Pré-calcula os objetivos de estoque para não processar no loop
+    // Pré-calcula ou carrega os objetivos de estoque para não processar no loop
     const estObjPorMes: Record<string, number> = {};
 
     meses.forEach((mes) => {
-        // Validação de segurança para garantir que o sellOut é um número
-        const rawSo = sellOutPorMes[mes];
-        const so = typeof rawSo === 'number' && !isNaN(rawSo) ? rawSo : 0;
+        if (estoquesObjetivoPorMes && estoquesObjetivoPorMes[mes] !== undefined) {
+            estObjPorMes[mes] = estoquesObjetivoPorMes[mes];
+        } else {
+            // Validação de segurança para garantir que o sellOut é um número
+            const rawSo = sellOutPorMes[mes];
+            const so = typeof rawSo === 'number' && !isNaN(rawSo) ? rawSo : 0;
 
-        const { ano, mes: mesNum } = parseMesAno(mes);
-        const diasReais = diasNoMes(ano, mesNum);
-        const demandaMedia = so / diasReais;
-        estObjPorMes[mes] = demandaMedia * (lt + frequencia + estSeguranca) + impacto;
+            const { ano, mes: mesNum } = parseMesAno(mes);
+            const diasReais = diasNoMes(ano, mesNum);
+            const demandaMedia = so / diasReais;
+            estObjPorMes[mes] = demandaMedia * (lt + frequencia + estSeguranca) + impacto;
+        }
     });
 
     // OTIMIZAÇÃO: Pré-calcular os índices de chegada ("LT pre-calc")
