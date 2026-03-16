@@ -185,7 +185,7 @@ export default function CicloEstoque() {
                       <BarChart 
                         layout="vertical" 
                         data={data.rankingFornecedores}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                         <XAxis type="number" tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} />
@@ -218,7 +218,7 @@ export default function CicloEstoque() {
                       <BarChart 
                         layout="vertical" 
                         data={data.rankingProdutos}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        margin={{ top: 5, right: 30, left: 180, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                         <XAxis type="number" tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} />
@@ -226,7 +226,7 @@ export default function CicloEstoque() {
                           type="category" 
                           dataKey="nome" 
                           width={250} 
-                          tick={{ fontSize: 11 }}
+                          tick={{ fontSize: 10 }}
                           tickFormatter={(val) => val.length > 50 ? val.substring(0, 50) + '...' : val}
                         />
                         <Tooltip 
