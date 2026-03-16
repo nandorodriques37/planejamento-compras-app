@@ -252,7 +252,7 @@ export default function Home() {
       const lt = cad.LT ?? 0;
       const consumoAteLT = demandaDiaria * lt;
       const pendenciaRelevante = getPendenciaRelevante(proj.CHAVE, lt, cad.PENDENCIA ?? 0);
-      const estoqueProjetadoChegada = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + qtdCompradaMes1 + pendenciaRelevante));
+      const estoqueProjetadoChegada = Math.round(Math.max(0, cad.ESTOQUE - consumoAteLT + pendenciaRelevante) + qtdCompradaMes1);
       const coberturaDiasChegada = demandaDiaria > 0 ? Math.round(estoqueProjetadoChegada / demandaDiaria) : null;
 
       // Risco de shelf life: cobertura na chegada >= 80% do shelf life
@@ -329,7 +329,7 @@ export default function Home() {
       const itemPedido = itensPedidoMap.get(proj.CHAVE);
       const qtdComprada = itemPedido ? (itemPedido.entregas[mesAtual] ?? 0) : 0;
       const pendRelevante = getPendenciaRelevante(proj.CHAVE, lt, cad.PENDENCIA ?? 0);
-      const estoqueNaChegada = Math.max(0, cad.ESTOQUE - consumoAteLT + qtdComprada + pendRelevante);
+      const estoqueNaChegada = Math.round(Math.max(0, cad.ESTOQUE - consumoAteLT + pendRelevante) + qtdComprada);
       const cobChegada = estoqueNaChegada / demandaDiaria;
       somaPonderadaFornChegada += cobChegada * sellOutAtual;
       somaVolumesFornChegada += sellOutAtual;
@@ -402,11 +402,12 @@ export default function Home() {
       const pendRelevantePed = getPendenciaRelevante(item.chave, lt, cad.PENDENCIA ?? 0);
       // Estoque inicial (Estoque Atual)
       const estoqueInicialEngine = cad.ESTOQUE || 0;
-      const estoqueNaChegada = Math.max(0, Math.round(estoqueInicialEngine - consumoAteLT + quantidadeMesAtual + pendRelevantePed));
-      estoqueChegadaUnidadesGlobais += estoqueNaChegada;
-
+      
       // Sem pedido = sem a quantidade comprada
       const estoqueSemPedido = Math.max(0, Math.round(estoqueInicialEngine - consumoAteLT + pendRelevantePed));
+      
+      const estoqueNaChegada = Math.round(estoqueSemPedido + quantidadeMesAtual);
+      estoqueChegadaUnidadesGlobais += estoqueNaChegada;
 
       if (estoqueSemPedido > 0 && estoqueSemPedido >= objetivoMes && objetivoMes > 0) {
         skusCompradosSemNecessidadeGlobais++;
@@ -503,9 +504,10 @@ export default function Home() {
         if (mi === 0) {
           // Mês 1: fórmula LT alinhada com engine + pendências relevantes
           const pendRel = getPendenciaRelevante(proj.CHAVE, lt, cad.PENDENCIA ?? 0);
+          const baseEstoqueMomentoChegada = Math.max(0, estoqueInicialEvol - consumo + pendRel);
           monthData.set(mes, {
-            estoqueNaChegada: Math.max(0, Math.round(estoqueInicialEvol - consumo + qtdComprada + pendRel)),
-            estoqueSemPedido: Math.max(0, Math.round(estoqueInicialEvol - consumo + pendRel)),
+            estoqueNaChegada: Math.round(baseEstoqueMomentoChegada + qtdComprada),
+            estoqueSemPedido: Math.round(baseEstoqueMomentoChegada),
           });
         } else {
           // Mês 2+: estoque final do motor de projeção para o mês anterior + pedido - sell out + pendências do mês
