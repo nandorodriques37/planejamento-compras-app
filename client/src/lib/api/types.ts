@@ -34,6 +34,8 @@ export interface HomeKPIs {
     ltMedio: number;
     countComLT: number;
     skusShelfLifeRisk: number;
+    pmpHojeDias: number | null;
+    pmeHojeDias: number | null;
 }
 
 export interface CDSummary {

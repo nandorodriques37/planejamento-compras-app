@@ -75,9 +75,17 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
     let countComLT = 0;
     let estoqueProjetadoFinal = 0;
 
+    // Para o PME e PMP Hoje
+    let somaPonderadaPmeHoje = 0;
+    let somaVolumesPmeHoje = 0;
+
+    const fornecedoresUnicos = new Set<string>();
+
     filtered.forEach(proj => {
         const cad = dbCadastroMap.get(proj.CHAVE);
         if (!cad) return;
+
+        fornecedoresUnicos.add(cad['fornecedor comercial']);
 
         totalEstoque += cad.ESTOQUE;
         totalSellOutMes1 += proj.meses[firstMonth]?.SELL_OUT || 0;
@@ -102,7 +110,43 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
         if (cad.SHELF_LIFE > 0 && getShelfLifeRiskStatus(proj.meses, db.metadata.meses, cad.SHELF_LIFE)) {
             skusShelfLifeRisk++;
         }
+
+        // PME Hoje Global
+        const sellOutMes1 = proj.meses[firstMonth]?.SELL_OUT ?? 0;
+        if (sellOutMes1 > 0) {
+            const demandaDiaria = sellOutMes1 / 30; // Usando 30 dias na média simples da Home
+            const cobHoje = cad.ESTOQUE / demandaDiaria;
+            somaPonderadaPmeHoje += cobHoje * sellOutMes1;
+            somaVolumesPmeHoje += sellOutMes1;
+        }
     });
+
+    // ── Cálculo do PMP Hoje ────────────────────────────────────────────────
+    // 1. Total a Pagar (R$): Notas Fiscais a Vencer (apenas fornecedores de produtos mostrados)
+    let somaLivreAPagar = 0;
+    if (db.contas_a_pagar) {
+        db.contas_a_pagar.forEach(conta => {
+            if (!fornecedoresUnicos.has(conta.nome_fornecedor)) return;
+            somaLivreAPagar += conta.valor_nota;
+        });
+    }
+
+    // 2. Sell Out Diário Global (R$/dia) dos fornecedores atuais
+    let sellOutDiarioRSGlobal = 0;
+    filtered.forEach(proj => {
+        const cad = dbCadastroMap.get(proj.CHAVE);
+        if (!cad) return;
+
+        const sellOutAtual = proj.meses[firstMonth]?.SELL_OUT ?? 0;
+        if (sellOutAtual > 0) {
+            const demandaDiaria = sellOutAtual / 30;
+            sellOutDiarioRSGlobal += demandaDiaria * (cad.CUSTO_LIQUIDO || 0);
+        }
+    });
+
+    const pmpHojeDias = sellOutDiarioRSGlobal > 0 ? Math.round(somaLivreAPagar / sellOutDiarioRSGlobal) : null;
+    const pmeHojeDias = somaVolumesPmeHoje > 0 ? Math.round(somaPonderadaPmeHoje / somaVolumesPmeHoje) : null;
+    // ── Fim do Cálculo ─────────────────────────────────────────────────────
 
     const demandaDiariaGlobal = totalSellOutMes1 / 30;
     const coberturaGlobalDias = demandaDiariaGlobal > 0 ? Math.round(totalEstoque / demandaDiariaGlobal) : 0;
@@ -120,7 +164,9 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
         coberturaProjetadaDias,
         ltMedio,
         countComLT,
-        skusShelfLifeRisk
+        skusShelfLifeRisk,
+        pmpHojeDias,
+        pmeHojeDias
     };
 }
 
