@@ -664,24 +664,39 @@ export default function Home() {
     const fornecedorNome = fornecedoresUnicos.join(', ');
 
     // ── Cálculo PMP Projetado ────────────────────────────────────────────────
-    // Média ponderada: (ConasAPagar * DiasParaVencer + ValorPedido * PrazoPgto) / (Total)
-    const hoje = new Date();
-    let somaValorDias = 0;
-    let somaValor = 0;
+    // Nova Lógica (Ciclo Financeiro vs Operacional):
+    // PMP Projetado (Dias) = (Total a Pagar / Sell Out Diário do Fornecedor em R$)
+    
+    // 1. Total a Pagar (R$): Notas Fiscais a Vencer + Valor Total do Pedido
+    let somaLivreAPagar = 0;
     if (dados.contas_a_pagar) {
       dados.contas_a_pagar.forEach(conta => {
         if (!fornecedoresUnicos.includes(conta.nome_fornecedor)) return;
-        const venc = new Date(conta.data_vencimento + 'T00:00:00');
-        const diasParaVencer = Math.max(0, Math.ceil((venc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24)));
-        somaValorDias += conta.valor_nota * diasParaVencer;
-        somaValor += conta.valor_nota;
+        somaLivreAPagar += conta.valor_nota;
       });
     }
     const valorTotalPedido = itens.reduce((acc, it) => acc + (it.totalQuantidade * (it.custoLiquido || 0)), 0);
-    const prazoPgtoEfet = prazoPagamentoEfetivo ?? 0;
-    somaValorDias += valorTotalPedido * prazoPgtoEfet;
-    somaValor += valorTotalPedido;
-    const pmpProjetado = somaValor > 0 ? Math.round(somaValorDias / somaValor) : undefined;
+    const totalAPagarR$ = somaLivreAPagar + valorTotalPedido;
+
+    // 2. Sell Out Diário do Fornecedor (R$/dia)
+    let sellOutDiarioRS = 0;
+    const { ano: anoMesAtual, mes: numMesAtual } = parseMesAno(mesAtual);
+    const diasReaisMesAtual = diasNoMes(anoMesAtual, numMesAtual);
+
+    projecoesComEdicoes.forEach(proj => {
+      const cad = cadastroMap.get(proj.CHAVE);
+      if (!cad || !fornecedoresUnicos.includes(cad['fornecedor comercial'])) return;
+      
+      const sellOutAtual = proj.meses[mesAtual]?.SELL_OUT ?? 0;
+      if (sellOutAtual > 0) {
+        const demandaDiaria = sellOutAtual / diasReaisMesAtual;
+        sellOutDiarioRS += demandaDiaria * (cad.CUSTO_LIQUIDO || 0);
+      }
+    });
+
+    // 3. PMP (Dias)
+    const pmpProjetado = sellOutDiarioRS > 0 ? Math.round(totalAPagarR$ / sellOutDiarioRS) : undefined;
+
     // ── Fim PMP Projetado ────────────────────────────────────────────────────
 
     const kpis: PedidoKPIs = {
