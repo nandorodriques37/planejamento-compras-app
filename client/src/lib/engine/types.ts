@@ -41,6 +41,18 @@ export interface ProjecaoSKU {
   meses: Record<string, MesData>;
 }
 
+export interface ContaAPagar {
+  nome_fornecedor: string;
+  nf: string;
+  valor_nota: number;
+  data_vencimento: string; // "YYYY-MM-DD"
+}
+
+export interface EstoqueLoja {
+  CHAVE: string; // CD-SKU
+  estoque_loja: number;
+}
+
 export interface DadosCompletos {
   metadata: {
     data_referencia: string;
@@ -53,6 +65,8 @@ export interface DadosCompletos {
   projecao: ProjecaoSKU[];
   fornecedores: FornecedorCadastro[];
   pedidos_pendentes?: PedidoPendente[];
+  contas_a_pagar?: ContaAPagar[];
+  estoque_loja?: EstoqueLoja[];
 }
 
 export interface DetalheMesCobertura {

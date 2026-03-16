@@ -20,6 +20,73 @@
     "total_skus": 72,
     "dias_mes": 30
   },
+  "contas_a_pagar": [
+    {
+      "nome_fornecedor": "NOVO NORDISK",
+      "nf": "NF-1001",
+      "valor_nota": 15000.50,
+      "data_vencimento": "2026-04-10"
+    },
+    {
+      "nome_fornecedor": "NOVO NORDISK",
+      "nf": "NF-1002",
+      "valor_nota": 8500.00,
+      "data_vencimento": "2026-04-25"
+    },
+    {
+      "nome_fornecedor": "ROCHE",
+      "nf": "NF-2001",
+      "valor_nota": 42000.00,
+      "data_vencimento": "2026-04-15"
+    },
+    {
+      "nome_fornecedor": "PFIZER",
+      "nf": "NF-3001",
+      "valor_nota": 12500.75,
+      "data_vencimento": "2026-04-20"
+    },
+    {
+      "nome_fornecedor": "EUROFARMA",
+      "nf": "NF-4001",
+      "valor_nota": 3400.00,
+      "data_vencimento": "2026-04-05"
+    }
+  ],
+  "estoque_loja": [
+    { "CHAVE": "1-2959", "estoque_loja": 120 },
+    { "CHAVE": "3-2959", "estoque_loja": 0 },
+    { "CHAVE": "6-2959", "estoque_loja": 90 },
+    { "CHAVE": "1-39306", "estoque_loja": 15 },
+    { "CHAVE": "2-39306", "estoque_loja": 5 },
+    { "CHAVE": "1-53706", "estoque_loja": 2 },
+    { "CHAVE": "2-53706", "estoque_loja": 0 },
+    { "CHAVE": "1-55975", "estoque_loja": 45 },
+    { "CHAVE": "4-55975", "estoque_loja": 30 },
+    { "CHAVE": "1-77350", "estoque_loja": 12 },
+    { "CHAVE": "1-77351", "estoque_loja": 18 },
+    { "CHAVE": "2-77351", "estoque_loja": 4 },
+    { "CHAVE": "1-10101", "estoque_loja": 1 },
+    { "CHAVE": "2-10101", "estoque_loja": 2 },
+    { "CHAVE": "7-10101", "estoque_loja": 0 },
+    { "CHAVE": "1-10102", "estoque_loja": 3 },
+    { "CHAVE": "3-10102", "estoque_loja": 5 },
+    { "CHAVE": "1-10103", "estoque_loja": 2 },
+    { "CHAVE": "4-10103", "estoque_loja": 0 },
+    { "CHAVE": "1-10104", "estoque_loja": 40 },
+    { "CHAVE": "2-10104", "estoque_loja": 25 },
+    { "CHAVE": "1-20201", "estoque_loja": 450 },
+    { "CHAVE": "2-20201", "estoque_loja": 300 },
+    { "CHAVE": "3-20201", "estoque_loja": 0 },
+    { "CHAVE": "6-20201", "estoque_loja": 250 },
+    { "CHAVE": "1-20202", "estoque_loja": 80 },
+    { "CHAVE": "2-20202", "estoque_loja": 120 },
+    { "CHAVE": "9-20202", "estoque_loja": 0 },
+    { "CHAVE": "1-20203", "estoque_loja": 350 },
+    { "CHAVE": "4-20203", "estoque_loja": 200 },
+    { "CHAVE": "1-30301", "estoque_loja": 800 },
+    { "CHAVE": "2-30301", "estoque_loja": 600 },
+    { "CHAVE": "3-30301", "estoque_loja": 400 }
+  ],
   "cadastro": [
     {
       "fornecedor comercial": "NOVO NORDISK",

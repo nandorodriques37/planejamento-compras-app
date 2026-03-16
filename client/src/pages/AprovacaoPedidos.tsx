@@ -274,6 +274,60 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
             </div>
           )}
 
+          {/* Card 9: PME Loja */}
+          {kpis.pmeLojaGlobais != null && (
+            <div className="rounded-lg border p-3 bg-card border-border" title="Prazo Médio de Estoque nas Lojas (estoque loja / demanda diária). Usado na composição do PME total.">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Building2 className="w-4 h-4 text-violet-500" />
+                <span className="text-xs font-medium text-muted-foreground line-clamp-1">PME Loja</span>
+              </div>
+              <div className="text-lg font-bold tabular-nums text-foreground">
+                {kpis.pmeLojaGlobais}d
+              </div>
+            </div>
+          )}
+
+          {/* Card 10: PMP Projetado */}
+          {kpis.pmpProjetado != null && (
+            <div className="rounded-lg border p-3 bg-card border-border" title="Prazo Médio de Pagamento projetado na chegada (média ponderada: contas existentes + novo pedido)">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Truck className="w-4 h-4 text-blue-500" />
+                <span className="text-xs font-medium text-muted-foreground line-clamp-1">PMP Projetado</span>
+              </div>
+              <div className="text-lg font-bold tabular-nums text-foreground">
+                {kpis.pmpProjetado}d
+              </div>
+            </div>
+          )}
+
+          {/* Card 11: PME - PMP Projetado */}
+          {currentData.coberturaFornecedorDiasChegada != null && (kpis.pmpProjetado != null || prazoPagamento != null) && (
+            (() => {
+              const pmeCd = currentData.coberturaFornecedorDiasChegada!;
+              const pmeLoja = kpis.pmeLojaGlobais ?? 0;
+              const pmeTotal = pmeCd + pmeLoja;
+              const pmp = kpis.pmpProjetado ?? prazoPagamento!;
+              const diff = pmeTotal - pmp;
+              const cicloColor = diff > 0 ? "text-rose-700 dark:text-rose-300" : "text-teal-700 dark:text-teal-300";
+              const bgColor = diff > 0 ? "bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800" : "bg-teal-50 border-teal-200 dark:bg-teal-950/30 dark:border-teal-800";
+              
+              return (
+                <div className={`rounded-lg border p-3 ${bgColor}`} title={`PME Total (CD ${pmeCd}d + Loja ${pmeLoja}d = ${pmeTotal}d) - PMP ${kpis.pmpProjetado != null ? 'Projetado' : 'Padrão'} (${pmp}d)`}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <CalendarClock className={`w-4 h-4 ${diff > 0 ? 'text-rose-500' : 'text-teal-500'}`} />
+                    <span className="text-xs font-medium text-muted-foreground line-clamp-1">PME <span className="mx-0.5">-</span> PMP</span>
+                  </div>
+                  <div className={`text-lg font-bold tabular-nums ${cicloColor}`}>
+                    {diff > 0 ? `+${diff}` : diff}d
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    ({pmeCd}d + {pmeLoja}d) − {pmp}d
+                  </div>
+                </div>
+              );
+            })()
+          )}
+
         </div>
       </div>
     </div>

@@ -11,6 +11,7 @@ import type { CoverageDistribution } from '../../hooks/useDashboardData';
 
 interface CoverageDistributionChartProps {
   data: CoverageDistribution[];
+  onBarClick?: (coverageLabel: string) => void;
 }
 
 function CustomTooltip({ active, payload }: any) {
@@ -24,7 +25,7 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
-export default function CoverageDistributionChart({ data }: CoverageDistributionChartProps) {
+export default function CoverageDistributionChart({ data, onBarClick }: CoverageDistributionChartProps) {
   const total = data.reduce((sum, d) => sum + d.count, 0);
   if (total === 0) {
     return (
@@ -34,6 +35,12 @@ export default function CoverageDistributionChart({ data }: CoverageDistribution
     );
   }
 
+  const handleBarClick = (data: any) => {
+    if (onBarClick && data && data.activePayload && data.activePayload.length > 0) {
+      onBarClick(data.activePayload[0].payload.label);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <ResponsiveContainer width="100%" height={220}>
@@ -41,6 +48,8 @@ export default function CoverageDistributionChart({ data }: CoverageDistribution
           data={data}
           layout="vertical"
           margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+          onClick={handleBarClick}
+          style={{ cursor: onBarClick ? 'pointer' : 'default' }}
         >
           <XAxis type="number" tick={{ fontSize: 11 }} />
           <YAxis
@@ -72,3 +81,4 @@ export default function CoverageDistributionChart({ data }: CoverageDistribution
     </div>
   );
 }
+

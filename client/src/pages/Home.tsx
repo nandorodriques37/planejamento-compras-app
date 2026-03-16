@@ -37,6 +37,7 @@ import { useProjectionData } from '../hooks/useProjectionData';
 import { usePedidosAprovacao } from '../hooks/usePedidosAprovacao';
 import { exportarParaCSV } from '../lib/dataAdapter';
 import { calcularSemanasRestantes, calcularSemanasComLT, parseMesAno, distribuirPedidoMultiMes, getStatusSKU, hasShelfLifeRisk, buildPendenciasPorSKU, calcularPendenciaAteData, agruparPendenciasPorMes } from '../lib/calculationEngine';
+import { diasNoMes } from '../lib/engine/utils/dates';
 import type { WeekDistribution, PedidoPendente } from '../lib/calculationEngine';
 import type { PedidoAprovacao, PedidoItem, PedidoKPIs } from '../lib/types';
 import { useHomeKPIs } from '../hooks/useHomeKPIs';
@@ -60,29 +61,34 @@ export default function Home() {
     limparEdicoes,
     totalEdicoes,
     cadastroMap,
-    projecoesComEdicoes
+    projecoesComEdicoes,
+    pedidosPendentesCompletos
   } = useProjectionData();
 
   const [, navigate] = useLocation();
-  const { adicionarPedido } = usePedidosAprovacao();
+  const { adicionarPedido, pedidosAtivos } = usePedidosAprovacao();
 
   // New API layer call for KPIs
   const kpisFilters = useMemo(() => ({ ...filters, mesesVisiveis }), [filters, mesesVisiveis]);
   const { kpis, loading: loadingKpis } = useHomeKPIs(kpisFilters);
-  const pedidosPendentes = (() => {
-    try {
-      const raw = localStorage.getItem('pedidos_aprovacao');
-      if (!raw) return 0;
-      const lista = JSON.parse(raw);
-      return Array.isArray(lista) ? lista.filter((p: any) => p.status === 'pendente').length : 0;
-    } catch { return 0; }
-  })();
+  const pedidosPendentes = useMemo(() =>
+    pedidosAtivos.filter(p => p.status === 'pendente').length,
+    [pedidosAtivos]
+  );
 
-  // Mapa de pedidos pendentes detalhados por SKU (para distribuição temporal)
+  // Mapa de pendências por SKU (mock + pedidos ativos do dia)
   const pendenciasSKUMap = useMemo(() => {
-    if (!dados?.pedidos_pendentes) return new Map<string, PedidoPendente[]>();
-    return buildPendenciasPorSKU(dados.pedidos_pendentes);
-  }, [dados?.pedidos_pendentes]);
+    return buildPendenciasPorSKU(pedidosPendentesCompletos);
+  }, [pedidosPendentesCompletos]);
+
+  // Mapa de estoque loja por CHAVE (apenas para PME KPI, NÃO afeta projeções CD)
+  const estoqueLojaMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (dados?.estoque_loja) {
+      dados.estoque_loja.forEach(el => map.set(el.CHAVE, el.estoque_loja));
+    }
+    return map;
+  }, [dados?.estoque_loja]);
 
   // Helper: calcula pendência relevante até a data de chegada (hoje + LT)
   const getPendenciaRelevante = useCallback((chave: string, ltDias: number, pendenciaTotal: number) => {
@@ -266,6 +272,7 @@ export default function Home() {
         coberturaDiasHoje,
         estoqueProjetadoChegada,
         coberturaDiasChegada,
+        estoqueLojaAtual: estoqueLojaMap.get(proj.CHAVE) ?? 0,
         custoLiquido: cad.CUSTO_LIQUIDO,
         shelfLifeRisk,
         shelfLifeDias: cad.SHELF_LIFE,
@@ -296,6 +303,10 @@ export default function Home() {
     let somaPonderadaFornChegada = 0;
     let somaVolumesFornChegada = 0;
 
+    // PME Loja ao nível do fornecedor (todos os SKUs)
+    let somaPonderadaFornLoja = 0;
+    let somaVolumesFornLoja = 0;
+
     // Mapa rápido: quais itens do pedido para cada chave (para somar qtd comprada)
     const itensPedidoMap = new Map(itens.map(it => [it.chave, it]));
 
@@ -322,6 +333,11 @@ export default function Home() {
       const cobChegada = estoqueNaChegada / demandaDiaria;
       somaPonderadaFornChegada += cobChegada * sellOutAtual;
       somaVolumesFornChegada += sellOutAtual;
+
+      // PME Loja (nível fornecedor)
+      const estoqueLojaForn = estoqueLojaMap.get(proj.CHAVE) ?? 0;
+      somaPonderadaFornLoja += (estoqueLojaForn / demandaDiaria) * sellOutAtual;
+      somaVolumesFornLoja += sellOutAtual;
     });
 
     const coberturaFornecedorDiasHojeGlobais: number | null = somaVolumesFornHoje > 0
@@ -376,17 +392,24 @@ export default function Home() {
       const objetivoMes = proj.meses[mesAtual]?.ESTOQUE_OBJETIVO ?? 0;
       estoqueObjetivoUnidadesGlobais += objetivoMes;
 
-      // Estoque na chegada: LT-based (mesma fórmula da tabela de itens)
+      // Estoque na chegada: LT-based, alinhado com o motor de projeção (projection.ts)
       const sellOut = proj.meses[mesAtual]?.SELL_OUT ?? 0;
-      const demandaDiaria = sellOut > 0 ? sellOut / 30 : 0;
+      const { ano: anoMesAtual, mes: numMesAtual } = parseMesAno(mesAtual);
+      const diasReaisMesAtual = diasNoMes(anoMesAtual, numMesAtual);
+      const demandaDiaria = sellOut > 0 ? sellOut / diasReaisMesAtual : 0;
       const lt = cad.LT ?? 0;
       const consumoAteLT = demandaDiaria * lt;
       const pendRelevantePed = getPendenciaRelevante(item.chave, lt, cad.PENDENCIA ?? 0);
-      const estoqueNaChegada = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + quantidadeMesAtual + pendRelevantePed));
+      // Estoque inicial alinhado com o engine: subtrai IMPACTO e PREENCHIMENTO, soma NNA
+      const estoqueInicialEngine = (cad.ESTOQUE || 0)
+        - (cad.IMPACTO || 0)
+        - (cad.PREECHIMENTO_DEMANDA_LOJA || 0)
+        + (cad.NNA || 0);
+      const estoqueNaChegada = Math.max(0, Math.round(estoqueInicialEngine - consumoAteLT + quantidadeMesAtual + pendRelevantePed));
       estoqueChegadaUnidadesGlobais += estoqueNaChegada;
 
       // Sem pedido = sem a quantidade comprada
-      const estoqueSemPedido = Math.max(0, Math.round(cad.ESTOQUE - consumoAteLT + pendRelevantePed));
+      const estoqueSemPedido = Math.max(0, Math.round(estoqueInicialEngine - consumoAteLT + pendRelevantePed));
 
       if (estoqueSemPedido > 0 && estoqueSemPedido >= objetivoMes && objetivoMes > 0) {
         skusCompradosSemNecessidadeGlobais++;
@@ -401,8 +424,12 @@ export default function Home() {
         somaPonderadaPedHoje += cobHoje * sellOut;
         somaVolumesPedHoje += sellOut;
 
-        const cobChegada = estoqueNaChegada / demandaDiaria;
-        somaPonderadaPedChegada += cobChegada * sellOut;
+        // PME: coberturas separadas CD e Loja
+        const estoqueLojaItem = estoqueLojaMap.get(item.chave) ?? 0;
+
+        // Cobertura CD-only (para card Cob. Itens Pedido)
+        const cobChegadaCD = estoqueNaChegada / demandaDiaria;
+        somaPonderadaPedChegada += cobChegadaCD * sellOut;
         somaVolumesPedChegada += sellOut;
       }
 
@@ -415,6 +442,7 @@ export default function Home() {
     const coberturaPedidoDiasHojeGlobais: number | null = somaVolumesPedHoje > 0
       ? Math.round(somaPonderadaPedHoje / somaVolumesPedHoje) : null;
 
+    // coberturaDataChegadaDiasGlobais = PME (inclui estoque loja)
     const coberturaDataChegadaDiasGlobais: number | null = somaVolumesPedChegada > 0
       ? Math.round(somaPonderadaPedChegada / somaVolumesPedChegada) : null;
 
@@ -463,21 +491,28 @@ export default function Home() {
       const pendMes1 = pendAgregadas
         ? (pendAgregadas[mesesParaAprovacao[0]] || 0)
         : (cad.PENDENCIA ?? 0);
-      let runningStock = cad.ESTOQUE + pendMes1;
+      // Estoque inicial alinhado com o engine (subtrai IMPACTO/PREENCHIMENTO, soma NNA)
+      const estoqueInicialEvol = (cad.ESTOQUE || 0)
+        - (cad.IMPACTO || 0)
+        - (cad.PREECHIMENTO_DEMANDA_LOJA || 0)
+        + (cad.NNA || 0);
+      let runningStock = estoqueInicialEvol + pendMes1;
 
       for (let mi = 0; mi < mesesParaAprovacao.length; mi++) {
         const mes = mesesParaAprovacao[mi];
         const sellOutMes = proj.meses[mes]?.SELL_OUT ?? 0;
-        const dd = sellOutMes > 0 ? sellOutMes / 30 : 0;
+        const { ano: anoM, mes: numM } = parseMesAno(mes);
+        const diasReaisM = diasNoMes(anoM, numM);
+        const dd = sellOutMes > 0 ? sellOutMes / diasReaisM : 0;
         const qtdComprada = itemPed ? (itemPed.entregas[mes] ?? 0) : 0;
         const consumo = dd * lt;
 
         if (mi === 0) {
-          // Mês 1: fórmula LT original com pendências relevantes
+          // Mês 1: fórmula LT alinhada com engine + pendências relevantes
           const pendRel = getPendenciaRelevante(proj.CHAVE, lt, cad.PENDENCIA ?? 0);
           monthData.set(mes, {
-            estoqueNaChegada: Math.max(0, Math.round(cad.ESTOQUE - consumo + qtdComprada + pendRel)),
-            estoqueSemPedido: Math.max(0, Math.round(cad.ESTOQUE - consumo + pendRel)),
+            estoqueNaChegada: Math.max(0, Math.round(estoqueInicialEvol - consumo + qtdComprada + pendRel)),
+            estoqueSemPedido: Math.max(0, Math.round(estoqueInicialEvol - consumo + pendRel)),
           });
         } else {
           // Mês 2+: usar estoque evolutivo (considera sell-out e entradas dos meses anteriores)
@@ -573,7 +608,9 @@ export default function Home() {
         estoqueObjetivoMesTarget += objetivoMesTarget;
 
         // Estoque na chegada: estoque evolutivo pré-calculado
-        const demandaDiaria = sellOutMes > 0 ? sellOutMes / 30 : 0;
+        const { ano: anoMT, mes: numMT } = parseMesAno(mesTarget);
+        const diasReaisMT = diasNoMes(anoMT, numMT);
+        const demandaDiaria = sellOutMes > 0 ? sellOutMes / diasReaisMT : 0;
         const arrDataItem = arrivalDataMap.get(item.chave)?.get(mesTarget);
         const estoqueNaChegadaMes = arrDataItem?.estoqueNaChegada ?? 0;
         estoqueChegadaMesTarget += estoqueNaChegadaMes;
@@ -626,6 +663,27 @@ export default function Home() {
     const fornecedoresUnicos = [...new Set(itens.map(it => it.fornecedor))];
     const fornecedorNome = fornecedoresUnicos.join(', ');
 
+    // ── Cálculo PMP Projetado ────────────────────────────────────────────────
+    // Média ponderada: (ConasAPagar * DiasParaVencer + ValorPedido * PrazoPgto) / (Total)
+    const hoje = new Date();
+    let somaValorDias = 0;
+    let somaValor = 0;
+    if (dados.contas_a_pagar) {
+      dados.contas_a_pagar.forEach(conta => {
+        if (!fornecedoresUnicos.includes(conta.nome_fornecedor)) return;
+        const venc = new Date(conta.data_vencimento + 'T00:00:00');
+        const diasParaVencer = Math.max(0, Math.ceil((venc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24)));
+        somaValorDias += conta.valor_nota * diasParaVencer;
+        somaValor += conta.valor_nota;
+      });
+    }
+    const valorTotalPedido = itens.reduce((acc, it) => acc + (it.totalQuantidade * (it.custoLiquido || 0)), 0);
+    const prazoPgtoEfet = prazoPagamentoEfetivo ?? 0;
+    somaValorDias += valorTotalPedido * prazoPgtoEfet;
+    somaValor += valorTotalPedido;
+    const pmpProjetado = somaValor > 0 ? Math.round(somaValorDias / somaValor) : undefined;
+    // ── Fim PMP Projetado ────────────────────────────────────────────────────
+
     const kpis: PedidoKPIs = {
       coberturaFornecedorDiasGlobais: coberturaFornecedorDiasHojeGlobais,
       coberturaPedidoDiasGlobais: coberturaPedidoDiasHojeGlobais,
@@ -643,6 +701,8 @@ export default function Home() {
       coberturaFornecedorDiasHojeGlobais,
       coberturaFornecedorDiasChegadaGlobais,
       coberturaPedidoDiasHojeGlobais,
+      pmpProjetado,
+      pmeLojaGlobais: somaVolumesFornLoja > 0 ? Math.round(somaPonderadaFornLoja / somaVolumesFornLoja) : null,
       meses: kpisMensais
     };
     // ── Fim KPIs ─────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import type { SKUStatusDistribution } from '../../hooks/useDashboardData';
 
 interface SKUStatusPieChartProps {
   data: SKUStatusDistribution;
+  onPieClick?: (statusLabel: string) => void;
 }
 
 const STATUS_CONFIG = [
@@ -24,7 +25,7 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
-export default function SKUStatusPieChart({ data }: SKUStatusPieChartProps) {
+export default function SKUStatusPieChart({ data, onPieClick }: SKUStatusPieChartProps) {
   if (data.total === 0) {
     return (
       <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
@@ -53,6 +54,8 @@ export default function SKUStatusPieChart({ data }: SKUStatusPieChartProps) {
             paddingAngle={2}
             dataKey="value"
             stroke="none"
+            onClick={(entry) => onPieClick && onPieClick(entry.name)}
+            style={{ cursor: onPieClick ? 'pointer' : 'default' }}
           >
             {chartData.map((entry, index) => (
               <Cell key={index} fill={entry.color} />

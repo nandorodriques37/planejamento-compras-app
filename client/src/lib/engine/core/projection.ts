@@ -234,25 +234,54 @@ export function recalcularProjecaoSKU(
 export function getStatusSKU(
     projecao: Record<string, MesData>,
     meses: string[],
-    cadastro: { LT: number; FREQUENCIA: number; EST_SEGURANCA: number }
+    cadastro: { LT: number; FREQUENCIA: number; EST_SEGURANCA: number; ESTOQUE?: number }
 ): 'ok' | 'warning' | 'critical' {
     const lt = cadastro.LT || 0;
-    const frequencia = cadastro.FREQUENCIA || 0;
     const estSeguranca = cadastro.EST_SEGURANCA || 0;
 
     let hasCritical = false;
     let hasWarning = false;
 
+    // Verificar o estoque real (físico atual) se estive disponível no cadastro
+    if (cadastro.ESTOQUE !== undefined) {
+        const dataMesAtual = projecao[meses[0]];
+        if (dataMesAtual) {
+            const { ano, mes: mesNum } = parseMesAno(meses[0]);
+            const dias = diasNoMes(ano, mesNum);
+            const demandaDia = dataMesAtual.SELL_OUT / dias;
+            
+            if (demandaDia > 0) {
+                const estoqueCritico = demandaDia * lt;
+                const pontoPedido = demandaDia * (lt + estSeguranca);
+                
+                if (cadastro.ESTOQUE <= estoqueCritico) {
+                    hasCritical = true;
+                } else if (cadastro.ESTOQUE <= pontoPedido) {
+                    hasWarning = true;
+                }
+            } else if (cadastro.ESTOQUE === 0) {
+                 // Sem demanda mas sem estoque = ok or critical? Let's say if no demand and no stock, not critical for sales loss.
+                 // But usually if it's an active item with 0 stock, it could be a rupture. We keep logic based on demand.
+            }
+        }
+    }
+
+    if (hasCritical) return 'critical';
+
+    // Verificar projeções futuras
     meses.forEach((mes, i) => {
-        if (i === 0) return;
+        // Agora verificamos o mes 0 na projecao tambem, porque a projeção do mes 0 
+        // já considera o estoque final projetado do mês.
         const data = projecao[mes];
         if (!data) return;
 
         const { ano, mes: mesNum } = parseMesAno(mes);
         const dias = diasNoMes(ano, mesNum);
         const demandaDia = data.SELL_OUT / dias;
+        
+        if (demandaDia === 0) return; // Se não tem demanda, não tem risco de perda
 
-        const estoqueCritico = demandaDia * (frequencia + lt);
+        const estoqueCritico = demandaDia * lt;
         const pontoPedido = demandaDia * (lt + estSeguranca);
 
         if (data.ESTOQUE_PROJETADO <= estoqueCritico) {

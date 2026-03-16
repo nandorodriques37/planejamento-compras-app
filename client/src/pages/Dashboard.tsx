@@ -7,14 +7,20 @@
  * - Gráfico TOP 20 fornecedores por perda de vendas diária (R$/dia a custo)
  */
 
-import { AlertTriangle, PackageX, TrendingDown, DollarSign } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, PackageX, TrendingDown, DollarSign, FilterX } from 'lucide-react';
 import AppSidebar from '../components/AppSidebar';
 import SalesLossChart from '../components/dashboard/SalesLossChart';
+import SupplierWarningChart from '../components/dashboard/SupplierWarningChart';
+import SupplierCriticalChart from '../components/dashboard/SupplierCriticalChart';
 import SKUStatusPieChart from '../components/dashboard/SKUStatusPieChart';
 import CoverageDistributionChart from '../components/dashboard/CoverageDistributionChart';
 import StockRuptureTreeChart from '../components/dashboard/StockRuptureTreeChart';
+import DashboardDetailTable from '../components/dashboard/DashboardDetailTable';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDashboardData } from '../hooks/useDashboardData';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useDashboardData, DashboardFilters } from '../hooks/useDashboardData';
 import { formatCurrency, formatNumber } from '../lib/calculationEngine';
 
 function KPICard({
@@ -51,8 +57,17 @@ function KPICard({
 }
 
 export default function Dashboard() {
+  const [filters, setFilters] = useState<DashboardFilters>({
+    supplier: null,
+    status: null,
+    coverage: null,
+    rupture: null
+  });
+
   const {
     supplierLossRanking,
+    supplierWarningRanking,
+    supplierCriticalRanking,
     totalPerdaDiaria,
     totalSkusRuptura,
     totalSkusCriticos,
@@ -60,8 +75,9 @@ export default function Dashboard() {
     skuStatusDistribution,
     coverageDistribution,
     ruptureTreeData,
+    filteredDetails,
     loading,
-  } = useDashboardData();
+  } = useDashboardData(filters);
 
   // Badge: pedidos pendentes
   const pedidosPendentes = (() => {
@@ -72,6 +88,17 @@ export default function Dashboard() {
       return Array.isArray(lista) ? lista.filter((p: any) => p.status === 'pendente').length : 0;
     } catch { return 0; }
   })();
+
+  const clearFilters = () => {
+    setFilters({
+      supplier: null,
+      status: null,
+      coverage: null,
+      rupture: null
+    });
+  };
+
+  const hasActiveFilters = Object.values(filters).some(value => value !== null);
 
   if (loading) {
     return (
@@ -109,11 +136,49 @@ export default function Dashboard() {
 
       <main className="flex-1 overflow-y-auto bg-background px-6 py-5 space-y-5">
         {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Visão geral de indicadores de saúde do estoque
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+              Dashboard
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="text-xs font-normal">
+                  Filtrado
+                </Badge>
+              )}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Visão geral de indicadores de saúde do estoque. Clique nos gráficos para filtrar.
+            </p>
+          </div>
+          
+          {hasActiveFilters && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex flex-wrap gap-2 text-xs">
+                {filters.supplier && (
+                  <Badge variant="outline" className="text-xs py-0 h-6">Fornecedor: {filters.supplier}</Badge>
+                )}
+                {filters.status && (
+                  <Badge variant="outline" className="text-xs py-0 h-6">Status: {filters.status}</Badge>
+                )}
+                {filters.coverage && (
+                  <Badge variant="outline" className="text-xs py-0 h-6">Cobertura: {filters.coverage}</Badge>
+                )}
+                {filters.rupture && (
+                  <Badge variant="outline" className="text-xs py-0 h-6">Ruptura: {filters.rupture.categoria} - {filters.rupture.situacao}</Badge>
+                )}
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={clearFilters}
+                className="h-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                title="Limpar todos os filtros"
+              >
+                <FilterX className="w-4 h-4 mr-2" />
+                Limpar
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* KPI Cards */}
@@ -163,7 +228,10 @@ export default function Dashboard() {
                 Classificação atual: OK, Ponto de Pedido e Ruptura/Crítico
               </p>
             </div>
-            <SKUStatusPieChart data={skuStatusDistribution} />
+            <SKUStatusPieChart 
+              data={skuStatusDistribution} 
+              onPieClick={(statusLabel) => setFilters(prev => ({ ...prev, status: prev.status === statusLabel ? null : statusLabel }))}
+            />
           </div>
 
           <div className="bg-card border border-border rounded-lg p-5">
@@ -175,7 +243,10 @@ export default function Dashboard() {
                 Dias de cobertura com base no estoque atual e demanda projetada
               </p>
             </div>
-            <CoverageDistributionChart data={coverageDistribution} />
+            <CoverageDistributionChart 
+              data={coverageDistribution} 
+              onBarClick={(coverageLabel) => setFilters(prev => ({ ...prev, coverage: prev.coverage === coverageLabel ? null : coverageLabel }))}
+            />
           </div>
         </div>
 
@@ -189,7 +260,15 @@ export default function Dashboard() {
               Distribuição de SKUs em ruptura e ponto de ruptura, por situação de pedido
             </p>
           </div>
-          <StockRuptureTreeChart data={ruptureTreeData} />
+          <StockRuptureTreeChart 
+            data={ruptureTreeData} 
+            onClick={(category, situacao) => {
+              setFilters(prev => {
+                const isSame = prev.rupture && prev.rupture.categoria === category && prev.rupture.situacao === situacao;
+                return { ...prev, rupture: isSame ? null : { categoria: category, situacao } };
+              });
+            }}
+          />
         </div>
 
         {/* Sales Loss Chart */}
@@ -202,9 +281,50 @@ export default function Dashboard() {
               Ranking por perda diária estimada a custo líquido. Inclui produtos com estoque zero e produtos em risco crítico de ruptura.
             </p>
           </div>
-          <SalesLossChart data={supplierLossRanking} />
+          <SalesLossChart 
+            data={supplierLossRanking} 
+            onBarClick={(supplierName) => setFilters(prev => ({ ...prev, supplier: prev.supplier === supplierName ? null : supplierName }))}
+          />
         </div>
+
+        {/* Supplier Ranking by Status (Warning & Critical) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-card border border-border rounded-lg p-5">
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold text-foreground">
+                TOP 20 Fornecedores — SKUs em Ponto de Pedido
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Ranking por número de produtos que atingiram ou caíram abaixo do Ponto de Pedido.
+              </p>
+            </div>
+            <SupplierWarningChart 
+              data={supplierWarningRanking} 
+              onBarClick={(supplierName) => setFilters(prev => ({ ...prev, supplier: prev.supplier === supplierName ? null : supplierName }))}
+            />
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-5">
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold text-foreground">
+                TOP 20 Fornecedores — SKUs Críticos & Ruptura
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Ranking por número de produtos em ruptura (estoque zero) e em risco constante.
+              </p>
+            </div>
+            <SupplierCriticalChart 
+              data={supplierCriticalRanking} 
+              onBarClick={(supplierName) => setFilters(prev => ({ ...prev, supplier: prev.supplier === supplierName ? null : supplierName }))}
+            />
+          </div>
+        </div>
+
+        {/* Detail Table */}
+        <DashboardDetailTable data={filteredDetails} />
+        
       </main>
     </div>
   );
 }
+

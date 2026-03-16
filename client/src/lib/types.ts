@@ -25,6 +25,8 @@ export interface PedidoItem {
   estoqueProjetadoChegada?: number;
   /** Cobertura em dias NA CHEGADA (estoque projetado / demanda diária) */
   coberturaDiasChegada?: number | null;
+  /** Estoque nas lojas (apenas visualização, não afeta projeção CD) */
+  estoqueLojaAtual?: number;
   /** Custo liquido da unidade do produto */
   custoLiquido?: number;
   /** Se este item tem risco de shelf life (cobertura > 80% do shelf life) */
@@ -70,6 +72,10 @@ export interface PedidoKPIs {
   coberturaFornecedorDiasChegadaGlobais?: number | null;
   /** Cobertura do Pedido HOJE (em dias) */
   coberturaPedidoDiasHojeGlobais?: number | null;
+  /** PMP Projetado na chegada (média ponderada contas existentes + novo pedido) em dias */
+  pmpProjetado?: number;
+  /** PME somente do estoque loja (para validação do cálculo PME-PMP) em dias */
+  pmeLojaGlobais?: number | null;
 
   /** Dados específicos recalculados mês a mês */
   meses: Record<string, {
@@ -87,6 +93,8 @@ export interface PedidoKPIs {
     coberturaFornecedorDiasChegada?: number | null;
     coberturaPedidoDiasHoje?: number | null;
     skusShelfLifeRisk?: number;
+    /** Contagem de SKUs em ruptura NO DIA DE HOJE (estoque atual na loja <= segurança) */
+    skusLojaCriticosHoje?: number;
   }>;
 }
 

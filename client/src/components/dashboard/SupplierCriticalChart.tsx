@@ -8,10 +8,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { formatCurrency } from '../../lib/calculationEngine';
 import type { SupplierLossData } from '../../hooks/useDashboardData';
 
-interface SalesLossChartProps {
+interface SupplierCriticalChartProps {
   data: SupplierLossData[];
   onBarClick?: (supplierName: string) => void;
 }
@@ -21,69 +20,56 @@ function truncate(str: string, maxLen: number): string {
   return str.slice(0, maxLen - 1) + '…';
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+function CustomTooltip({ active, payload }: any) {
   if (!active || !payload || payload.length === 0) return null;
 
   const data = payload[0]?.payload as SupplierLossData | undefined;
   if (!data) return null;
 
+  const total = data.skusRupturaTotal + data.skusRiscoCritico;
+
   return (
     <div className="bg-card border border-border rounded-lg shadow-lg px-4 py-3 text-xs max-w-xs">
       <p className="font-bold text-foreground mb-2">{data.fornecedor}</p>
       <div className="space-y-1.5">
-        {data.perdaRupturaTotal > 0 && (
+        {data.skusRupturaTotal > 0 && (
           <div className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-              <span className="text-muted-foreground">Ruptura Total</span>
+              <span className="text-muted-foreground">Ruptura Total (zerados)</span>
             </span>
             <span className="font-mono font-semibold text-foreground">
-              {formatCurrency(data.perdaRupturaTotal)}
+              {data.skusRupturaTotal}
             </span>
           </div>
         )}
-        {data.perdaRiscoCritico > 0 && (
+        {data.skusRiscoCritico > 0 && (
           <div className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-              <span className="text-muted-foreground">Risco de Ruptura</span>
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'oklch(0.60 0.2 70)' }} />
+              <span className="text-muted-foreground">Risco Crítico</span>
             </span>
             <span className="font-mono font-semibold text-foreground">
-              {formatCurrency(data.perdaRiscoCritico)}
+              {data.skusRiscoCritico}
             </span>
           </div>
         )}
         <div className="border-t border-border pt-1.5 flex items-center justify-between gap-4">
-          <span className="text-muted-foreground font-medium">Total</span>
+          <span className="text-muted-foreground font-medium">Total de SKUs Críticos</span>
           <span className="font-mono font-bold text-foreground">
-            {formatCurrency(data.perdaTotal)}
+            {total}
           </span>
-        </div>
-        <div className="text-muted-foreground/70 pt-0.5">
-          {data.skusRupturaTotal > 0 && (
-            <span>{data.skusRupturaTotal} SKU{data.skusRupturaTotal > 1 ? 's' : ''} sem estoque</span>
-          )}
-          {data.skusRupturaTotal > 0 && data.skusRiscoCritico > 0 && <span> · </span>}
-          {data.skusRiscoCritico > 0 && (
-            <span>{data.skusRiscoCritico} SKU{data.skusRiscoCritico > 1 ? 's' : ''} em risco</span>
-          )}
         </div>
       </div>
     </div>
   );
 }
 
-function formatYAxis(value: number): string {
-  if (value >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `R$ ${(value / 1_000).toFixed(0)}k`;
-  return `R$ ${value.toFixed(0)}`;
-}
-
-export default function SalesLossChart({ data, onBarClick }: SalesLossChartProps) {
+export default function SupplierCriticalChart({ data, onBarClick }: SupplierCriticalChartProps) {
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-        Nenhum fornecedor com perda de vendas identificada.
+        Nenhum fornecedor com SKUs Críticos ou em Ruptura.
       </div>
     );
   }
@@ -100,26 +86,25 @@ export default function SalesLossChart({ data, onBarClick }: SalesLossChartProps
   };
 
   return (
-    <ResponsiveContainer width="100%" height={420}>
+    <ResponsiveContainer width="100%" height={Math.max(300, chartData.length * 28 + 60)}>
       <BarChart
         data={chartData}
-        margin={{ top: 8, right: 16, left: 8, bottom: 80 }}
+        layout="vertical"
+        margin={{ top: 8, right: 16, left: 60, bottom: 8 }}
         onClick={handleBarClick}
         style={{ cursor: onBarClick ? 'pointer' : 'default' }}
       >
-        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} className="opacity-30" />
         <XAxis
-          dataKey="fornecedorLabel"
+          type="number"
           tick={{ fontSize: 11 }}
-          angle={-45}
-          textAnchor="end"
-          interval={0}
-          height={80}
+          allowDecimals={false}
         />
         <YAxis
-          tickFormatter={formatYAxis}
+          dataKey="fornecedorLabel"
+          type="category"
           tick={{ fontSize: 11 }}
-          width={72}
+          width={80}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'oklch(0.5 0 0 / 0.08)' }} />
         <Legend
@@ -130,21 +115,20 @@ export default function SalesLossChart({ data, onBarClick }: SalesLossChartProps
           )}
         />
         <Bar
-          dataKey="perdaRupturaTotal"
-          name="Ruptura Total (estoque zero)"
-          stackId="loss"
+          dataKey="skusRupturaTotal"
+          name="Ruptura Total"
+          stackId="critical"
           fill="oklch(0.637 0.237 25.331)"
           radius={[0, 0, 0, 0]}
         />
         <Bar
-          dataKey="perdaRiscoCritico"
-          name="Risco de Ruptura (estoque crítico)"
-          stackId="loss"
-          fill="oklch(0.769 0.188 70.08)"
+          dataKey="skusRiscoCritico"
+          name="Risco Crítico"
+          stackId="critical"
+          fill="oklch(0.60 0.2 70)"
           radius={[4, 4, 0, 0]}
         />
       </BarChart>
     </ResponsiveContainer>
   );
 }
-

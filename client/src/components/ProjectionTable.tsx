@@ -592,7 +592,7 @@ export default function ProjectionTable({
   // Mês 1 com semanas: 5 colunas normais + N colunas semanais (em vez de 1 Pedido)
   const mesWidthMes1 = temSemanas ? colWidth * (5 + numSemanas) : mesWidth;
   const extraInfoWidth = 520;
-  const fixedWidth = 28 + 62 + produtoWidth + 42;
+  const fixedWidth = 28 + 130 + produtoWidth + 42;
   // Total scrollable width: extra info + month 1 (possibly wider) + remaining months
   const totalScrollWidth = extraInfoWidth + mesWidthMes1 + (meses.length > 1 ? (meses.length - 1) * mesWidth : 0);
 
@@ -621,7 +621,7 @@ export default function ProjectionTable({
         <div className="w-[28px] px-1 flex items-center justify-center">
           <BarChart3 className={`w-3.5 h-3.5 transition-colors ${isSelected ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/60'}`} />
         </div>
-        <div className="w-[62px] px-2 flex items-center gap-0.5">
+        <div className="w-[130px] px-2 flex items-center gap-0.5">
           <StatusBadge status={status} />
           {temRiscoShelfLife && (
             <span title="Risco de vencimento (Shelf Life)" className="flex-shrink-0">
@@ -777,7 +777,9 @@ export default function ProjectionTable({
               </div>
               <div style={{ width: colWidth }} className="px-2 flex items-center justify-end gap-0.5">
                 {shelfLifeRisco && (
-                  <Hourglass className="w-3 h-3 text-orange-500 flex-shrink-0" title={`Risco de vencimento: cobertura ${coberturaDias}d excede 80% do shelf life (${cad!.SHELF_LIFE}d)`} />
+                  <span title={`Risco de vencimento: cobertura ${coberturaDias}d excede 80% do shelf life (${cad!.SHELF_LIFE}d)`} className="flex-shrink-0">
+                    <Hourglass className="w-3 h-3 text-orange-500" />
+                  </span>
                 )}
                 <span className={`text-xs font-mono tabular-nums font-semibold ${
                   isNegativo ? 'text-destructive' : isAbaixoObj ? 'text-amber-600' : 'text-foreground'
@@ -843,7 +845,7 @@ export default function ProjectionTable({
           <div className="flex bg-muted/50 border-b border-border" style={{ height: 56 }}>
             <div className="w-[28px] px-1 flex items-center justify-center text-[10px] font-semibold text-muted-foreground" />
             <div 
-              className={`w-[62px] px-2 ${headerCellBase} text-muted-foreground gap-0.5`}
+              className={`w-[130px] px-2 ${headerCellBase} text-muted-foreground gap-0.5`}
               onClick={() => handleSort('status')}
               title="Ordenar por Status"
             >

@@ -12,9 +12,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { DadosCompletos, ProjecaoSKU, SKUCadastro } from '../lib/calculationEngine';
 import { recalcularProjecaoSKU, getStatusSKU, buildPendenciasPorSKU, agruparPendenciasPorMes } from '../lib/calculationEngine';
+import type { PedidoPendente } from '../lib/calculationEngine';
 import { obterProjecaoInicial } from '../lib/dataAdapter';
 import { useDebounce } from './useDebounce';
 import { usePersistedEdits } from './usePersistedEdits';
+import type { PedidoAprovacao } from '../lib/types';
 
 export interface EditedCell {
   chave: string;
@@ -94,12 +96,57 @@ export function useProjectionData() {
     return { fornecedores, categorias, categoriasNivel4, cds };
   }, [dados]);
 
+  // ── Pendencias: mock + pedidos ativos do dia (pendentes + aprovados) ────────
+  const pedidosPendentesCompletos = useMemo(() => {
+    const base: PedidoPendente[] = dados?.pedidos_pendentes ?? [];
+
+    // Ler pedidos do localStorage e filtrar ativos (pendentes + aprovados)
+    let ativos: PedidoAprovacao[] = [];
+    try {
+      const raw = localStorage.getItem('pedidos_aprovacao');
+      if (raw) {
+        const todos = JSON.parse(raw) as PedidoAprovacao[];
+        ativos = todos.filter(p => p.status === 'pendente' || p.status === 'aprovado');
+      }
+    } catch { /* ignore */ }
+
+    if (ativos.length === 0) return base;
+
+    // Converter itens dos pedidos ativos em PedidoPendente
+    const sinteticos: PedidoPendente[] = [];
+    const hoje = new Date();
+
+    ativos.forEach(pedido => {
+      pedido.itens.forEach(item => {
+        // Buscar LT do cadastro
+        const cad = cadastroMap.get(item.chave);
+        const lt = cad?.LT ?? 0;
+
+        // Para cada mês de entrega, gerar uma pendência
+        Object.entries(item.entregas).forEach(([_mes, qtd]) => {
+          if (qtd <= 0) return;
+          // Data de chegada: hoje + LT
+          const chegada = new Date(hoje);
+          chegada.setDate(chegada.getDate() + lt);
+          const dataStr = `${chegada.getFullYear()}-${String(chegada.getMonth() + 1).padStart(2, '0')}-${String(chegada.getDate()).padStart(2, '0')}`;
+
+          sinteticos.push({
+            chave: item.chave,
+            numero_pedido: `SIM-${pedido.id}`,
+            quantidade: qtd,
+            data_chegada_prevista: dataStr,
+          });
+        });
+      });
+    });
+
+    return [...base, ...sinteticos];
+  }, [dados?.pedidos_pendentes, cadastroMap]);
+
   // Projeções com edições aplicadas
   const projecoesComEdicoes = useMemo(() => {
     if (!dados) return [];
-    const pendSKUMap = dados.pedidos_pendentes
-      ? buildPendenciasPorSKU(dados.pedidos_pendentes)
-      : new Map();
+    const pendSKUMap = buildPendenciasPorSKU(pedidosPendentesCompletos);
     return dados.projecao.map(proj => {
       const edicoesDoSKU: Record<string, number | null> = {};
       let temEdicao = false;
@@ -137,7 +184,7 @@ export function useProjectionData() {
       );
       return { ...proj, meses: novaProjecao };
     });
-  }, [dados, editedCells, cadastroMap]);
+  }, [dados, editedCells, cadastroMap, pedidosPendentesCompletos]);
 
   // Filtros — usa debouncedBusca para busca textual
   const dadosFiltrados = useMemo(() => {
@@ -231,6 +278,6 @@ export function useProjectionData() {
     dados, loading, error, mesesVisiveis, filterOptions, filters, setFilters,
     horizonte, setHorizonte, dadosFiltrados, editarPedido, editarPedidoComCascata,
     desfazerEdicao, isCellEdited, limparEdicoes, totalEdicoes, editedCells,
-    cadastroMap, projecoesComEdicoes
+    cadastroMap, projecoesComEdicoes, pedidosPendentesCompletos
   };
 }

@@ -3,16 +3,23 @@ import type { RuptureTreeData } from '../../hooks/useDashboardData';
 
 interface StockRuptureTreeChartProps {
   data: RuptureTreeData;
+  onClick?: (category: string, situacao: string) => void;
 }
 
 function CustomTreemapContent(props: any) {
-  const { x, y, width, height, name, size, color, depth } = props;
+  const { x, y, width, height, name, size, color, depth, root, onClickHandler } = props;
 
   if (depth < 2) return null;
   if (width < 4 || height < 4) return null;
 
+  const handleClick = () => {
+    if (onClickHandler && root) {
+      onClickHandler(root.name, name);
+    }
+  };
+
   return (
-    <g>
+    <g onClick={handleClick} style={{ cursor: onClickHandler ? 'pointer' : 'default' }}>
       <rect
         x={x}
         y={y}
@@ -32,6 +39,7 @@ function CustomTreemapContent(props: any) {
             fill="white"
             fontSize={12}
             fontWeight={600}
+            style={{ pointerEvents: 'none' }}
           >
             {name}
           </text>
@@ -41,6 +49,7 @@ function CustomTreemapContent(props: any) {
             textAnchor="middle"
             fill="rgba(255,255,255,0.85)"
             fontSize={11}
+            style={{ pointerEvents: 'none' }}
           >
             {size} SKUs
           </text>
@@ -67,7 +76,7 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
-export default function StockRuptureTreeChart({ data }: StockRuptureTreeChartProps) {
+export default function StockRuptureTreeChart({ data, onClick }: StockRuptureTreeChartProps) {
   const totalItems = data.children.reduce(
     (sum, cat) => sum + cat.children.reduce((s, c) => s + c.size, 0),
     0,
@@ -89,7 +98,7 @@ export default function StockRuptureTreeChart({ data }: StockRuptureTreeChartPro
           dataKey="size"
           nameKey="name"
           stroke="none"
-          content={<CustomTreemapContent />}
+          content={<CustomTreemapContent onClickHandler={onClick} />}
         >
           <Tooltip content={<CustomTooltip />} />
         </Treemap>
