@@ -225,9 +225,9 @@ export default function CicloEstoque() {
                         <YAxis 
                           type="category" 
                           dataKey="nome" 
-                          width={150} 
+                          width={250} 
                           tick={{ fontSize: 11 }}
-                          tickFormatter={(val) => val.length > 25 ? val.substring(0, 25) + '...' : val}
+                          tickFormatter={(val) => val.length > 50 ? val.substring(0, 50) + '...' : val}
                         />
                         <Tooltip 
                           formatter={(value: number) => [formatCurrency(value), "R$ Médio"]}
