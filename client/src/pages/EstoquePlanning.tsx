@@ -9,7 +9,7 @@
  * - Tabela detalhada de saúde do estoque por SKU
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Package,
@@ -20,6 +20,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   BarChart3,
   Activity,
   Eye,
@@ -69,6 +70,13 @@ interface CDSummary {
     sellOut: number;
     pedido: number;
     entrada: number;
+  }>;
+  gruposOcupacao?: Array<{
+    id: string;
+    nome: string;
+    capacidadeM3: number;
+    categoriasNivel3: string[];
+    porMes: Record<string, number>; // mesKey -> volume M3 ocupado
   }>;
 }
 
@@ -161,11 +169,31 @@ function CDCard({
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-primary/5 rounded-lg">
+            <div className="p-2 bg-primary/5 rounded-lg relative">
               <Warehouse className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-foreground">CD {cd.cd}</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-bold text-foreground">CD {cd.cd}</h3>
+                {/* Capacity Semaphore Alert */}
+                {(() => {
+                  const exceeded = cd.gruposOcupacao?.some(g => Object.values(g.porMes).some(vol => vol > g.capacidadeM3));
+                  if (exceeded) {
+                    return (
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-destructive/10 border border-destructive/20 text-[9px] font-bold text-destructive" title="Capacidade excedida em alguns grupos">
+                        <div className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                        Lotação
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-bold text-emerald-600" title="Capacidade adequada">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Lotação
+                    </span>
+                  );
+                })()}
+              </div>
               <p className="text-[10px] text-muted-foreground">{cd.skuCount} SKUs</p>
             </div>
           </div>
@@ -281,7 +309,7 @@ function CDCard({
         className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 border-t border-border transition-colors"
       >
         {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        {isExpanded ? 'Recolher SKUs' : `Ver ${cd.skuCount} SKUs`}
+        {isExpanded ? 'Recolher Agrupamentos' : `Ver Agrupamentos e Categorias`}
       </button>
 
       {/* Expanded SKU list - Lazy Loaded */}
@@ -294,7 +322,7 @@ function CDCard({
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="border-t border-border bg-muted/20 overflow-hidden"
           >
-            <CDSkusTable cdKey={cd.cd} filters={filters} onRowClick={onViewDetail} />
+            <CDGroupsTable cd={cd} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -489,76 +517,108 @@ import type { AugmentedSKU } from '../lib/api/types';
 // CD Skus Table (Lazy Loaded)
 // ============================================================================
 
-function CDSkusTable({ cdKey, filters, onRowClick }: { cdKey: string, filters: any, onRowClick: (sku: string) => void }) {
-  const [skus, setSkus] = useState<AugmentedSKU[]>([]);
-  const [loading, setLoading] = useState(true);
+function CDGroupsTable({ cd }: { cd: CDSummary }) {
+  const grupos = cd.gruposOcupacao || [];
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    getSkusPaginated({ ...filters, cd: cdKey }, { page: 1, pageSize: 100 }).then(res => {
-      if (active) {
-        setSkus(res.data);
-        setLoading(false);
-      }
+  const toggleGroup = (id: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
-    return () => { active = false; };
-  }, [cdKey, filters]);
+  };
 
-  if (loading) {
+  if (grupos.length === 0) {
     return (
-      <div className="p-4 text-center text-xs text-muted-foreground animate-pulse">
-        Carregando SKUs...
+      <div className="p-4 text-center text-xs text-muted-foreground">
+        Nenhum agrupamento de capacidade cadastrado para este CD.
       </div>
     );
   }
 
+  // Obter o primeiro mês da projeção para "Ocupação Atual"
+  const mesesKeys = cd.projecaoMensal.map(m => m.mesKey);
+  const atualMesKey = mesesKeys[0];
+
   return (
     <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
       <table className="w-full text-xs">
-        <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+        <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10 border-b border-border/50">
           <tr className="text-[10px] text-muted-foreground">
-            <th className="text-left px-3 py-2 font-medium">Produto</th>
-            <th className="text-right px-3 py-2 font-medium">Estoque</th>
-            <th className="text-right px-3 py-2 font-medium">Cobertura</th>
-            <th className="text-center px-3 py-2 font-medium">Status</th>
+            <th className="text-left px-3 py-2 font-medium w-6"></th>
+            <th className="text-left px-3 py-2 font-medium">Agrupamento</th>
+            <th className="text-right px-3 py-2 font-medium">Ocup. Atual</th>
+            <th className="text-right px-3 py-2 font-medium">Pico Anual</th>
+            <th className="text-right px-3 py-2 font-medium">Capacidade</th>
           </tr>
         </thead>
         <tbody>
-          {skus.map((sku) => (
-            <tr
-              key={sku.chave}
-              className="border-t border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
-              onClick={() => onRowClick(sku.chave)}
-            >
-              <td className="px-3 py-2">
-                <p className="font-medium text-foreground truncate max-w-[180px]">
-                  {sku.nome}
-                </p>
-                <p className="text-[9px] text-muted-foreground">
-                  SKU {sku.chave} · LT {sku.lt}d
-                </p>
-              </td>
-              <td className="text-right px-3 py-2 font-mono tabular-nums font-semibold">
-                {formatNumber(sku.estoqueAtual)}
-              </td>
-              <td className="text-right px-3 py-2 font-mono tabular-nums">
-                {sku.coberturaDias}d
-              </td>
-              <td className="text-center px-3 py-2">
-                <span
-                  className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold ${sku.status === 'ok'
-                    ? 'badge-ok'
-                    : sku.status === 'warning'
-                      ? 'badge-warning'
-                      : 'badge-critical'
-                    }`}
+          {grupos.map((g) => {
+            const volAtual = g.porMes[atualMesKey] || 0;
+            const pctAtual = g.capacidadeM3 > 0 ? (volAtual / g.capacidadeM3) * 100 : 0;
+            
+            const picos = mesesKeys.map(m => g.porMes[m] || 0);
+            const volMaximo = Math.max(...picos);
+            const pctPico = g.capacidadeM3 > 0 ? (volMaximo / g.capacidadeM3) * 100 : 0;
+
+            const isExpanded = expandedGroups.has(g.id);
+            const hasAlert = pctPico > 100;
+
+            return (
+              <React.Fragment key={g.id}>
+                <tr
+                  className={`border-b border-border/20 transition-colors cursor-pointer hover:bg-muted/30 ${hasAlert ? 'bg-destructive/5' : ''}`}
+                  onClick={() => toggleGroup(g.id)}
                 >
-                  {sku.status === 'ok' ? 'OK' : sku.status === 'warning' ? 'Ponto de Pedido' : 'Ruptura'}
-                </span>
-              </td>
-            </tr>
-          ))}
+                  <td className="px-3 py-2">
+                    {isExpanded ? <ChevronDown className="w-3 h-3 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 text-muted-foreground" />}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-foreground">{g.nome}</span>
+                      {hasAlert && <AlertTriangle className="w-3 h-3 text-destructive" />}
+                    </div>
+                  </td>
+                  <td className="text-right px-3 py-2 font-mono tabular-nums">
+                    <span className={pctAtual > 100 ? 'text-destructive font-bold' : ''}>
+                      {pctAtual.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="text-right px-3 py-2 font-mono tabular-nums">
+                    <span className={pctPico > 100 ? 'text-destructive font-bold' : 'font-semibold'}>
+                      {pctPico.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="text-right px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                    {formatNumber(Math.round(g.capacidadeM3))} m³
+                  </td>
+                </tr>
+                {/* Expanded Categories */}
+                {isExpanded && (
+                  <tr className="bg-muted/10 border-b border-border/50">
+                    <td colSpan={5} className="px-3 py-3">
+                      <div className="pl-6 space-y-1.5">
+                        <p className="text-[10px] font-medium text-muted-foreground">Categorias Atribuídas:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {g.categoriasNivel3.length === 0 ? (
+                            <span className="text-[10px] text-muted-foreground/60 italic">Nenhuma categoria agrupada</span>
+                          ) : (
+                            g.categoriasNivel3.map(cat => (
+                              <span key={cat} className="px-2 py-0.5 rounded-full bg-background border border-border text-[10px] text-muted-foreground">
+                                {cat}
+                              </span>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -585,6 +645,14 @@ export default function EstoquePlanning() {
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
   const [cdFilter, setCdFilter] = useState<string>('');
   const [fornecedorFilter, setFornecedorFilter] = useState<string>('');
+  const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
+
+  const toggleSeries = (dataKey: string) => {
+    setHiddenSeries(prev => ({
+      ...prev,
+      [dataKey]: !prev[dataKey]
+    }));
+  };
 
   // Contagem de pedidos pendentes para badge do sidebar
   const pedidosPendentes = (() => {
@@ -616,6 +684,8 @@ export default function EstoquePlanning() {
       let sellOut = 0;
       let pedido = 0;
       let entrada = 0;
+      let volumeProjetadoM3 = 0;
+      let capacidadeTotalM3 = 0;
 
       cdSummaries.forEach(cd => {
         const d = cd.projecaoMensal.find(m => m.mesKey === mes);
@@ -626,6 +696,15 @@ export default function EstoquePlanning() {
           pedido += d.pedido;
           entrada += d.entrada;
         }
+
+        // Soma de capacidade e volume de todos os grupos
+        cd.gruposOcupacao?.forEach(g => {
+          // A capacidade é total do grupo, portanto constante para todos os meses
+          // Para evitar somar a mesma capacidade múltipla vezes no loop de mês,
+          // precisamos ter cuidado, mas aqui iteramos por mês de qualquer forma
+          capacidadeTotalM3 += g.capacidadeM3;
+          volumeProjetadoM3 += g.porMes[mes] || 0;
+        });
       });
 
       return {
@@ -635,7 +714,9 @@ export default function EstoquePlanning() {
         'Estoque Objetivo': estoqueObjetivo,
         'Sell Out': sellOut,
         Pedido: pedido,
-        Entrada: entrada
+        Entrada: entrada,
+        'Volume Projetado M3': volumeProjetadoM3,
+        'Capacidade M3': capacidadeTotalM3
       };
     });
   }, [cdSummaries, meses]);
@@ -654,21 +735,77 @@ export default function EstoquePlanning() {
     };
   }, [kpis, cdSummaries, chartDataGlobal]);
 
-  // Y domain for main chart
+  // Y domain for main chart (Units)
   const yDomainMain = useMemo(() => {
     if (!aggregated) return [0, 100];
     let min = Infinity;
     let max = -Infinity;
-    aggregated.chartDataGlobal.forEach((d) => {
+    
+    // Obter array de dados real (filtrado ou global)
+    const dataArray = cdFilter 
+        ? aggregated.cdSummaries.find((c) => c.cd === cdFilter)?.projecaoMensal.map(m => ({
+            'Estoque Projetado': m.estoqueProjetado,
+            'Estoque Objetivo': m.estoqueObjetivo,
+            'Sell Out': m.sellOut
+          })) ?? []
+        : aggregated.chartDataGlobal;
+
+    if (dataArray.length === 0) return [0, 100];
+
+    dataArray.forEach((d: any) => {
       const values = [d['Estoque Projetado'], d['Estoque Objetivo'], d['Sell Out']];
       values.forEach((v) => {
-        if (v < min) min = v;
-        if (v > max) max = v;
+        if (v !== undefined && v < min) min = v;
+        if (v !== undefined && v > max) max = v;
       });
     });
+    
+    if (min === Infinity || max === -Infinity) return [0, 100];
+    
     const padding = (max - min) * 0.1;
     return [Math.floor(Math.min(0, min - padding)), Math.ceil(max + padding)];
-  }, [aggregated]);
+  }, [aggregated, cdFilter]);
+
+  // Y domain for volume (M3)
+  const yDomainVolume = useMemo(() => {
+    if (!aggregated) return [0, 100];
+    let min = Infinity;
+    let max = -Infinity;
+
+    let dataArray = aggregated.chartDataGlobal;
+
+    if (cdFilter) {
+      const cd = aggregated.cdSummaries.find(c => c.cd === cdFilter);
+      if (cd) {
+        dataArray = meses.map(mes => {
+          let vol = 0;
+          let cap = 0;
+          cd.gruposOcupacao?.forEach(g => {
+            vol += g.porMes[mes] || 0;
+            cap += g.capacidadeM3;
+          });
+          return { 'Volume Projetado M3': vol, 'Capacidade M3': cap } as any;
+        });
+      }
+    }
+
+    if (dataArray.length === 0) return [0, 100];
+
+    dataArray.forEach((d: any) => {
+      const v1 = d['Volume Projetado M3'] || 0;
+      const v2 = d['Capacidade M3'] || 0;
+      if (v1 < min) min = v1;
+      if (v1 > max) max = v1;
+      if (v2 < min) min = v2;
+      if (v2 > max) max = v2;
+    });
+
+    if (min === Infinity || max === -Infinity) return [0, 100];
+
+    const padding = (max - min) * 0.1;
+    // Volume base is strictly mapped from 0 unless min is negative (shouldn't be)
+    return [0, Math.ceil(max + padding)];
+  }, [aggregated, cdFilter, meses]);
 
   // Anomaly months where projected stock falls below objective
   const anomalyMonths = useMemo(() => {
@@ -868,15 +1005,25 @@ export default function EstoquePlanning() {
                 <ComposedChart
                   data={
                     cdFilter
-                      ? aggregated.cdSummaries
-                        .find((c) => c.cd === cdFilter)
-                        ?.projecaoMensal.map((m) => ({
-                          mes: m.mes,
-                          'Estoque Projetado': m.estoqueProjetado,
-                          'Estoque Objetivo': m.estoqueObjetivo,
-                          'Sell Out': m.sellOut,
-                          Pedido: m.pedido,
-                        })) ?? []
+                      ? (aggregated.cdSummaries.find((c) => c.cd === cdFilter) ? 
+                          meses.map(m => {
+                            const mesDataObj = aggregated.cdSummaries.find((c) => c.cd === cdFilter)!.projecaoMensal.find(x => x.mesKey === m);
+                            let vol = 0;
+                            let cap = 0;
+                            aggregated.cdSummaries.find((c) => c.cd === cdFilter)!.gruposOcupacao?.forEach(g => {
+                              vol += g.porMes[m] || 0;
+                              cap += g.capacidadeM3;
+                            });
+                            return {
+                              mes: formatMes(m),
+                              'Estoque Projetado': mesDataObj?.estoqueProjetado || 0,
+                              'Estoque Objetivo': mesDataObj?.estoqueObjetivo || 0,
+                              'Sell Out': mesDataObj?.sellOut || 0,
+                              Pedido: mesDataObj?.pedido || 0,
+                              'Volume Projetado M3': vol,
+                              'Capacidade M3': cap
+                            };
+                          }) : [])
                       : aggregated.chartDataGlobal
                   }
                   margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
@@ -895,19 +1042,48 @@ export default function EstoquePlanning() {
                     axisLine={{ stroke: 'var(--border)' }}
                   />
                   <YAxis
+                    yAxisId="left"
                     domain={yDomainMain}
                     tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
                     tickLine={false}
                     axisLine={{ stroke: 'var(--border)' }}
                     tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
                   />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    domain={yDomainVolume}
+                    tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `${v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0)} m³`}
+                  />
                   <Tooltip content={<MainChartTooltip />} />
                   <Legend
-                    wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                    iconType="circle"
-                    iconSize={8}
+                    content={(props) => {
+                      const { payload } = props;
+                      if (!payload) return null;
+                      return (
+                        <div className="flex flex-wrap items-center justify-center gap-4 mt-6 text-[11px]">
+                          {payload.map((entry: any) => {
+                            const isHidden = hiddenSeries[entry.dataKey];
+                            return (
+                              <div
+                                key={`item-${entry.dataKey}`}
+                                onClick={() => toggleSeries(entry.dataKey)}
+                                className={`flex items-center gap-1.5 cursor-pointer transition-all hover:opacity-80 ${isHidden ? 'opacity-40 line-through' : 'opacity-100'}`}
+                              >
+                                <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+                                <span className="font-medium text-muted-foreground">{entry.value}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }}
                   />
                   <ReferenceLine
+                    yAxisId="left"
                     y={0}
                     stroke="var(--destructive)"
                     strokeDasharray="3 3"
@@ -916,6 +1092,8 @@ export default function EstoquePlanning() {
 
                   {/* Pedido bars */}
                   <Bar
+                    hide={hiddenSeries['Pedido']}
+                    yAxisId="left"
                     dataKey="Pedido"
                     name="Pedidos"
                     fill="oklch(0.72 0.11 178)"
@@ -926,6 +1104,8 @@ export default function EstoquePlanning() {
 
                   {/* Estoque Projetado area */}
                   <Area
+                    hide={hiddenSeries['Estoque Projetado']}
+                    yAxisId="left"
                     type="monotone"
                     dataKey="Estoque Projetado"
                     name="Estoque Projetado"
@@ -938,6 +1118,8 @@ export default function EstoquePlanning() {
 
                   {/* Estoque Objetivo */}
                   <Line
+                    hide={hiddenSeries['Estoque Objetivo']}
+                    yAxisId="left"
                     type="monotone"
                     dataKey="Estoque Objetivo"
                     name="Estoque Objetivo"
@@ -950,6 +1132,8 @@ export default function EstoquePlanning() {
 
                   {/* Sell Out */}
                   <Line
+                    hide={hiddenSeries['Sell Out']}
+                    yAxisId="left"
                     type="monotone"
                     dataKey="Sell Out"
                     name="Sell Out"
@@ -959,17 +1143,28 @@ export default function EstoquePlanning() {
                     activeDot={{ r: 4 }}
                   />
 
-                  {/* Anomaly markers where projected stock < objective */}
-                  {anomalyMonths.map(a => (
-                    <ReferenceLine
-                      key={`anomaly-${a.mes}`}
-                      x={a.mes}
-                      stroke="var(--destructive)"
-                      strokeDasharray="2 2"
-                      strokeWidth={1}
-                      label={{ value: '!', position: 'top', fill: 'var(--destructive)', fontSize: 10 }}
-                    />
-                  ))}
+                  {/* Volume Limits - mapped to right axis */}
+                  <Line
+                    hide={hiddenSeries['Volume Projetado M3']}
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="Volume Projetado M3"
+                    name="Volume Projetado (m³)"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    hide={hiddenSeries['Capacidade M3']}
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="Capacidade M3"
+                    name="Capacidade Total (m³)"
+                    stroke="#ef4444"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={false}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>

@@ -313,7 +313,7 @@ export async function getDashboardKPIs(filters: Filters): Promise<any> {
       skuStatusDistribution,
       coverageDistribution,
       ruptureTreeData,
-      filteredDetails: allDetails, // Ordem de apresentação na tabela
+      filteredDetails: allDetails.sort((a, b) => b.perdaDiaria - a.perdaDiaria), // Ordem de apresentação na tabela
     };
 }
 
@@ -449,6 +449,13 @@ export async function getCDSummaries(filters: Filters): Promise<CDSummary[]> {
 
     const cdMap: Record<string, any> = {};
 
+    // Load capacity data from localStorage (backend logic mock)
+    let capacityData: any[] = [];
+    try {
+        const raw = localStorage.getItem('warehouse_capacity');
+        if (raw) capacityData = JSON.parse(raw);
+    } catch {}
+
     filtered.forEach(proj => {
         const cad = dbCadastroMap.get(proj.CHAVE);
         if (!cad) return;
@@ -462,11 +469,28 @@ export async function getCDSummaries(filters: Filters): Promise<CDSummary[]> {
                 skusOk: 0,
                 skusWarning: 0,
                 skusCritical: 0,
-                porMes: {}
+                porMes: {},
+                gruposOcupacao: []
             };
             meses.forEach((mes) => {
                 cdMap[cdKey].porMes[mes] = { estoqueProjetado: 0, estoqueObjetivo: 0, sellOut: 0, pedido: 0, entrada: 0 };
             });
+
+            // Initialize gruposOcupacao for this CD based on capacity data
+            const cdCapacity = capacityData.find(c => String(c.codigoDepositoPd) === cdKey);
+            if (cdCapacity && cdCapacity.grupos) {
+                cdMap[cdKey].gruposOcupacao = cdCapacity.grupos.map((g: any) => {
+                    const porMes: Record<string, number> = {};
+                    meses.forEach(m => porMes[m] = 0);
+                    return {
+                        id: g.id,
+                        nome: g.nome,
+                        capacidadeM3: g.capacidadeM3,
+                        categoriasNivel3: g.categoriasNivel3,
+                        porMes
+                    };
+                });
+            }
         }
 
         const cdData = cdMap[cdKey];
@@ -481,6 +505,18 @@ export async function getCDSummaries(filters: Filters): Promise<CDSummary[]> {
         const sellOutMes1 = proj.meses[meses[0]]?.SELL_OUT ?? 0;
         cdData.totalSellOut += sellOutMes1;
 
+        // Find which group this SKU belongs to
+        const categoria = cad['nome nível 3'];
+        const groupIndex = cdData.gruposOcupacao.findIndex((g: any) => g.categoriasNivel3.includes(categoria));
+
+        // Calculate volume per unit in M3 (cm * cm * cm / 1.000.000)
+        // Fallback to 0.05 m3 per unit if dimensions are missing/zero for mock purposes
+        const comp = cad.COMPRIMENTO || 0;
+        const alt = cad.ALTURA || 0;
+        const larg = cad.LARGURA || 0;
+        let volumeUnitario = (comp * alt * larg) / 1000000;
+        if (volumeUnitario <= 0) volumeUnitario = 0.005;
+
         meses.forEach((mes) => {
             const d = proj.meses[mes];
             if (!d) return;
@@ -489,6 +525,12 @@ export async function getCDSummaries(filters: Filters): Promise<CDSummary[]> {
             cdData.porMes[mes].sellOut += d.SELL_OUT;
             cdData.porMes[mes].pedido += d.PEDIDO;
             cdData.porMes[mes].entrada += d.ENTRADA;
+
+            // Add volume to the group if found
+            if (groupIndex !== -1) {
+                const projVolume = Math.max(0, d.ESTOQUE_PROJETADO) * volumeUnitario;
+                cdData.gruposOcupacao[groupIndex].porMes[mes] += projVolume;
+            }
         });
     });
 
@@ -516,7 +558,8 @@ export async function getCDSummaries(filters: Filters): Promise<CDSummary[]> {
                     sellOut: c.porMes[mes].sellOut,
                     pedido: c.porMes[mes].pedido,
                     entrada: c.porMes[mes].entrada,
-                }))
+                })),
+                gruposOcupacao: c.gruposOcupacao
             };
         });
 }

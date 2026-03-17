@@ -160,6 +160,56 @@ export function useWarehouseCapacity() {
     return todasCategorias.filter(cat => !atribuidas.has(cat));
   }, [data]);
 
+  const gerarGruposAleatorios = useCallback((cd: number, categoriasDisponiveis: string[]) => {
+    if (categoriasDisponiveis.length === 0) return;
+
+    const numGroups = Math.floor(Math.random() * 3) + 3; // 3 a 5 grupos
+    const nomesPossiveis = [
+      'Setor Secos',
+      'Setor Frios',
+      'Alto Giro',
+      'Produtos Especiais',
+      'Área de Quarentena',
+      'Giro Lento',
+      'Promoções',
+      'Geral A',
+      'Geral B'
+    ];
+    
+    // Embaralhar nomes
+    const nomes = [...nomesPossiveis].sort(() => 0.5 - Math.random()).slice(0, numGroups);
+    
+    // Distribuir categorias aleatoriamente nos grupos
+    const categoriasEmbaralhadas = [...categoriasDisponiveis].sort(() => 0.5 - Math.random());
+    const gruposCategorias: string[][] = Array.from({ length: numGroups }, () => []);
+    
+    categoriasEmbaralhadas.forEach((cat, index) => {
+      gruposCategorias[index % numGroups].push(cat);
+    });
+
+    setData(prev => {
+      const rest = prev.find(c => c.codigoDepositoPd === cd) || { codigoDepositoPd: cd, grupos: [] };
+      const cdConfig = { ...rest, codigoDepositoPd: cd, grupos: rest.grupos || [] };
+      
+      const novosGrupos: WarehouseGroup[] = nomes.map((nome, i) => ({
+        id: crypto.randomUUID(),
+        nome,
+        // Capacidade M3 aleatória entre 50 e 1000
+        capacidadeM3: Math.floor(Math.random() * 950) + 50,
+        categoriasNivel3: gruposCategorias[i],
+      }));
+
+      const next = prev.filter(c => c.codigoDepositoPd !== cd);
+      next.push({
+        ...cdConfig,
+        grupos: [...cdConfig.grupos, ...novosGrupos]
+      });
+      
+      persistir(next);
+      return next;
+    });
+  }, []);
+
   return {
     data,
     getConfigForCD,
@@ -170,5 +220,6 @@ export function useWarehouseCapacity() {
     adicionarCategoria,
     removerCategoria,
     getCategoriasDisponiveis,
+    gerarGruposAleatorios,
   };
 }

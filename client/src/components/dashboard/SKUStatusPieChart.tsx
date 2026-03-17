@@ -35,6 +35,7 @@ export default function SKUStatusPieChart({ data, onPieClick }: SKUStatusPieChar
   }
 
   const chartData = STATUS_CONFIG.map(s => ({
+    key: s.key,
     name: s.label,
     value: data[s.key],
     color: s.color,
@@ -54,7 +55,7 @@ export default function SKUStatusPieChart({ data, onPieClick }: SKUStatusPieChar
             paddingAngle={2}
             dataKey="value"
             stroke="none"
-            onClick={(entry) => onPieClick && onPieClick(entry.name)}
+            onClick={(entry) => onPieClick && onPieClick(entry.key)}
             style={{ cursor: onPieClick ? 'pointer' : 'default' }}
           >
             {chartData.map((entry, index) => (

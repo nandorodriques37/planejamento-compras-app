@@ -89,6 +89,13 @@ export interface CDSummary {
         pedido: number;
         entrada: number;
     }>;
+    gruposOcupacao?: Array<{
+        id: string;
+        nome: string;
+        capacidadeM3: number;
+        categoriasNivel3: string[];
+        porMes: Record<string, number>; // mesKey -> volume M3 ocupado
+    }>;
 }
 
 export interface AugmentedSKU {

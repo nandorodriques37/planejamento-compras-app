@@ -28,6 +28,7 @@ export default function CapacidadeArmazens() {
     adicionarCategoria,
     removerCategoria,
     getCategoriasDisponiveis,
+    gerarGruposAleatorios,
   } = useWarehouseCapacity();
 
   // Carregar dados do cadastro para extrair CDs e categorias
@@ -74,6 +75,10 @@ export default function CapacidadeArmazens() {
   const handleNovoGrupo = () => {
     const numero = config.grupos.length + 1;
     adicionarGrupo(cdNum, `Agrupamento ${numero}`);
+  };
+
+  const handleGerarAleatorios = () => {
+    gerarGruposAleatorios(cdNum, categoriasDisponiveis);
   };
 
   if (loading) {
@@ -135,10 +140,18 @@ export default function CapacidadeArmazens() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Nenhum agrupamento cadastrado para o CD {cdNum}.
                   </p>
-                  <Button onClick={handleNovoGrupo} size="sm" className="gap-1.5">
-                    <Plus className="w-4 h-4" />
-                    Criar primeiro agrupamento
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button onClick={handleNovoGrupo} size="sm" className="gap-1.5">
+                      <Plus className="w-4 h-4" />
+                      Criar primeiro agrupamento
+                    </Button>
+                    {categoriasDisponiveis.length > 0 && (
+                      <Button onClick={handleGerarAleatorios} size="sm" variant="secondary" className="gap-1.5 bg-blue-500 hover:bg-blue-600 text-white border-transparent">
+                        <PackageOpen className="w-4 h-4" />
+                        Gerar Agrupamentos Aleatórios ({categoriasDisponiveis.length} categorias)
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <>

@@ -98,8 +98,7 @@ export function recalcularProjecaoSKU(
     const estoqueInicial = (cadastro.ESTOQUE || 0)
         - impacto
         - preenchimento
-        + (hasPendenciasDistribuidas ? 0 : (cadastro.PENDENCIA || 0))
-        + (cadastro.NNA || 0);
+        + (hasPendenciasDistribuidas ? 0 : (cadastro.PENDENCIA || 0));
 
     // Pré-calcula ou carrega os objetivos de estoque para não processar no loop
     const estObjPorMes: Record<string, number> = {};
@@ -129,6 +128,11 @@ export function recalcularProjecaoSKU(
     const pedidosFinais: Record<string, number> = {};
     const entradas: Record<string, number> = {};
     meses.forEach(mes => { entradas[mes] = 0; });
+
+    // Tratar NNA para chegada imediata (mês atual) na coluna entrada
+    if (meses.length > 0 && cadastro.NNA) {
+        entradas[meses[0]] += cadastro.NNA;
+    }
 
     // Semear entradas com pendências distribuídas por mês de chegada
     if (hasPendenciasDistribuidas) {
@@ -189,6 +193,11 @@ export function recalcularProjecaoSKU(
     // Aglomerado das entradas
     const entradasFinais: Record<string, number> = {};
     meses.forEach(mes => { entradasFinais[mes] = 0; });
+
+    // Tratar NNA para chegada imediata (mês atual) na coluna entrada
+    if (meses.length > 0 && cadastro.NNA) {
+        entradasFinais[meses[0]] += cadastro.NNA;
+    }
 
     // Semear entradas finais com pendências distribuídas
     if (hasPendenciasDistribuidas) {

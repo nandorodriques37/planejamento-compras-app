@@ -23,9 +23,10 @@ import {
   Target,
   Flame,
   Wallet,
-  AlertTriangle,
   Trash2,
-  Hourglass
+  Hourglass,
+  Download,
+  Warehouse
 } from 'lucide-react';
 import AppSidebar from '../components/AppSidebar';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,53 @@ function coverageColor(days: number | null): { bg: string; text: string; border:
   if (days < 30) return { bg: 'bg-rose-50 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800', icon: 'text-rose-500', label: 'Ruptura' };
   if (days < 60) return { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800', icon: 'text-amber-500', label: 'Ponto de Pedido' };
   return { bg: 'bg-teal-50 dark:bg-teal-950/30', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800', icon: 'text-teal-500', label: 'Saudável' };
+}
+
+function exportPedidoParaCSV(pedido: PedidoAprovacao, itens: PedidoAprovacao['itens']) {
+  const headers = [
+    'SKU', 'Produto', 'Fornecedor', 'CD', 'Estoque Atual', 'Estoque Segurança', 'Pendências',
+    'Sell-Out Mensal', 'Cobertura Hoje', 
+    ...(pedido.mesesProgramados || (pedido as any).semanasSelecionadas || []),
+    'Total Quantidade', 'Total Valor', 'Estoque Projetado Chegada', 'Cobertura Chegada'
+  ];
+
+  const rows = itens.map(item => {
+    const sku = item.chave.includes('-') ? item.chave.split('-')[1] : item.chave;
+    const cobHoje = item.coberturaDiasHoje ?? '';
+    const cobCheg = item.coberturaDiasChegada ?? '';
+    // Format value specifically for pt-BR Excel (replace dot with comma for decimals)
+    // If not formatted, pt-BR Excel parses dots like 29.55 as twenty-nine thousands
+    const valorRaw = item.custoLiquido ? item.totalQuantidade * item.custoLiquido : '';
+    const valor = typeof valorRaw === 'number' ? valorRaw.toFixed(2).replace('.', ',') : valorRaw;
+    
+    return [
+      sku,
+      item.nomeProduto,
+      item.fornecedor,
+      item.cd,
+      item.estoqueAtual ?? '',
+      item.estoqueSeguranca ?? '',
+      item.pendencias ?? '',
+      item.sellOutMes ?? '',
+      cobHoje,
+      ...(pedido.mesesProgramados || (pedido as any).semanasSelecionadas || []).map(s => (item.entregas?.[s] ?? (item as any).semanas?.[s] ?? 0)),
+      item.totalQuantidade,
+      valor,
+      item.estoqueProjetadoChegada ?? '',
+      cobCheg
+    ].join(';');
+  });
+
+  const csvContent = [headers.join(';'), ...rows].join('\n');
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Pedido_${pedido.id.substring(0, 8)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }: { kpis: PedidoKPIs; fornecedorNome?: string; prazoPagamentoPadrao?: number; prazoPagamento?: number }) {
@@ -132,8 +180,8 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
           )}
         </div>
 
-        {/* KPI Cards Grid - 2 rows of 4 cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* KPI Cards Grid - 2 rows of 4 cards on desktop, 1 or 2 on mobile */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
           {/* Card 1: Cobertura Fornecedor Hoje ➔ Chegada */}
           <div className="rounded-lg border p-3 bg-card border-border" title="Cobertura Total do Portfólio do Fornecedor (Hoje ➔ Chegada)">
@@ -387,6 +435,14 @@ function PedidoCard({
   // Backward compat: derive supplier name from items if not stored
   const fornecedorNome = pedido.fornecedorNome || [...new Set(pedido.itens.map(it => it.fornecedor))].join(', ');
 
+  const itensOrdenados = useMemo(() => {
+    return [...pedido.itens].sort((a, b) => {
+      const valorA = a.custoLiquido ? a.totalQuantidade * a.custoLiquido : 0;
+      const valorB = b.custoLiquido ? b.totalQuantidade * b.custoLiquido : 0;
+      return valorB - valorA;
+    });
+  }, [pedido.itens]);
+
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
       {/* Card header */}
@@ -448,12 +504,101 @@ function PedidoCard({
             )}
           </div>
 
-          {/* Items table */}
-          <div className="overflow-x-auto">
+          {/* Mobile Items List */}
+          <div className="md:hidden space-y-3 mt-4">
+            {itensOrdenados.map((item) => {
+              const cobHoje = item.coberturaDiasHoje;
+              const cobCheg = item.coberturaDiasChegada;
+              const cobHojeColor = cobHoje === null || cobHoje === undefined ? 'text-muted-foreground' : cobHoje < 15 ? 'text-rose-600 dark:text-rose-400 font-bold' : cobHoje < 30 ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400';
+              const cobChegColor = cobCheg === null || cobCheg === undefined ? 'text-muted-foreground' : cobCheg < 15 ? 'text-rose-600 dark:text-rose-400 font-bold' : cobCheg < 30 ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400';
+              const estoqueBaixo = (item.estoqueAtual ?? 0) <= (item.estoqueSeguranca ?? 0);
+              const skuDisplay = item.chave.includes('-') ? item.chave.split('-')[1] : item.chave;
+
+              return (
+                <div key={item.chave} className="bg-background border border-border shadow-sm rounded-lg p-3 space-y-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex flex-col gap-1 flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {item.motivoCompraCEO === 'urgente' && <Flame className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />}
+                        {item.motivoCompraCEO === 'excesso' && <Wallet className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
+                        {item.shelfLifeRisk && <Hourglass className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />}
+                        <span className="font-semibold text-foreground text-sm truncate">{item.nomeProduto}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-medium text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded">{skuDisplay}</span>
+                        <span className="text-[10px] text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <Warehouse className="w-3 h-3" /> {item.cd}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex flex-col bg-muted/30 rounded p-1.5 border border-border/50">
+                      <span className="text-muted-foreground text-[10px] uppercase font-semibold">Qtd Total</span>
+                      <span className="font-bold text-foreground tabular-nums text-sm">{formatNumber(item.totalQuantidade)}</span>
+                    </div>
+                    <div className="flex flex-col bg-emerald-50 dark:bg-emerald-950/20 rounded p-1.5 border border-emerald-100 dark:border-emerald-900/40">
+                      <span className="text-emerald-700 dark:text-emerald-400 text-[10px] uppercase font-semibold">Valor Total</span>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-400 tabular-nums text-sm">
+                        {item.custoLiquido ? formatCurrency(item.totalQuantidade * item.custoLiquido) : '—'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col px-1">
+                      <span className="text-muted-foreground mb-0.5 text-[10px]">Estoque Atual</span>
+                      <span className={`font-mono tabular-nums text-sm ${estoqueBaixo ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-foreground'}`}>
+                        {formatNumber(item.estoqueAtual ?? 0)}
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col px-1">
+                      <span className="text-muted-foreground mb-0.5 text-[10px]">Cobertura Atual</span>
+                      <span className={`font-mono tabular-nums text-sm ${cobHojeColor}`}>
+                        {cobHoje !== null && cobHoje !== undefined ? `${cobHoje}d` : '—'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col px-1">
+                      <span className="text-muted-foreground mb-0.5 text-[10px]">Proj. Chegada</span>
+                      <span className="font-mono tabular-nums text-sm text-foreground">
+                        {formatNumber(item.estoqueProjetadoChegada ?? 0)}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col px-1">
+                      <span className="text-muted-foreground mb-0.5 text-[10px]">Cob. Chegada</span>
+                      <span className={`font-mono tabular-nums text-sm ${cobChegColor}`}>
+                        {cobCheg !== null && cobCheg !== undefined ? `${cobCheg}d` : '—'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-2 border-t border-border/50 flex flex-wrap gap-2 text-[10px]">
+                    <span className="text-muted-foreground flex items-center font-medium">Cronograma:</span>
+                    {(pedido.mesesProgramados || (pedido as any).semanasSelecionadas || []).map((s: string) => {
+                      const val = item.entregas?.[s] ?? (item as any).semanas?.[s] ?? 0;
+                      if (!val) return null;
+                      return (
+                        <span key={s} className="bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded flex items-center gap-1.5">
+                          <span className="font-semibold">{s}</span>
+                          <span className="tabular-nums font-bold bg-background text-foreground px-1 py-px rounded-sm">{formatNumber(val)}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Items table Desktop */}
+          <div className="hidden md:block overflow-x-auto mt-4">
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-muted/40">
-                  <th className="text-left px-2 py-1.5 font-semibold text-muted-foreground rounded-tl-sm">Produto</th>
+                  <th className="text-left px-2 py-1.5 font-semibold text-muted-foreground rounded-tl-sm">SKU</th>
+                  <th className="text-left px-2 py-1.5 font-semibold text-muted-foreground">Produto</th>
                   <th className="text-center px-2 py-1.5 font-semibold text-muted-foreground">CD</th>
                   <th className="text-right px-2 py-1.5 font-semibold text-muted-foreground" title="Estoque Atual">Est.</th>
                   <th className="text-right px-2 py-1.5 font-semibold text-muted-foreground" title="Estoque Segurança">Seg.</th>
@@ -470,7 +615,7 @@ function PedidoCard({
                 </tr>
               </thead>
               <tbody>
-                {pedido.itens.map((item, idx) => {
+                {itensOrdenados.map((item, idx) => {
                   const cobHoje = item.coberturaDiasHoje;
                   const cobCheg = item.coberturaDiasChegada;
                   const cobHojeColor = cobHoje === null || cobHoje === undefined ? 'text-muted-foreground' : cobHoje < 15 ? 'text-rose-600 dark:text-rose-400 font-bold' : cobHoje < 30 ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400';
@@ -479,6 +624,9 @@ function PedidoCard({
 
                   return (
                     <tr key={item.chave} className={idx % 2 === 1 ? 'bg-muted/20' : ''}>
+                      <td className="px-2 py-1.5 font-mono text-muted-foreground max-w-[100px] truncate" title={item.chave}>
+                        {item.chave.includes('-') ? item.chave.split('-')[1] : item.chave}
+                      </td>
                       <td className="px-2 py-1.5 font-medium text-foreground max-w-[180px] truncate" title={item.nomeProduto}>
                         <div className="flex items-center gap-1.5">
                           {item.motivoCompraCEO === 'urgente' && <span title="Compra Urgente (Ruptura hoje)"><Flame className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" /></span>}
@@ -528,7 +676,7 @@ function PedidoCard({
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-primary/20 bg-primary/5">
-                  <td className="px-2 py-1.5 font-bold text-primary" colSpan={7}>
+                  <td className="px-2 py-1.5 font-bold text-primary" colSpan={8}>
                     TOTAL
                   </td>
                   {(pedido.mesesProgramados || (pedido as any).semanasSelecionadas || []).map(s => (
@@ -549,40 +697,52 @@ function PedidoCard({
           </div>
 
           {/* Action buttons */}
-          {(pedido.status === 'pendente' || pedido.status === 'aprovado' || pedido.status === 'rejeitado') && (
-            <div className="flex gap-2 mt-3 justify-end">
-              {pedido.status === 'pendente' && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10"
-                    onClick={() => onRejeitar(pedido.id)}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    Rejeitar
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => onAprovar(pedido.id)}
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    Aprovar
-                  </Button>
-                </>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs gap-1.5 text-muted-foreground border-border hover:bg-muted"
-                onClick={() => onCancelar(pedido.id)}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Cancelar
-              </Button>
-            </div>
-          )}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-4 pt-2 border-t border-border/50 md:border-t-0 md:pt-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto text-xs gap-1.5 text-foreground border-border hover:bg-muted"
+              onClick={(e) => { e.stopPropagation(); exportPedidoParaCSV(pedido, itensOrdenados); }}
+            >
+              <Download className="w-3.5 h-3.5" />
+              Exportar para Excel
+            </Button>
+
+            {(pedido.status === 'pendente' || pedido.status === 'aprovado' || pedido.status === 'rejeitado') && (
+              <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
+                {pedido.status === 'pendente' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 sm:flex-none text-xs gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10"
+                      onClick={() => onRejeitar(pedido.id)}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Rejeitar
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1 sm:flex-none text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => onAprovar(pedido.id)}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Aprovar
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none text-xs gap-1.5 text-muted-foreground border-border hover:bg-muted"
+                  onClick={() => onCancelar(pedido.id)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Cancelar
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -615,9 +775,9 @@ export default function AprovacaoPedidos() {
       <main className="flex-1 overflow-y-auto bg-background">
         {/* Page Header */}
         <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
-          <div className="px-6 py-4 flex items-center justify-between">
+          <div className="pl-14 md:pl-6 pr-4 md:pr-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <ClipboardCheck className="w-5 h-5 text-primary" />
+              <ClipboardCheck className="w-5 h-5 text-primary hidden sm:block" />
               <div>
                 <h1 className="text-lg font-bold text-foreground">Aprovação de Pedidos</h1>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -626,7 +786,7 @@ export default function AprovacaoPedidos() {
               </div>
             </div>
             {pedidosPendentes > 0 && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700">
+              <span className="inline-flex self-start sm:self-auto items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700">
                 <Clock className="w-3.5 h-3.5" />
                 {pedidosPendentes} {pedidosPendentes === 1 ? 'pendente' : 'pendentes'}
               </span>
@@ -635,7 +795,7 @@ export default function AprovacaoPedidos() {
         </div>
 
         {/* Content */}
-        <div className="px-6 py-5 space-y-4 max-w-[1400px]">
+        <div className="px-4 md:px-6 py-4 md:py-5 space-y-4 max-w-[1400px]">
           {/* Status filter buttons */}
           <div className="flex gap-2 flex-wrap">
             {filterButtons.map(btn => (

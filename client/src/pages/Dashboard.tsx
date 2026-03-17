@@ -100,6 +100,15 @@ export default function Dashboard() {
 
   const hasActiveFilters = Object.values(filters).some(value => value !== null);
 
+  const getStatusLabel = (key: string) => {
+    const config = {
+      ok: 'OK',
+      warning: 'Ponto de Pedido',
+      critical: 'Ruptura / Crítico'
+    };
+    return config[key as keyof typeof config] || key;
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen overflow-hidden">
@@ -158,7 +167,7 @@ export default function Dashboard() {
                   <Badge variant="outline" className="text-xs py-0 h-6">Fornecedor: {filters.supplier}</Badge>
                 )}
                 {filters.status && (
-                  <Badge variant="outline" className="text-xs py-0 h-6">Status: {filters.status}</Badge>
+                  <Badge variant="outline" className="text-xs py-0 h-6">Status: {getStatusLabel(filters.status)}</Badge>
                 )}
                 {filters.coverage && (
                   <Badge variant="outline" className="text-xs py-0 h-6">Cobertura: {filters.coverage}</Badge>
@@ -168,14 +177,14 @@ export default function Dashboard() {
                 )}
               </div>
               <Button 
-                variant="ghost" 
+                variant="destructive" 
                 size="sm" 
                 onClick={clearFilters}
-                className="h-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                className="h-8 shadow-sm"
                 title="Limpar todos os filtros"
               >
                 <FilterX className="w-4 h-4 mr-2" />
-                Limpar
+                Remover Filtros
               </Button>
             </div>
           )}
