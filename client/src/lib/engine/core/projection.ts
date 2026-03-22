@@ -82,7 +82,7 @@ export function recalcularProjecaoSKU(
     meses: string[],
     sellOutPorMes: Record<string, number>,
     pedidosManuais: Record<string, number | null>,
-    _pedidosOriginais: Record<string, number>,
+    pedidosOriginais: Record<string, number>,
     dataReferencia?: string,
     pendenciasPorMes?: PendenciasPorMes,
     estoquesObjetivoPorMes?: Record<string, number>
@@ -100,10 +100,25 @@ export function recalcularProjecaoSKU(
         - preenchimento
         + (hasPendenciasDistribuidas ? 0 : (cadastro.PENDENCIA || 0));
 
+    // ── Proratear sell-out do mês atual ──────────────────────────────────────
+    // O ESTOQUE já reflete o consumo dos dias passados do mês.
+    // Para o mês 0 (atual), usar apenas a demanda dos dias RESTANTES.
+    let fatorProrataM0 = 1; // 1 = sem prorata (meses futuros)
+    if (dataReferencia && meses.length > 0) {
+        const [anoRef, mesRef, diaRef] = dataReferencia.split('-').map(Number);
+        const { ano: anoM0, mes: mesM0 } = parseMesAno(meses[0]);
+        // Só prorateia se data_referencia está no mês 0
+        if (anoRef === anoM0 && mesRef === mesM0) {
+            const diasTotais = diasNoMes(anoM0, mesM0);
+            const diasRestantes = diasTotais - diaRef + 1; // +1 inclui o dia atual
+            fatorProrataM0 = Math.max(0, diasRestantes / diasTotais);
+        }
+    }
+
     // Pré-calcula ou carrega os objetivos de estoque para não processar no loop
     const estObjPorMes: Record<string, number> = {};
 
-    meses.forEach((mes) => {
+    meses.forEach((mes, idx) => {
         if (estoquesObjetivoPorMes && estoquesObjetivoPorMes[mes] !== undefined) {
             estObjPorMes[mes] = estoquesObjetivoPorMes[mes];
         } else {
@@ -113,7 +128,9 @@ export function recalcularProjecaoSKU(
 
             const { ano, mes: mesNum } = parseMesAno(mes);
             const diasReais = diasNoMes(ano, mesNum);
-            const demandaMedia = so / diasReais;
+            // Para mês 0: usar demanda média baseada nos dias restantes
+            const soEfetivo = idx === 0 ? so * fatorProrataM0 : so;
+            const demandaMedia = soEfetivo / diasReais;
             estObjPorMes[mes] = demandaMedia * (lt + frequencia + estSeguranca) + impacto;
         }
     });
@@ -124,6 +141,8 @@ export function recalcularProjecaoSKU(
     for (let i = 0; i < meses.length; i++) {
         indiceChegadaPorMes[i] = calcularIndiceMesChegada(i, lt, meses, dataReferencia);
     }
+
+
 
     const pedidosFinais: Record<string, number> = {};
     const entradas: Record<string, number> = {};
@@ -143,97 +162,71 @@ export function recalcularProjecaoSKU(
         }
     }
 
-    const estProj: Record<string, number> = {};
+    // === PASSADA ÚNICA: calcula pedidos, entradas e estoque projetado de forma consistente ===
     let estAnterior = estoqueInicial;
+    const resultado: Record<string, MesData> = {};
 
     for (let i = 0; i < meses.length; i++) {
         const mes = meses[i];
         const rawSo = sellOutPorMes[mes];
-        const sellOut = typeof rawSo === 'number' && !isNaN(rawSo) ? rawSo : 0;
+        const sellOutOriginal = typeof rawSo === 'number' && !isNaN(rawSo) ? rawSo : 0;
+        // Mês 0: usar sell-out prorata (dias restantes). Meses futuros: cheio.
+        const sellOut = i === 0 ? sellOutOriginal * fatorProrataM0 : sellOutOriginal;
 
-        const entradaJaAcumulada = entradas[mes] || 0;
+        // Entradas já acumuladas neste mês (NNA + pendências + pedidos de meses anteriores via LT)
+        const entradaMes = entradas[mes] || 0;
 
-        const estProjAntesPedido = estAnterior + entradaJaAcumulada - sellOut;
+        // Estoque projetado ANTES de colocar pedido neste mês
+        const estProjAntesPedido = estAnterior + entradaMes - sellOut;
 
-        // Fast-lookup do índice pré-calculado
+        // Fast-lookup do índice pré-calculado para LT
         const indiceChegada = indiceChegadaPorMes[i];
 
+        // 1. Manual: valor explícito do usuário
+        // 2. Automático: recalcular a necessidade baseado no estoque projetado ATUALIZADO
         if (pedidosManuais[mes] !== null && pedidosManuais[mes] !== undefined) {
+            // Pedido manual: usa exatamente o valor digitado pelo usuário
             pedidosFinais[mes] = pedidosManuais[mes]!;
         } else {
+            // Nenhuma edição manual neste mês: calcular automaticamente
             if (indiceChegada === i) {
                 const necessidade = estObjPorMes[mes] - estProjAntesPedido;
                 pedidosFinais[mes] = Math.max(0, necessidade);
             } else {
                 let estSimulado = estProjAntesPedido;
-
                 for (let j = i + 1; j <= indiceChegada && j < meses.length; j++) {
                     const rawSoFuturo = sellOutPorMes[meses[j]];
                     const soFuturo = typeof rawSoFuturo === 'number' && !isNaN(rawSoFuturo) ? rawSoFuturo : 0;
                     const entradaFutura = entradas[meses[j]] || 0;
                     estSimulado = estSimulado + entradaFutura - soFuturo;
                 }
-
                 const mesChegada = meses[indiceChegada];
                 const necessidade = estObjPorMes[mesChegada] - estSimulado;
                 pedidosFinais[mes] = Math.max(0, necessidade);
             }
         }
 
+        // Registrar entrada do pedido no mês de chegada (via LT)
         if (pedidosFinais[mes] > 0) {
             const mesChegada = meses[indiceChegada];
             entradas[mesChegada] = (entradas[mesChegada] || 0) + pedidosFinais[mes];
         }
 
-        estProj[mes] = estAnterior + (entradas[mes] || 0) - sellOut;
-        estAnterior = estProj[mes];
-    }
-
-    // PASSADA 2: Recalcular estoque projetado final
-    // Aglomerado das entradas
-    const entradasFinais: Record<string, number> = {};
-    meses.forEach(mes => { entradasFinais[mes] = 0; });
-
-    // Tratar NNA para chegada imediata (mês atual) na coluna entrada
-    if (meses.length > 0 && cadastro.NNA) {
-        entradasFinais[meses[0]] += cadastro.NNA;
-    }
-
-    // Semear entradas finais com pendências distribuídas
-    if (hasPendenciasDistribuidas) {
-        for (const [mes, qty] of Object.entries(pendenciasPorMes!)) {
-            if (entradasFinais[mes] !== undefined) {
-                entradasFinais[mes] += qty;
-            }
-        }
-    }
-
-    meses.forEach((mes, i) => {
-        if (pedidosFinais[mes] > 0) {
-            const indiceChegada = indiceChegadaPorMes[i]; // Utilizando cache de LT
-            const mesChegada = meses[indiceChegada];
-            entradasFinais[mesChegada] = (entradasFinais[mesChegada] || 0) + pedidosFinais[mes];
-        }
-    });
-
-    let estFinal = estoqueInicial;
-    const resultado: Record<string, MesData> = {};
-
-    meses.forEach((mes) => {
-        const rawSo = sellOutPorMes[mes];
-        const sellOut = typeof rawSo === 'number' && !isNaN(rawSo) ? rawSo : 0;
-        const entradaMes = entradasFinais[mes] || 0;
-
-        estFinal = estFinal + entradaMes - sellOut;
+        // Calcular estoque projetado final deste mês (inclui a entrada do pedido se chegou no mesmo mês)
+        const entradaFinalMes = entradas[mes] || 0;
+        const estFinalMes = estAnterior + entradaFinalMes - sellOut;
 
         resultado[mes] = {
-            SELL_OUT: Math.round(sellOut),
-            ESTOQUE_PROJETADO: Math.round(estFinal),
+            SELL_OUT: Math.round(sellOutOriginal), // Exibe sell-out cheio para referência
+            ESTOQUE_PROJETADO: Math.max(0, Math.round(estFinalMes)),
             ESTOQUE_OBJETIVO: Math.round(estObjPorMes[mes]),
             PEDIDO: Math.round(pedidosFinais[mes]),
-            ENTRADA: Math.round(entradaMes)
+            ENTRADA: Math.round(entradaFinalMes)
         };
-    });
+
+        // Cascata: o estoque projetado real (pode ser negativo) é usado para o mês seguinte
+        estAnterior = estFinalMes;
+    }
 
     return resultado;
 }
@@ -282,28 +275,27 @@ export function getStatusSKU(
 
     if (hasCritical) return 'critical';
 
-    // Verificar projeções futuras
-    meses.forEach((mes, i) => {
-        // Agora verificamos o mes 0 na projecao tambem, porque a projeção do mes 0 
-        // já considera o estoque final projetado do mês.
+    // Verificar projeções futuras — usa for para poder sair com break ao encontrar status critical
+    for (const mes of meses) {
         const data = projecao[mes];
-        if (!data) return;
+        if (!data) continue;
 
         const { ano, mes: mesNum } = parseMesAno(mes);
         const dias = diasNoMes(ano, mesNum);
         const demandaDia = data.SELL_OUT / dias;
         
-        if (demandaDia === 0) return; // Se não tem demanda, não tem risco de perda
+        if (demandaDia === 0) continue; // Se não tem demanda, não tem risco de perda
 
         const estoqueCritico = demandaDia * lt;
         const pontoPedido = demandaDia * (lt + estSeguranca);
 
         if (data.ESTOQUE_PROJETADO <= estoqueCritico) {
             hasCritical = true;
+            break; // Já é o pior status possível, não precisa continuar
         } else if (data.ESTOQUE_PROJETADO <= pontoPedido) {
             hasWarning = true;
         }
-    });
+    }
 
     if (hasCritical) return 'critical';
     if (hasWarning) return 'warning';

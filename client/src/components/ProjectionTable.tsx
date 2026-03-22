@@ -140,8 +140,8 @@ function EditableCell({
   );
 }
 
-function calcularCoberturaDias(estoqueProjetado: number, sellOut: number): number {
-  const demandaDiaria = sellOut / 30;
+function calcularCoberturaDias(estoqueProjetado: number, sellOut: number, diasMes: number): number {
+  const demandaDiaria = sellOut / diasMes;
   if (demandaDiaria <= 0) return estoqueProjetado > 0 ? 999 : 0;
   if (estoqueProjetado <= 0) return 0;
   return Math.round(estoqueProjetado / demandaDiaria);
@@ -269,14 +269,9 @@ export default function ProjectionTable({
     const { ano, mes } = parseMesAno(mesAtual);
     const semanasComLT = calcularSemanasComLT(ano, mes, refDate.getDate(), ltDias);
 
-    // Montar pedido por mês: mês atual + meses futuros onde entregas caem
+    // Montar pedido por mês baseando-se apenas no mês atual (onde o pedido é de fato colocado)
     const pedidoPorMes: Record<string, number> = {};
     pedidoPorMes[mesAtual] = projecaoMeses[mesAtual]?.PEDIDO || 0;
-    for (const sem of semanasComLT) {
-      if (sem.mesChegada && sem.mesChegada !== mesAtual && !(sem.mesChegada in pedidoPorMes)) {
-        pedidoPorMes[sem.mesChegada] = projecaoMeses[sem.mesChegada]?.PEDIDO || 0;
-      }
-    }
 
     return distribuirPedidoMultiMes(mesAtual, pedidoPorMes, semanasComLT);
   }, [temSemanas, weeklyEdits, coverageWeeklyEdits, dataReferencia, meses, semanasInfo]);
@@ -442,15 +437,19 @@ export default function ProjectionTable({
           valB = cadB.ESTOQUE || 0;
           break;
         case 'cob_est': {
-          const ddA = ((a.meses[firstMes]?.SELL_OUT || 0) / 30);
-          const ddB = ((b.meses[firstMes]?.SELL_OUT || 0) / 30);
+          const { ano: anoFirst, mes: mesFirst } = parseMesAno(firstMes);
+          const diasFirst = diasNoMes(anoFirst, mesFirst);
+          const ddA = ((a.meses[firstMes]?.SELL_OUT || 0) / diasFirst);
+          const ddB = ((b.meses[firstMes]?.SELL_OUT || 0) / diasFirst);
           valA = ddA > 0 ? Math.round((cadA.ESTOQUE || 0) / ddA) : ((cadA.ESTOQUE || 0) > 0 ? 999 : 0);
           valB = ddB > 0 ? Math.round((cadB.ESTOQUE || 0) / ddB) : ((cadB.ESTOQUE || 0) > 0 ? 999 : 0);
           break;
         }
         case 'cob_ep': {
-          const ddAep = ((a.meses[firstMes]?.SELL_OUT || 0) / 30);
-          const ddBep = ((b.meses[firstMes]?.SELL_OUT || 0) / 30);
+          const { ano: anoFirstEP, mes: mesFirstEP } = parseMesAno(firstMes);
+          const diasFirstEP = diasNoMes(anoFirstEP, mesFirstEP);
+          const ddAep = ((a.meses[firstMes]?.SELL_OUT || 0) / diasFirstEP);
+          const ddBep = ((b.meses[firstMes]?.SELL_OUT || 0) / diasFirstEP);
           const estPendA = (cadA.ESTOQUE || 0) + (cadA.PENDENCIA || 0);
           const estPendB = (cadB.ESTOQUE || 0) + (cadB.PENDENCIA || 0);
           valA = ddAep > 0 ? Math.round(estPendA / ddAep) : (estPendA > 0 ? 999 : 0);
@@ -480,15 +479,16 @@ export default function ProjectionTable({
           const soB = dB1?.SELL_OUT || 0;
           const fbA = (cadA.LT || 0) + (cadA.FREQUENCIA || 0) + (cadA.EST_SEGURANCA || 0);
           const fbB = (cadB.LT || 0) + (cadB.FREQUENCIA || 0) + (cadB.EST_SEGURANCA || 0);
-          valA = soA > 0 ? Math.round((dA1!.ESTOQUE_OBJETIVO) / (soA / 30)) : fbA;
-          valB = soB > 0 ? Math.round((dB1!.ESTOQUE_OBJETIVO) / (soB / 30)) : fbB;
+          valA = soA > 0 ? Math.round((dA1!.ESTOQUE_OBJETIVO) / (soA / diasNoMes(parseMesAno(firstMes).ano, parseMesAno(firstMes).mes))) : fbA;
+          valB = soB > 0 ? Math.round((dB1!.ESTOQUE_OBJETIVO) / (soB / diasNoMes(parseMesAno(firstMes).ano, parseMesAno(firstMes).mes))) : fbB;
           break;
         }
         case 'cobertura_m1': {
           const dA = a.meses[firstMes];
           const dB = b.meses[firstMes];
-          valA = dA ? calcularCoberturaDias(dA.ESTOQUE_PROJETADO, dA.SELL_OUT) : 0;
-          valB = dB ? calcularCoberturaDias(dB.ESTOQUE_PROJETADO, dB.SELL_OUT) : 0;
+          const diasSort = diasNoMes(parseMesAno(firstMes).ano, parseMesAno(firstMes).mes);
+          valA = dA ? calcularCoberturaDias(dA.ESTOQUE_PROJETADO, dA.SELL_OUT, diasSort) : 0;
+          valB = dB ? calcularCoberturaDias(dB.ESTOQUE_PROJETADO, dB.SELL_OUT, diasSort) : 0;
           break;
         }
       }
@@ -649,7 +649,9 @@ export default function ProjectionTable({
     if (!cad) return null;
     const fallbackObjDias = (cad.LT || 0) + (cad.FREQUENCIA || 0) + (cad.EST_SEGURANCA || 0);
     const mes1Data = proj.meses[meses[0]];
-    const demandaDiariaMes1 = (mes1Data?.SELL_OUT || 0) / 30;
+    const { ano: anoM1Tbl, mes: mesM1Tbl } = parseMesAno(meses[0]);
+    const diasMes1 = diasNoMes(anoM1Tbl, mesM1Tbl);
+    const demandaDiariaMes1 = (mes1Data?.SELL_OUT || 0) / diasMes1;
     const estObjDias = demandaDiariaMes1 > 0
       ? Math.round((mes1Data?.ESTOQUE_OBJETIVO || 0) / demandaDiariaMes1)
       : fallbackObjDias;
@@ -713,11 +715,11 @@ export default function ProjectionTable({
 
           const isAbaixoObj = d.ESTOQUE_PROJETADO < d.ESTOQUE_OBJETIVO;
           const isNegativo = d.ESTOQUE_PROJETADO < 0;
-          const coberturaDias = calcularCoberturaDias(d.ESTOQUE_PROJETADO, d.SELL_OUT);
           const { ano: anoMes, mes: mesMesNum } = parseMesAno(mes);
           const diasDoMes = diasNoMes(anoMes, mesMesNum);
+          const coberturaDias = calcularCoberturaDias(d.ESTOQUE_PROJETADO, d.SELL_OUT, diasDoMes);
           const shelfLifeRisco = cad && cad.SHELF_LIFE > 0 && hasShelfLifeRisk(d.ESTOQUE_PROJETADO, d.SELL_OUT, diasDoMes, cad.SHELF_LIFE);
-          const objDiasMes = d.SELL_OUT > 0 ? Math.round(d.ESTOQUE_OBJETIVO / (d.SELL_OUT / 30)) : fallbackObjDias;
+          const objDiasMes = d.SELL_OUT > 0 ? Math.round(d.ESTOQUE_OBJETIVO / (d.SELL_OUT / diasDoMes)) : fallbackObjDias;
           const coberturaColor = getCoberturaColor(coberturaDias, objDiasMes);
 
           // Distribuição semanal multi-mês para o mês 1

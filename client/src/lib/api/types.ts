@@ -1,4 +1,7 @@
-import type { ProjecaoSKU, SKUCadastro } from '../engine/types';
+import type { ProjecaoSKU, SKUCadastro, FornecedorCadastro, ContaAPagar, PedidoPendente, EstoqueLoja } from '../engine/types';
+
+// Re-exportar tipos do engine para uso na camada de API
+export type { FornecedorCadastro, ContaAPagar, PedidoPendente, EstoqueLoja };
 
 export interface PaginatedRequest {
     page: number;
@@ -22,6 +25,12 @@ export interface Filters {
     mesesVisiveis?: string[];
     coverage?: string;
     rupture?: { categoria: string; situacao: string };
+    analista?: string;
+    comprador?: string;
+    fornecedorLogistico?: string;
+    generico?: string;
+    monitorado?: string;
+    marcaExclusiva?: string;
 }
 
 export interface MetadataResponse {
@@ -37,6 +46,12 @@ export interface FilterOptionsResponse {
     categorias: string[];
     categoriasNivel4: string[];
     cds: string[];
+    analistas: string[];
+    compradores: string[];
+    fornecedoresLogisticos: string[];
+    genericos: string[];
+    monitorados: string[];
+    marcasExclusivas: string[];
 }
 
 export interface ProjectionsResponse {
@@ -49,10 +64,73 @@ export interface ProjectionsResponse {
 
 export interface DatabaseOverviewResponse {
     metadata: MetadataResponse;
-    fornecedores: any[]; // FornecedorCadastro
-    contas_a_pagar?: any[]; // ContaAPagar
-    pedidos_pendentes?: any[]; // PedidoPendente
-    estoque_loja?: any[]; // EstoqueLoja
+    fornecedores: FornecedorCadastro[];
+    contas_a_pagar?: ContaAPagar[];
+    pedidos_pendentes?: PedidoPendente[];
+    estoque_loja?: EstoqueLoja[];
+}
+
+/** Detalhe de SKU para Dashboard */
+export interface DashboardSKUDetail {
+    sku: string;
+    produto: string;
+    fornecedor: string;
+    estoque: number;
+    coberturaDias: number;
+    status: 'ok' | 'warning' | 'critical';
+    perdaDiaria: number;
+}
+
+/** Agregação por fornecedor no Dashboard */
+export interface DashboardSupplierAgg {
+    skusRupturaTotal: number;
+    skusRiscoCritico: number;
+    skusAtenção: number;
+    perdaRupturaTotal: number;
+    perdaRiscoCritico: number;
+    perdaTotal?: number;
+    fornecedor?: string;
+}
+
+/** Dados mensais por CD */
+export interface CDMonthData {
+    estoqueProjetado: number;
+    estoqueObjetivo: number;
+    sellOut: number;
+    pedido: number;
+    entrada: number;
+}
+
+/** Agregação por CD */
+export interface CDMapEntry {
+    skuCount: number;
+    totalEstoque: number;
+    totalSellOut: number;
+    skusOk: number;
+    skusWarning: number;
+    skusCritical: number;
+    porMes: Record<string, CDMonthData>;
+    gruposOcupacao: Array<{
+        id: string;
+        nome: string;
+        capacidadeM3: number;
+        categoriasNivel3: string[];
+        porMes: Record<string, number>;
+    }>;
+}
+
+/** Dados de capacidade de armazém (do localStorage) */
+export interface WarehouseCapacityData {
+    codigoDepositoPd: string | number;
+    grupos?: WarehouseGroup[];
+}
+
+/** Grupo de ocupação de armazém */
+export interface WarehouseGroup {
+    id: string;
+    nome: string;
+    capacidadeM3: number;
+    categoriasNivel3: string[];
 }
 
 export interface HomeKPIs {

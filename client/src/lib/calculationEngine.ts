@@ -14,4 +14,5 @@ export * from './engine/utils/dates';
 export * from './engine/utils/formatters';
 export * from './engine/core/projection';
 export * from './engine/core/coverage';
+export * from './engine/core/valuePurchase';
 export * from './engine/utils/pendencias';

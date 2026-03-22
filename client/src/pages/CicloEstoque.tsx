@@ -21,7 +21,7 @@ export default function CicloEstoque() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<CicloEstoqueData | null>(null);
   const [metadata, setMetadata] = useState<MetadataResponse | null>(null);
-  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse>({ fornecedores: [], categorias: [], categoriasNivel4: [], cds: [] });
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse>({ fornecedores: [], categorias: [], categoriasNivel4: [], cds: [], analistas: [], compradores: [], fornecedoresLogisticos: [], genericos: [], monitorados: [], marcasExclusivas: [] });
   const [horizonte, setHorizonte] = useState(13);
   const [filters, setFilters] = useState<Filters>({
     fornecedor: '',

@@ -14,6 +14,12 @@ interface FilterBarProps {
     categorias: string[];
     categoriasNivel4: string[];
     cds: string[];
+    analistas: string[];
+    compradores: string[];
+    fornecedoresLogisticos: string[];
+    genericos: string[];
+    monitorados: string[];
+    marcasExclusivas: string[];
   };
   horizonte: number;
   onHorizonteChange: (h: number) => void;
@@ -30,17 +36,17 @@ export default function FilterBar({
   totalSKUs,
   totalFiltrados
 }: FilterBarProps) {
-  const hasActiveFilters = filters.fornecedor || filters.categoria || filters.categoriaNivel4 || filters.cd || filters.busca || filters.status;
+  const hasActiveFilters = filters.fornecedor || filters.categoria || filters.categoriaNivel4 || filters.cd || filters.busca || filters.status || filters.analista || filters.comprador || filters.fornecedorLogistico || filters.generico || filters.monitorado || filters.marcaExclusiva || (filters.importedSkus && filters.importedSkus.length > 0);
 
   // Conta filtros dropdown ativos (exceto busca, que já é visível no input)
-  const activeFiltersCount = [filters.fornecedor, filters.categoria, filters.categoriaNivel4, filters.cd, filters.status].filter(Boolean).length;
+  const activeFiltersCount = [filters.fornecedor, filters.categoria, filters.categoriaNivel4, filters.cd, filters.status, filters.analista, filters.comprador, filters.fornecedorLogistico, filters.generico, filters.monitorado, filters.marcaExclusiva].filter(Boolean).length;
 
   const updateFilter = (key: keyof Filters, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
   };
 
   const clearFilters = () => {
-    onFiltersChange({ fornecedor: '', categoria: '', categoriaNivel4: '', cd: '', busca: '', status: '' });
+    onFiltersChange({ fornecedor: '', categoria: '', categoriaNivel4: '', cd: '', busca: '', status: '', analista: '', comprador: '', fornecedorLogistico: '', generico: '', monitorado: '', marcaExclusiva: '', importedSkus: [] });
   };
 
   return (
@@ -149,6 +155,92 @@ export default function FilterBar({
           <option value="warning">Ponto de Pedido</option>
           <option value="critical">Ruptura</option>
         </select>
+
+        {/* Analista */}
+        <select
+          value={filters.analista || ''}
+          onChange={(e) => updateFilter('analista', e.target.value)}
+          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[100px]"
+        >
+          <option value="">Analista (Todos)</option>
+          {filterOptions.analistas?.map(a => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+
+        {/* Comprador */}
+        <select
+          value={filters.comprador || ''}
+          onChange={(e) => updateFilter('comprador', e.target.value)}
+          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[100px]"
+        >
+          <option value="">Comprador (Todos)</option>
+          {filterOptions.compradores?.map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        {/* Fornecedor Logístico */}
+        <select
+          value={filters.fornecedorLogistico || ''}
+          onChange={(e) => updateFilter('fornecedorLogistico', e.target.value)}
+          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[140px]"
+        >
+          <option value="">Forn. Logístico (Todos)</option>
+          {filterOptions.fornecedoresLogisticos?.map(f => (
+            <option key={f} value={f}>{f}</option>
+          ))}
+        </select>
+
+        {/* Genéricos */}
+        <select
+          value={filters.generico || ''}
+          onChange={(e) => updateFilter('generico', e.target.value)}
+          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[100px]"
+        >
+          <option value="">Genéricos (Todos)</option>
+          {filterOptions.genericos?.map(g => (
+            <option key={g} value={g}>{g === 'S' ? 'Sim' : 'Não'}</option>
+          ))}
+        </select>
+
+        {/* Monitorados */}
+        <select
+          value={filters.monitorado || ''}
+          onChange={(e) => updateFilter('monitorado', e.target.value)}
+          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[100px]"
+        >
+          <option value="">Monitorados (Todos)</option>
+          {filterOptions.monitorados?.map(m => (
+            <option key={m} value={m}>{m === 'S' ? 'Sim' : 'Não'}</option>
+          ))}
+        </select>
+
+        {/* Marcas Exclusivas */}
+        <select
+          value={filters.marcaExclusiva || ''}
+          onChange={(e) => updateFilter('marcaExclusiva', e.target.value)}
+          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[120px]"
+        >
+          <option value="">Marcas Excl. (Todas)</option>
+          {filterOptions.marcasExclusivas?.map(m => (
+            <option key={m} value={m}>{m === 'S' ? 'Sim' : 'Não'}</option>
+          ))}
+        </select>
+
+        {/* Filtro Importação Ativa */}
+        {filters.importedSkus && filters.importedSkus.length > 0 && (
+          <div className="flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full pl-3 pr-1 py-1 text-xs font-semibold">
+            {filters.importedSkus.length} SKUs Importados
+            <button
+              onClick={() => onFiltersChange({ ...filters, importedSkus: [] })}
+              className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+              title="Limpar filtro de importação"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Clear filters */}
         {hasActiveFilters && (

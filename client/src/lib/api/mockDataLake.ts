@@ -1,11 +1,11 @@
-import type { PaginatedRequest, PaginatedResponse, Filters, HomeKPIs, CDSummary, AugmentedSKU, CicloEstoqueData, MensalCicloItem, RankItem, MetadataResponse, FilterOptionsResponse, ProjectionsResponse, DatabaseOverviewResponse } from './types';
+import type { PaginatedRequest, PaginatedResponse, Filters, HomeKPIs, CDSummary, AugmentedSKU, CicloEstoqueData, MensalCicloItem, RankItem, MetadataResponse, FilterOptionsResponse, ProjectionsResponse, DatabaseOverviewResponse, DashboardSKUDetail, DashboardSupplierAgg, CDMapEntry, CDMonthData, WarehouseCapacityData } from './types';
 import type { DadosCompletos } from '../engine/types';
 import { obterProjecaoInicial } from '../dataAdapter';
 import { getStatusSKU, getShelfLifeRiskStatus, formatMes, parseMesAno, diasNoMes } from '../calculationEngine';
 
 // "Database" state
 let dbDados: DadosCompletos | null = null;
-let dbCadastroMap: Map<string, any> = new Map();
+let dbCadastroMap: Map<string, import('../engine/types').SKUCadastro> = new Map();
 
 /**
  * Initializes our mock database
@@ -33,6 +33,13 @@ async function getFilteredSKUs(filters: Filters) {
         if (filters.categoria && cad['nome nível 3'] !== filters.categoria) return false;
         if (filters.categoriaNivel4 && cad['nome nível 4'] !== filters.categoriaNivel4) return false;
         if (filters.cd && String(cad.codigo_deposito_pd) !== filters.cd) return false;
+        
+        if (filters.analista && cad.Analista !== filters.analista) return false;
+        if (filters.comprador && cad.Comprador !== filters.comprador) return false;
+        if (filters.fornecedorLogistico && cad.Fornecedor_Logistico !== filters.fornecedorLogistico) return false;
+        if (filters.generico && cad['Genéricos'] !== filters.generico) return false;
+        if (filters.monitorado && cad['Monitorados'] !== filters.monitorado) return false;
+        if (filters.marcaExclusiva && cad['Marcas Exclusivas'] !== filters.marcaExclusiva) return false;
 
         if (search) {
             const match = cad['nome produto'].toLowerCase().includes(search) ||
@@ -74,7 +81,14 @@ export async function getFilterOptions(): Promise<FilterOptionsResponse> {
     const cds = Array.from(new Set(db.cadastro.map(c => String(c.codigo_deposito_pd))))
         .sort((a, b) => Number(a) - Number(b));
     
-    return { fornecedores, categorias, categoriasNivel4, cds };
+    const analistas = Array.from(new Set(db.cadastro.map(c => c.Analista).filter(Boolean))).sort() as string[];
+    const compradores = Array.from(new Set(db.cadastro.map(c => c.Comprador).filter(Boolean))).sort() as string[];
+    const fornecedoresLogisticos = Array.from(new Set(db.cadastro.map(c => c.Fornecedor_Logistico).filter(Boolean))).sort() as string[];
+    const genericos = Array.from(new Set(db.cadastro.map(c => c['Genéricos']).filter(Boolean))).sort() as string[];
+    const monitorados = Array.from(new Set(db.cadastro.map(c => c['Monitorados']).filter(Boolean))).sort() as string[];
+    const marcasExclusivas = Array.from(new Set(db.cadastro.map(c => c['Marcas Exclusivas']).filter(Boolean))).sort() as string[];
+    
+    return { fornecedores, categorias, categoriasNivel4, cds, analistas, compradores, fornecedoresLogisticos, genericos, monitorados, marcasExclusivas };
 }
 
 /**
@@ -109,7 +123,7 @@ export async function getDashboardKPIs(filters: Filters): Promise<any> {
     const { ano, mes } = parseMesAno(mesAtual);
     const diasMes = diasNoMes(ano, mes);
     
-    const allDetails: any[] = [];
+    const allDetails: DashboardSKUDetail[] = [];
     
     filtered.forEach(proj => {
       const cad = dbCadastroMap.get(proj.CHAVE);
@@ -171,7 +185,7 @@ export async function getDashboardKPIs(filters: Filters): Promise<any> {
     });
 
     // Aggregate by supplier for KPIs and charts based on FILTERED details
-    const supplierMap = new Map<string, any>();
+    const supplierMap = new Map<string, DashboardSupplierAgg>();
 
     let totalSkusRuptura = 0;
     let totalSkusCriticos = 0;
@@ -189,11 +203,14 @@ export async function getDashboardKPIs(filters: Filters): Promise<any> {
     let cov14to30 = 0;
     let cov30plus = 0;
 
+    // Map para lookup O(1) em vez de O(n) dentro do forEach
+    const filteredMap = new Map(filtered.map(p => [p.CHAVE, p]));
+
     allDetails.forEach(detail => {
       const cad = dbCadastroMap.get(detail.sku);
       if (!cad) return;
 
-      const proj = filtered.find(p => p.CHAVE === detail.sku);
+      const proj = filteredMap.get(detail.sku);
       if (!proj) return;
 
       const fornecedor = detail.fornecedor;
@@ -256,7 +273,7 @@ export async function getDashboardKPIs(filters: Filters): Promise<any> {
       { label: '30+ dias', count: cov30plus, color: 'oklch(0.7 0.1 145)' },
     ];
 
-    const allSuppliers: any[] = [];
+    const allSuppliers: (DashboardSupplierAgg & { fornecedor: string })[] = [];
     let totalPerdaDiaria = 0;
 
     supplierMap.forEach((data, fornecedor) => {
@@ -267,7 +284,7 @@ export async function getDashboardKPIs(filters: Filters): Promise<any> {
     });
 
     // 1. Ranking por Perda $
-    const sortedForLoss = [...allSuppliers].sort((a, b) => b.perdaTotal - a.perdaTotal);
+    const sortedForLoss = [...allSuppliers].sort((a, b) => (b.perdaTotal ?? 0) - (a.perdaTotal ?? 0));
     const supplierLossRanking = sortedForLoss.slice(0, 20);
 
     // 2. Ranking por SKUs em Ponto de Pedido (Atenção)
@@ -334,6 +351,8 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
     let skusShelfLifeRisk = 0;
 
     const firstMonth = db.metadata.meses[0];
+    const { ano: anoM1, mes: mesM1 } = parseMesAno(firstMonth);
+    const diasMesAtual = diasNoMes(anoM1, mesM1);
     const mesesParaConsiderar = filters.mesesVisiveis && filters.mesesVisiveis.length > 0 ? filters.mesesVisiveis : db.metadata.meses;
     const ultimoMes = mesesParaConsiderar[mesesParaConsiderar.length - 1];
 
@@ -381,7 +400,7 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
         // PME Hoje Global
         const sellOutMes1 = proj.meses[firstMonth]?.SELL_OUT ?? 0;
         if (sellOutMes1 > 0) {
-            const demandaDiaria = sellOutMes1 / 30; // Usando 30 dias na média simples da Home
+            const demandaDiaria = sellOutMes1 / diasMesAtual;
             const cobHoje = cad.ESTOQUE / demandaDiaria;
             somaPonderadaPmeHoje += cobHoje * sellOutMes1;
             somaVolumesPmeHoje += sellOutMes1;
@@ -406,7 +425,7 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
 
         const sellOutAtual = proj.meses[firstMonth]?.SELL_OUT ?? 0;
         if (sellOutAtual > 0) {
-            const demandaDiaria = sellOutAtual / 30;
+            const demandaDiaria = sellOutAtual / diasMesAtual;
             sellOutDiarioRSGlobal += demandaDiaria * (cad.CUSTO_LIQUIDO || 0);
         }
     });
@@ -415,7 +434,7 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
     const pmeHojeDias = somaVolumesPmeHoje > 0 ? Math.round(somaPonderadaPmeHoje / somaVolumesPmeHoje) : null;
     // ── Fim do Cálculo ─────────────────────────────────────────────────────
 
-    const demandaDiariaGlobal = totalSellOutMes1 / 30;
+    const demandaDiariaGlobal = totalSellOutMes1 / diasMesAtual;
     const coberturaGlobalDias = demandaDiariaGlobal > 0 ? Math.round(totalEstoque / demandaDiariaGlobal) : 0;
     const coberturaProjetadaDias = demandaDiariaGlobal > 0 ? Math.round(estoqueProjetadoFinal / demandaDiariaGlobal) : 0;
     const ltMedio = countComLT > 0 ? Math.round(somaLt / countComLT) : 0;
@@ -447,10 +466,10 @@ export async function getCDSummaries(filters: Filters): Promise<CDSummary[]> {
     const filtered = await getFilteredSKUs(filters);
     const meses = db.metadata.meses;
 
-    const cdMap: Record<string, any> = {};
+    const cdMap: Record<string, CDMapEntry> = {};
 
     // Load capacity data from localStorage (backend logic mock)
-    let capacityData: any[] = [];
+    let capacityData: WarehouseCapacityData[] = [];
     try {
         const raw = localStorage.getItem('warehouse_capacity');
         if (raw) capacityData = JSON.parse(raw);
@@ -538,7 +557,7 @@ export async function getCDSummaries(filters: Filters): Promise<CDSummary[]> {
         .sort((a, b) => Number(a) - Number(b))
         .map(cdKey => {
             const c = cdMap[cdKey];
-            const demandaDiariaCD = c.totalSellOut / 30;
+            const demandaDiariaCD = c.totalSellOut / diasNoMes(parseMesAno(meses[0]).ano, parseMesAno(meses[0]).mes);
             const coberturaDiasCD = demandaDiariaCD > 0 ? Math.round(c.totalEstoque / demandaDiariaCD) : 0;
 
             return {
@@ -579,7 +598,7 @@ export async function getSkusPaginated(filters: Filters, req: PaginatedRequest):
         const status = getStatusSKU(proj.meses, db.metadata.meses, cad);
 
         const sellOutMes1 = proj.meses[meses[0]]?.SELL_OUT ?? 0;
-        const demandaDiaria = sellOutMes1 / 30;
+        const demandaDiaria = sellOutMes1 / diasNoMes(parseMesAno(meses[0]).ano, parseMesAno(meses[0]).mes);
         const coberturaDias = demandaDiaria > 0 ? Math.round(cad.ESTOQUE / demandaDiaria) : 999;
 
         const minEstoqueProjetado = Math.min(...meses.map((m) => proj.meses[m]?.ESTOQUE_PROJETADO ?? 0));
@@ -658,7 +677,7 @@ export async function getCicloEstoqueData(filters: Filters): Promise<CicloEstoqu
            // have direct access to local estoques de loja, we'll use a mocked percentage or cad.EST_LOJA if available.
            // To keep it simple, we simulate PME Loja as roughly 30% of total PME or read if pre-stored.
            const estoqueLoja = (cad as any).ESTOQUE_LOJA ?? (cad.ESTOQUE * 0.3); 
-           const demandaDiaria = sellOutMes1 / 30;
+           const demandaDiaria = sellOutMes1 / diasNoMes(parseMesAno(firstMonth).ano, parseMesAno(firstMonth).mes);
            if (demandaDiaria > 0) {
               somaPonderadaPmeLojaGlobal += (estoqueLoja / demandaDiaria) * sellOutMes1;
            }

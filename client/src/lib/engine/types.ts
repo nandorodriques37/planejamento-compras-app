@@ -21,6 +21,14 @@ export interface SKUCadastro {
   COMPRIMENTO: number;  // cm
   ALTURA: number;       // cm
   LARGURA: number;      // cm
+
+  // Novos campos aleatórios gerados pelo adapter (mock)
+  Analista?: string;
+  Comprador?: string;
+  Fornecedor_Logistico?: string;
+  'Genéricos'?: 'S' | 'N';
+  'Monitorados'?: 'S' | 'N';
+  'Marcas Exclusivas'?: 'S' | 'N';
 }
 
 export interface FornecedorCadastro {
@@ -102,6 +110,7 @@ export interface CoberturaResultado {
   cd: number;
   fornecedor: string;
   pedidoCobertura: number;
+  pedidoCoberturaArredondado: number;
   pedidoNormalMes1: number;
   totalAntecipado: number;
   estoqueAtual: number;
@@ -115,6 +124,12 @@ export interface CoberturaResultado {
     semanasDetalhe: DetalheSemanaCoberturaIntraMes[];
     totalReduzidoParaMes2: number;
   };
+  /** Risco de ruptura durante o lead time (estoque atual < demandaDiária × LT) */
+  rupturaLTRisk: boolean;
+  /** Risco de shelf life (cobertura na chegada >= 80% do shelf life) */
+  shelfLifeRisk: boolean;
+  /** Múltiplo de embalagem do SKU (0 = sem múltiplo) */
+  multiploEmbalagem: number;
 }
 
 export interface PedidoPendente {

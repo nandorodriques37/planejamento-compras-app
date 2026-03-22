@@ -2,7 +2,7 @@
  * Painel de Compra de Cobertura
  * Design: Pharma Enterprise - painel lateral direito
  * 
- * NOVA LÓGICA (v2):
+ * NOVA LÓGICA (v3):
  * Conceito: "Faço UM pedido hoje e só volto a comprar na data X."
  * 
  * O sistema calcula a projeção NORMAL primeiro, depois soma todos os pedidos
@@ -14,11 +14,18 @@
  * - Os pedidos dos meses intermediários são ZERADOS
  * - O motor de recálculo redistribui entradas e estoques automaticamente
  * 
+ * Melhorias v3:
+ * - M2: Aviso quando filtros estão ativos
+ * - M3: Contagem agregada de meses zerados/parciais
+ * - M4: Alerta de risco de ruptura durante LT
+ * - M5: Múltiplo de embalagem exibido e arredondado
+ * - M6: Alerta de risco de shelf life
+ * 
  * LAYOUT: Header (fixo) + Conteúdo scrollável (controles + lista SKUs) + Footer (fixo)
  */
 
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { X, Calendar, Calculator, ShoppingCart, Info, CheckCircle2, ArrowRight } from 'lucide-react';
+import { X, Calendar, Calculator, ShoppingCart, Info, CheckCircle2, ArrowRight, AlertTriangle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { SKUCadastro, ProjecaoSKU, CoberturaResultado } from '../lib/calculationEngine';
 import { calcularCoberturaPorData, calcularSemanasRestantes, parseMesAno, formatNumber, formatDateBR, getDateRange, formatMes } from '../lib/calculationEngine';
@@ -31,6 +38,10 @@ interface CoveragePanelProps {
   meses: string[];
   dataReferencia: string;
   onAplicarCobertura: (pedidos: Array<{ chave: string; mes: string; valor: number }>, weeklyOverrides?: Map<string, number[]>) => void;
+  /** Total de SKUs no fornecedor (sem filtro) para exibir aviso */
+  totalSKUsSemFiltro?: number;
+  /** Estoques objetivo personalizados por CHAVE -> {mes: valor} */
+  estoquesObjetivoPorChave?: Map<string, Record<string, number>>;
 }
 
 export default function CoveragePanel({
@@ -40,7 +51,9 @@ export default function CoveragePanel({
   projecoes,
   meses,
   dataReferencia,
-  onAplicarCobertura
+  onAplicarCobertura,
+  totalSKUsSemFiltro,
+  estoquesObjetivoPorChave
 }: CoveragePanelProps) {
   // Data de referência estabilizada com useMemo (evita recriação a cada render)
   const dataRef = useMemo(() => new Date(dataReferencia + 'T00:00:00'), [dataReferencia]);
@@ -77,6 +90,10 @@ export default function CoveragePanel({
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   }, [dataCoberturaDate, dataRef]);
 
+  // Melhoria 2: Detectar se filtros estão ativos
+  const filtrosAtivos = totalSKUsSemFiltro !== undefined && totalSKUsSemFiltro > projecoes.length;
+  const skusExcluidos = filtrosAtivos ? (totalSKUsSemFiltro! - projecoes.length) : 0;
+
   // Calcular cobertura para todos os SKUs
   // Dependências: dataCobertura (string) e dataReferencia (string) para estabilidade
   const resultados = useMemo(() => {
@@ -92,15 +109,19 @@ export default function CoveragePanel({
         sellOutPorMes[mes] = proj.meses[mes]?.SELL_OUT || 0;
       });
 
+      // Melhoria 7: Passar estoquesObjetivoPorMes se disponível
+      const estObj = estoquesObjetivoPorChave?.get(proj.CHAVE);
+
       return calcularCoberturaPorData(
         cad,
         meses,
         sellOutPorMes,
         cobDate,
-        refDate
+        refDate,
+        estObj
       );
     }).filter((r): r is CoberturaResultado => r !== null);
-  }, [projecoes, cadastros, meses, dataCobertura, dataReferencia]);
+  }, [projecoes, cadastros, meses, dataCobertura, dataReferencia, estoquesObjetivoPorChave]);
 
   // Separar SKUs com ajuste > 0 (antecipação de pedidos futuros)
   const resultadosComPedido = useMemo(() => resultados.filter(r =>
@@ -110,9 +131,26 @@ export default function CoveragePanel({
     r.totalAntecipado === 0
   ), [resultados]);
 
-  const totalPedido = useMemo(() => resultadosComPedido.reduce((acc, r) => acc + r.pedidoCobertura, 0), [resultadosComPedido]);
+  const totalPedido = useMemo(() => resultadosComPedido.reduce((acc, r) => acc + r.pedidoCoberturaArredondado, 0), [resultadosComPedido]);
   const totalPedidoNormal = useMemo(() => resultadosComPedido.reduce((acc, r) => acc + r.pedidoNormalMes1, 0), [resultadosComPedido]);
   const totalAntecipado = useMemo(() => resultadosComPedido.reduce((acc, r) => acc + r.totalAntecipado, 0), [resultadosComPedido]);
+
+  // Melhoria 3: Contagem AGREGADA de meses zerados e parciais (todos os SKUs)
+  const { totalMesesZerados, totalMesesParciais } = useMemo(() => {
+    let zerados = 0;
+    let parciais = 0;
+    // Usar o primeiro resultado como referência para os meses afetados (mesma lógica temporal)
+    if (resultadosComPedido.length > 0) {
+      const referencia = resultadosComPedido[0];
+      zerados = referencia.detalheMeses.filter(d => d.valorMantido === 0).length;
+      parciais = referencia.detalheMeses.filter(d => d.valorMantido > 0).length;
+    }
+    return { totalMesesZerados: zerados, totalMesesParciais: parciais };
+  }, [resultadosComPedido]);
+
+  // Melhoria 4 & 6: Contagem de alertas
+  const skusComRupturaLT = useMemo(() => resultados.filter(r => r.rupturaLTRisk).length, [resultados]);
+  const skusComShelfLifeRisk = useMemo(() => resultados.filter(r => r.shelfLifeRisk).length, [resultados]);
 
   // Aplicar pedidos de cobertura na tabela principal
   const handleAplicar = useCallback(() => {
@@ -122,11 +160,11 @@ export default function CoveragePanel({
     const pedidos: Array<{ chave: string; mes: string; valor: number }> = [];
 
     resultadosComPedido.forEach(r => {
-      // Pedido de cobertura no primeiro mês (normal + antecipado)
+      // Melhoria 5: Usar pedido arredondado ao múltiplo
       pedidos.push({
         chave: r.chave,
         mes: primeiroMes,
-        valor: r.pedidoCobertura
+        valor: r.pedidoCoberturaArredondado
       });
 
       // Meses ajustados: mantêm a fração proporcional NÃO antecipada
@@ -148,9 +186,9 @@ export default function CoveragePanel({
         const semanas = calcularSemanasRestantes(ano, mesNum, refDate.getDate());
         if (semanas.length > 0) {
           [...resultadosComPedido, ...resultadosSemPedido].forEach(r => {
-            if (r.pedidoCobertura <= 0) return;
+            if (r.pedidoCoberturaArredondado <= 0) return;
             const weekValues = new Array(semanas.length).fill(0);
-            weekValues[0] = r.pedidoCobertura; // ALL in first available week
+            weekValues[0] = r.pedidoCoberturaArredondado; // ALL in first available week
             weeklyOverrides.set(r.chave, weekValues);
           });
         }
@@ -209,6 +247,41 @@ export default function CoveragePanel({
                 O pedido do mês 1 é mantido e <strong>nunca é reduzido</strong> — apenas acrescido dos pedidos futuros.
               </p>
             </div>
+
+            {/* Melhoria 2: Aviso de filtros ativos */}
+            {filtrosAtivos && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-2.5 flex gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-700 dark:text-amber-300 leading-relaxed">
+                  <strong>Filtros ativos:</strong> {skusExcluidos} SKU(s) excluído(s) pelos filtros.
+                  A cobertura será calculada apenas para os {projecoes.length} SKU(s) visíveis.
+                </p>
+              </div>
+            )}
+
+            {/* Melhoria 4 & 6: Alertas de risco */}
+            {(skusComRupturaLT > 0 || skusComShelfLifeRisk > 0) && (
+              <div className="space-y-1.5">
+                {skusComRupturaLT > 0 && (
+                  <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-2.5 flex gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-red-700 dark:text-red-300 leading-relaxed">
+                      <strong>{skusComRupturaLT} SKU(s) com risco de ruptura durante o LT.</strong>{' '}
+                      O estoque atual é insuficiente para cobrir a demanda até a chegada do lote.
+                    </p>
+                  </div>
+                )}
+                {skusComShelfLifeRisk > 0 && (
+                  <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg p-2.5 flex gap-2">
+                    <Clock className="w-3.5 h-3.5 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-orange-700 dark:text-orange-300 leading-relaxed">
+                      <strong>{skusComShelfLifeRisk} SKU(s) com risco de shelf life.</strong>{' '}
+                      O volume antecipado pode gerar estoque acima de 80% do prazo de validade.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Data de referência + Date picker */}
             <div className="flex items-end gap-3">
@@ -269,6 +342,7 @@ export default function CoveragePanel({
                 </span>
               </div>
 
+              {/* Melhoria 3: Contagem agregada */}
               <div className="grid grid-cols-3 gap-x-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-muted-foreground">SKUs:</span>
@@ -277,17 +351,13 @@ export default function CoveragePanel({
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-muted-foreground">Meses zerados:</span>
                   <span className="text-xs font-semibold text-destructive">
-                    {resultadosComPedido.length > 0
-                      ? resultadosComPedido[0].detalheMeses.filter(d => d.valorMantido === 0).length
-                      : 0}
+                    {totalMesesZerados}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-muted-foreground">Mês parcial:</span>
                   <span className="text-xs font-semibold text-amber-600">
-                    {resultadosComPedido.length > 0
-                      ? resultadosComPedido[0].detalheMeses.filter(d => d.valorMantido > 0).length
-                      : 0}
+                    {totalMesesParciais}
                   </span>
                 </div>
               </div>
@@ -311,9 +381,26 @@ export default function CoveragePanel({
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">{r.nome}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-medium text-foreground truncate">{r.nome}</p>
+                        {/* Melhoria 4 & 6: Badges de risco inline */}
+                        {r.rupturaLTRisk && (
+                          <span className="flex-shrink-0 inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-medium bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400" title="Risco de ruptura: estoque insuficiente durante o LT">
+                            <AlertTriangle className="w-2.5 h-2.5" /> LT
+                          </span>
+                        )}
+                        {r.shelfLifeRisk && (
+                          <span className="flex-shrink-0 inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-medium bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400" title="Risco de shelf life: cobertura acima de 80% do prazo de validade">
+                            <Clock className="w-2.5 h-2.5" /> SL
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-muted-foreground">
                         CD {r.cd} · {r.fornecedor} · LT {r.lt}d
+                        {/* Melhoria 5: Exibir múltiplo de embalagem */}
+                        {r.multiploEmbalagem > 1 && (
+                          <span className="text-primary/70"> · Múlt. {r.multiploEmbalagem}</span>
+                        )}
                       </p>
                       {/* Composição: Normal + Antecipado */}
                       <div className="flex items-center gap-1.5 mt-1">
@@ -325,8 +412,14 @@ export default function CoveragePanel({
                         </span>
                         <ArrowRight className="w-2.5 h-2.5 text-primary" />
                         <span className="text-[10px] font-semibold text-primary font-mono">
-                          = {formatNumber(r.pedidoCobertura)}
+                          = {formatNumber(r.pedidoCoberturaArredondado)}
                         </span>
+                        {/* Melhoria 5: Mostrar arredondamento */}
+                        {r.pedidoCoberturaArredondado !== r.pedidoCobertura && (
+                          <span className="text-[9px] text-muted-foreground font-mono">
+                            (↑{formatNumber(r.pedidoCoberturaArredondado - r.pedidoCobertura)} múlt.)
+                          </span>
+                        )}
                       </div>
                       {r.mesesAjustados.length > 0 && (
                         <p className="text-[9px] text-muted-foreground mt-0.5">
@@ -336,7 +429,7 @@ export default function CoveragePanel({
                     </div>
                     <div className="text-right ml-3">
                       <p className="text-sm font-bold text-primary tabular-nums font-mono">
-                        {formatNumber(r.pedidoCobertura)}
+                        {formatNumber(r.pedidoCoberturaArredondado)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
                         Est.Atual: {formatNumber(r.estoqueAtual)}
@@ -347,6 +440,23 @@ export default function CoveragePanel({
                   {/* Detalhe expandido */}
                   {expandedSKU === r.chave && (
                     <div className="mt-2 bg-muted/50 rounded-lg p-2.5 space-y-1.5">
+                      {/* Melhoria 4 & 6: Detalhes de risco expandidos */}
+                      {(r.rupturaLTRisk || r.shelfLifeRisk) && (
+                        <div className="space-y-1 mb-2">
+                          {r.rupturaLTRisk && (
+                            <div className="flex items-center gap-1.5 text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded px-2 py-1">
+                              <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                              <span>Estoque atual ({formatNumber(r.estoqueAtual)}) insuficiente para cobrir {r.lt}d de lead time</span>
+                            </div>
+                          )}
+                          {r.shelfLifeRisk && (
+                            <div className="flex items-center gap-1.5 text-[10px] text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 rounded px-2 py-1">
+                              <Clock className="w-3 h-3 flex-shrink-0" />
+                              <span>Cobertura após recebimento pode exceder 80% do shelf life</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {r.detalheMeses.length > 0 ? (
                         <>
                           {/* Modo inter-mês: decomposição por mês */}
@@ -392,6 +502,13 @@ export default function CoveragePanel({
                             <span className="font-medium text-foreground">Total antecipado p/ Mês 1</span>
                             <span className="font-bold text-primary font-mono">+{formatNumber(r.totalAntecipado)}</span>
                           </div>
+                          {/* Melhoria 5: Mostrar arredondamento no detalhe */}
+                          {r.pedidoCoberturaArredondado !== r.pedidoCobertura && (
+                            <div className="flex items-center justify-between text-[10px] text-primary/70">
+                              <span className="font-medium">Arredondado ao múltiplo de {r.multiploEmbalagem}</span>
+                              <span className="font-bold font-mono">{formatNumber(r.pedidoCobertura)} → {formatNumber(r.pedidoCoberturaArredondado)}</span>
+                            </div>
+                          )}
                         </>
                       ) : null}
                     </div>
@@ -435,11 +552,9 @@ export default function CoveragePanel({
               {resultadosComPedido.length > 0 && (
                 <p className="text-[10px] text-center text-muted-foreground">
                   {(() => {
-                    const zerados = resultadosComPedido[0]?.detalheMeses.filter(d => d.valorMantido === 0).length ?? 0;
-                    const parciais = resultadosComPedido[0]?.detalheMeses.filter(d => d.valorMantido > 0).length ?? 0;
                     const parts: React.ReactNode[] = [];
-                    if (zerados > 0) parts.push(<span key="z" className="text-destructive font-medium">{zerados} mês(es) zerado(s)</span>);
-                    if (parciais > 0) parts.push(<span key="p" className="text-amber-600 font-medium">{parciais} mês parcial</span>);
+                    if (totalMesesZerados > 0) parts.push(<span key="z" className="text-destructive font-medium">{totalMesesZerados} mês(es) zerado(s)</span>);
+                    if (totalMesesParciais > 0) parts.push(<span key="p" className="text-amber-600 font-medium">{totalMesesParciais} mês parcial</span>);
                     return <>{parts.length > 0 && parts.reduce((a, b) => <>{a} + {b}</>)} — pedidos puxados para o mês 1</>;
                   })()}
                 </p>

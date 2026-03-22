@@ -34,6 +34,8 @@ import { Badge } from '@/components/ui/badge';
 import { usePedidosAprovacao } from '../hooks/usePedidosAprovacao';
 import { formatDateBR, formatNumber, formatCurrency } from '../lib/calculationEngine';
 import type { PedidoAprovacao, PedidoKPIs } from '../lib/types';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 type StatusFilter = 'todos' | 'pendente' | 'aprovado' | 'rejeitado' | 'cancelado';
 
@@ -44,7 +46,7 @@ function coverageColor(days: number | null): { bg: string; text: string; border:
   return { bg: 'bg-teal-50 dark:bg-teal-950/30', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800', icon: 'text-teal-500', label: 'Saudável' };
 }
 
-function exportPedidoParaCSV(pedido: PedidoAprovacao, itens: PedidoAprovacao['itens']) {
+function exportPedidoParaExcel(pedido: PedidoAprovacao, itens: PedidoAprovacao['itens']) {
   const headers = [
     'SKU', 'Produto', 'Fornecedor', 'CD', 'Estoque Atual', 'Estoque Segurança', 'Pendências',
     'Sell-Out Mensal', 'Cobertura Hoje', 
@@ -52,14 +54,11 @@ function exportPedidoParaCSV(pedido: PedidoAprovacao, itens: PedidoAprovacao['it
     'Total Quantidade', 'Total Valor', 'Estoque Projetado Chegada', 'Cobertura Chegada'
   ];
 
-  const rows = itens.map(item => {
+  const rows: any[][] = itens.map(item => {
     const sku = item.chave.includes('-') ? item.chave.split('-')[1] : item.chave;
     const cobHoje = item.coberturaDiasHoje ?? '';
     const cobCheg = item.coberturaDiasChegada ?? '';
-    // Format value specifically for pt-BR Excel (replace dot with comma for decimals)
-    // If not formatted, pt-BR Excel parses dots like 29.55 as twenty-nine thousands
-    const valorRaw = item.custoLiquido ? item.totalQuantidade * item.custoLiquido : '';
-    const valor = typeof valorRaw === 'number' ? valorRaw.toFixed(2).replace('.', ',') : valorRaw;
+    const valor = item.custoLiquido ? item.totalQuantidade * item.custoLiquido : '';
     
     return [
       sku,
@@ -76,19 +75,17 @@ function exportPedidoParaCSV(pedido: PedidoAprovacao, itens: PedidoAprovacao['it
       valor,
       item.estoqueProjetadoChegada ?? '',
       cobCheg
-    ].join(';');
+    ];
   });
 
-  const csvContent = [headers.join(';'), ...rows].join('\n');
-  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Pedido_${pedido.id.substring(0, 8)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pedido');
+
+  // Usar file-saver para contornar o bloqueio de downloads que perde a extensão no browser
+  const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  saveAs(blob, `Pedido_${pedido.id.substring(0, 8)}.xlsx`);
 }
 
 function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }: { kpis: PedidoKPIs; fornecedorNome?: string; prazoPagamentoPadrao?: number; prazoPagamento?: number }) {
@@ -492,7 +489,67 @@ function PedidoCard({
       {/* KPI Panel — sempre visível antes da expansão */}
       {pedido.kpis != null && <KpiPanel kpis={pedido.kpis} fornecedorNome={fornecedorNome} prazoPagamentoPadrao={pedido.prazoPagamentoPadrao} prazoPagamento={pedido.prazoPagamento} />}
 
-      {/* Expanded: detail table + actions */}
+      {/* Action buttons — sempre visíveis fora do detalhamento */}
+      <div className="px-4 pb-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs gap-1.5 text-foreground border-border hover:bg-muted"
+            onClick={(e) => { e.stopPropagation(); exportPedidoParaExcel(pedido, itensOrdenados); }}
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar Excel
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs gap-1.5 text-muted-foreground hover:bg-muted"
+            onClick={() => setIsExpanded(v => !v)}
+          >
+            <Package className="w-3.5 h-3.5" />
+            {isExpanded ? 'Ocultar Itens' : 'Ver Itens'}
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </Button>
+        </div>
+
+        {(pedido.status === 'pendente' || pedido.status === 'aprovado' || pedido.status === 'rejeitado') && (
+          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
+            {pedido.status === 'pendente' && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none text-xs gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10"
+                  onClick={() => onRejeitar(pedido.id)}
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Rejeitar
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 sm:flex-none text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => onAprovar(pedido.id)}
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Aprovar
+                </Button>
+              </>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 sm:flex-none text-xs gap-1.5 text-muted-foreground border-border hover:bg-muted"
+              onClick={() => onCancelar(pedido.id)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Cancelar
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Expanded: detail table */}
       {isExpanded && (
         <div className="border-t border-border px-4 py-3">
           {/* Mobile summary */}
@@ -694,54 +751,6 @@ function PedidoCard({
                 </tr>
               </tfoot>
             </table>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-4 pt-2 border-t border-border/50 md:border-t-0 md:pt-0">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full sm:w-auto text-xs gap-1.5 text-foreground border-border hover:bg-muted"
-              onClick={(e) => { e.stopPropagation(); exportPedidoParaCSV(pedido, itensOrdenados); }}
-            >
-              <Download className="w-3.5 h-3.5" />
-              Exportar para Excel
-            </Button>
-
-            {(pedido.status === 'pendente' || pedido.status === 'aprovado' || pedido.status === 'rejeitado') && (
-              <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
-                {pedido.status === 'pendente' && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 sm:flex-none text-xs gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10"
-                      onClick={() => onRejeitar(pedido.id)}
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      Rejeitar
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 sm:flex-none text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => onAprovar(pedido.id)}
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Aprovar
-                    </Button>
-                  </>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 sm:flex-none text-xs gap-1.5 text-muted-foreground border-border hover:bg-muted"
-                  onClick={() => onCancelar(pedido.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Cancelar
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       )}

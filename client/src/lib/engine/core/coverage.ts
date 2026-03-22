@@ -5,13 +5,21 @@ import { parseMesAno, diasNoMes, calcularSemanasRestantes, distribuirPedidoSimpl
 /**
  * Calcula a compra de cobertura PROPORCIONAL para um SKU com data específica.
  * Refatorado para trabalhar estritamente com lógica UTC nas datas.
+ *
+ * Melhorias v3:
+ * - Passa estoquesObjetivoPorMes para consistência com a tabela principal
+ * - Calcula risco de ruptura durante LT (alertar comprador)
+ * - Calcula risco de shelf life (alerta de vencimento)
+ * - Arredonda ao múltiplo de embalagem
+ * - Corrige contagem de dias intra-mês
  */
 export function calcularCoberturaPorData(
     cadastro: SKUCadastro,
     meses: string[],
     sellOutPorMes: Record<string, number>,
     dataCobertura: Date,
-    dataReferencia: Date
+    dataReferencia: Date,
+    estoquesObjetivoPorMes?: Record<string, number>
 ): CoberturaResultado {
     // Garantir que as datas instanciadas internamente estão utilizando UTC e início de dia, se possível
     const coberturaUTC = new Date(Date.UTC(dataCobertura.getUTCFullYear(), dataCobertura.getUTCMonth(), dataCobertura.getUTCDate()));
@@ -19,6 +27,7 @@ export function calcularCoberturaPorData(
 
     // ============================================================
     // PASSO 1: Calcular a projeção NORMAL (sem edições)
+    // Melhoria 7: Passa estoquesObjetivoPorMes para consistência
     // ============================================================
     const pedidosManuaisVazios: Record<string, number | null> = {};
     meses.forEach(m => { pedidosManuaisVazios[m] = null; });
@@ -33,7 +42,9 @@ export function calcularCoberturaPorData(
         sellOutPorMes,
         pedidosManuaisVazios,
         pedidosOriginaisVazios,
-        dataRefStr
+        dataRefStr,
+        undefined, // pendenciasPorMes
+        estoquesObjetivoPorMes // Melhoria 7: agora passado corretamente
     );
 
     // ============================================================
@@ -55,24 +66,20 @@ export function calcularCoberturaPorData(
 
     // ============================================================
     // PASSO 3: Contar N dias por semanas a partir da data de cobertura
+    // Melhoria 1: Corrige contagem intra-mês
     // ============================================================
     const coberturaNoMesAtual = coberturaUTC.getUTCFullYear() === mesAtual.ano
         && (coberturaUTC.getUTCMonth() + 1) === mesAtual.mes;
 
+    // diasConsumidosNoMesAtual = dias cobertos pelo pedido normal do mês 1
+    // (ou seja, dias entre a referência e o fim do período já coberto)
     let diasConsumidosNoMesAtual = 0;
     if (coberturaNoMesAtual) {
+        // Melhoria 1 (Fix): Quando a cobertura cai no mês atual, os dias "consumidos"
+        // pelo pedido normal são os dias entre a referência e a data de cobertura.
+        // Os dias que precisam ser antecipados começam APÓS a data de cobertura.
         const diaCob = coberturaUTC.getUTCDate();
-        const diaInicioPull = diaCob + 1;
-        if (diaInicioPull <= diasDoMesAtual) {
-            const semanasPull = calcularSemanasRestantes(mesAtual.ano, mesAtual.mes, diaInicioPull);
-            let diasParaConsumir = diasCobertos;
-            for (const sem of semanasPull) {
-                if (diasParaConsumir <= 0) break;
-                const consumed = Math.min(sem.dias, diasParaConsumir);
-                diasConsumidosNoMesAtual += consumed;
-                diasParaConsumir -= consumed;
-            }
-        }
+        diasConsumidosNoMesAtual = Math.max(0, diaCob - diaReferencia);
     } else {
         diasConsumidosNoMesAtual = diasRestantesMesAtual;
     }
@@ -125,12 +132,44 @@ export function calcularCoberturaPorData(
 
     const pedidoCobertura = pedidoNormalMes1 + totalAntecipado;
 
+    // ============================================================
+    // Melhoria 5: Arredondar ao múltiplo de embalagem
+    // ============================================================
+    const multiplo = cadastro.MULTIPLO_EMBALAGEM || 0;
+    let pedidoCoberturaArredondado = pedidoCobertura;
+    if (multiplo > 1 && pedidoCobertura > 0) {
+        pedidoCoberturaArredondado = Math.ceil(pedidoCobertura / multiplo) * multiplo;
+    }
+
+    // ============================================================
+    // Melhoria 4: Calcular risco de ruptura durante LT
+    // Se estoque atual < demandaDiária × LT, haverá ruptura antes da chegada
+    // ============================================================
+    const lt = cadastro.LT || 0;
+    const sellOutMes1 = sellOutPorMes[meses[0]] || 0;
+    const demandaDiaria = sellOutMes1 > 0 ? sellOutMes1 / diasDoMesAtual : 0;
+    const rupturaLTRisk = demandaDiaria > 0 && lt > 0 && cadastro.ESTOQUE < (demandaDiaria * lt);
+
+    // ============================================================
+    // Melhoria 6: Calcular risco de shelf life
+    // Se a cobertura gera estoque que excede 80% do shelf life em dias
+    // ============================================================
+    const shelfLife = cadastro.SHELF_LIFE || 0;
+    let shelfLifeRisk = false;
+    if (shelfLife > 0 && demandaDiaria > 0 && pedidoCoberturaArredondado > 0) {
+        // Estoque total projetado após receber o lote de cobertura
+        const estoqueAposRecebimento = cadastro.ESTOQUE + pedidoCoberturaArredondado;
+        const coberturaDiasResultante = estoqueAposRecebimento / demandaDiaria;
+        shelfLifeRisk = coberturaDiasResultante >= (shelfLife * 0.80);
+    }
+
     return {
         chave: cadastro.CHAVE,
         nome: cadastro['nome produto'],
         cd: cadastro.codigo_deposito_pd,
         fornecedor: cadastro['fornecedor comercial'],
         pedidoCobertura,
+        pedidoCoberturaArredondado,
         pedidoNormalMes1,
         totalAntecipado,
         estoqueAtual: cadastro.ESTOQUE,
@@ -139,6 +178,9 @@ export function calcularCoberturaPorData(
         diasRestantesMesAtual,
         detalheMeses,
         mesesAjustados,
-        intraMes: undefined
+        intraMes: undefined,
+        rupturaLTRisk,
+        shelfLifeRisk,
+        multiploEmbalagem: multiplo
     };
 }

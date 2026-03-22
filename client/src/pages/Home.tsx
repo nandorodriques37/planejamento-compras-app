@@ -7,8 +7,9 @@
  * Funcionalidades: Filtros, horizonte, tabela editável, compra de cobertura, gráfico por SKU
  */
 
-import { useState, useCallback, useMemo } from 'react';
-import { ShoppingCart, Download, Send, CalendarDays, CalendarClock } from 'lucide-react';
+import { useState, useCallback, useMemo, useRef } from 'react';
+import { ShoppingCart, Download, Send, CalendarDays, CalendarClock, FileUp, DollarSign } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -30,12 +31,13 @@ import SummaryCards from '../components/SummaryCards';
 import ProjectionTable from '../components/ProjectionTable';
 import ActionBar from '../components/ActionBar';
 import CoveragePanel from '../components/CoveragePanel';
+import ValuePurchasePanel from '../components/ValuePurchasePanel';
 import SKUChart from '../components/SKUChart';
 import TableSkeleton from '../components/TableSkeleton';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProjectionData } from '../hooks/useProjectionData';
 import { usePedidosAprovacao } from '../hooks/usePedidosAprovacao';
-import { exportarParaCSV } from '../lib/dataAdapter';
+import { exportarParaExcel } from '../lib/dataAdapter';
 import { calcularSemanasRestantes, calcularSemanasComLT, parseMesAno, distribuirPedidoMultiMes, getStatusSKU, hasShelfLifeRisk, buildPendenciasPorSKU, calcularPendenciaAteData, agruparPendenciasPorMes } from '../lib/calculationEngine';
 import { diasNoMes } from '../lib/engine/utils/dates';
 import type { WeekDistribution, PedidoPendente } from '../lib/calculationEngine';
@@ -110,6 +112,7 @@ export default function Home() {
   }, [dadosFiltrados, dados, cadastroMap]);
 
   const [coveragePanelOpen, setCoveragePanelOpen] = useState(false);
+  const [valuePanelOpen, setValuePanelOpen] = useState(false);
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
   const [coverageWeeklyEdits, setCoverageWeeklyEdits] = useState<Map<string, number[]>>(new Map());
   const [weeklyEdits, setWeeklyEdits] = useState<Map<string, number[]>>(new Map());
@@ -120,6 +123,8 @@ export default function Home() {
   const [mesesProgramar, setMesesProgramar] = useState(0);
   const [prazoPagamentoOverride, setPrazoPagamentoOverride] = useState<number | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Calcula as semanas do mês 1 (igual ao useMemo interno do ProjectionTable)
   const semanasInfo = useMemo(() => {
     if (!dados || mesesVisiveis.length === 0) return [];
@@ -128,6 +133,114 @@ export default function Home() {
     if (refDate.getFullYear() !== ano || (refDate.getMonth() + 1) !== mes) return [];
     return calcularSemanasRestantes(ano, mes, refDate.getDate());
   }, [dados, mesesVisiveis]);
+
+  const handleImportPlanilha = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json<any>(ws);
+
+        let skusAtualizados = 0;
+        const nextWeeklyEdits = new Map(weeklyEdits);
+        const numeroSemanas = semanasInfo.length > 0 ? semanasInfo.length : 1;
+
+        data.forEach(row => {
+          const chaves = Object.keys(row);
+          const colCodigo = chaves.find(k => k.toLowerCase().includes('código') || k.toLowerCase().includes('codigo') || k.toLowerCase().includes('sku') || k.toLowerCase().includes('produto'));
+          const colQtd = chaves.find(k => k.toLowerCase().includes('quantidade') || k.toLowerCase().includes('qtd') || k.toLowerCase().includes('pedido') || k.toLowerCase().includes('qtde'));
+          const colCD = chaves.find(k => k.toLowerCase() === 'cd' || k.toLowerCase().includes('centro de distribuição') || k.toLowerCase().includes('centro de distribuicao') || k.toLowerCase().includes('depósito') || k.toLowerCase().includes('deposito') || k.toLowerCase() === 'filial');
+
+          if (colCodigo && colQtd) {
+            const codigoStr = String(row[colCodigo]).trim();
+            const qtdPlanilha = Number(row[colQtd]);
+            const cdStr = colCD ? String(row[colCD]).trim() : '';
+
+            if (codigoStr && !isNaN(qtdPlanilha)) {
+              let chaveEncontrada: string | null = null;
+              
+              if (cdStr) {
+                // Tenta match exato se CD foi fornecido
+                const chaveExata = `${cdStr}-${codigoStr}`;
+                if (cadastroMap.has(chaveExata)) {
+                  chaveEncontrada = chaveExata;
+                }
+              }
+
+              if (!chaveEncontrada) {
+                if (cadastroMap.has(codigoStr)) {
+                  chaveEncontrada = codigoStr;
+                } else {
+                  for (const chave of cadastroMap.keys()) {
+                    if (chave.endsWith(`-${codigoStr}`) || chave === codigoStr || cadastroMap.get(chave)?.codigo_produto === Number(codigoStr)) {
+                      chaveEncontrada = chave;
+                      break;
+                    }
+                  }
+                }
+              }
+
+              if (chaveEncontrada) {
+                const cad = cadastroMap.get(chaveEncontrada);
+                
+                if (cad && mesesVisiveis.length > 0) {
+                  const mesAtual = mesesVisiveis[0];
+                  const multiplo = cad.MULTIPLO_EMBALAGEM || 1;
+                  const qtdAjustada = Math.ceil(qtdPlanilha / multiplo) * multiplo;
+
+                  // Se a pessoa subiu uma planilha para o primeiro mês,
+                  // ela está cravando que o pedido DESTE mês inteiro é a planilha.
+                  // A primeira semana recebe o valor, e o resto zera.
+                  const arraySemanas = new Array(numeroSemanas).fill(0);
+                  arraySemanas[0] = qtdAjustada;
+                  
+                  nextWeeklyEdits.set(chaveEncontrada, arraySemanas);
+                  
+                  // Notifica o motor que este SKU no Mês Atual teve um overide MANÚAL exato (qtdAjustada).
+                  // Com isso o motor deixará a semana 1 exata, e calculará o desfalque que jogarão necessidades para o Mês 2!
+                  if (editarPedidoComCascata) {
+                    editarPedidoComCascata(chaveEncontrada, mesAtual, qtdAjustada);
+                  }
+
+                  skusAtualizados++;
+                }
+              }
+            }
+          }
+        });
+
+        if (skusAtualizados > 0) {
+          setWeeklyEdits(nextWeeklyEdits);
+          
+          // Armazena as chaves no novo filtro (usado para grid exclusive check)
+          const chavesAtualizadas = Array.from(nextWeeklyEdits.keys());
+          setFilters((prev: any) => ({ ...prev, importedSkus: chavesAtualizadas }));
+
+          toast.success(`Importação concluída com sucesso!`, {
+            description: `${skusAtualizados} SKUs importados e ajustados ao múltiplo de embalagem na Semana 1.`,
+          });
+        } else {
+          toast.error('Nenhum SKU válido encontrado', {
+            description: 'Verifique se as colunas "Código do Produto" e "Quantidade" existem na planilha.',
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Erro ao processar planilha', {
+          description: 'Não foi possível ler o arquivo. Certifique-se de que é um formato válido.',
+        });
+      }
+      
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsBinaryString(file);
+  }, [cadastroMap, semanasInfo, weeklyEdits, mesesVisiveis, editarPedidoComCascata]);
 
   // Prazo de pagamento padrão do fornecedor (lookup)
   const prazoPagamentoPadrao = useMemo(() => {
@@ -166,6 +279,8 @@ export default function Home() {
   const confirmarEnvioAprovacao = useCallback(() => {
     if (selectedWeeks.size === 0 || !dados) return;
     const mesAtual = mesesVisiveis[0];
+    const { ano: anoMesAt, mes: numMesAt } = parseMesAno(mesAtual);
+    const diasReaisMesAtual = diasNoMes(anoMesAt, numMesAt);
     const semanasSelecionadas = [...selectedWeeks].sort().map(i => semanasInfo[i]?.label).filter(Boolean) as string[];
 
     const itens: PedidoItem[] = dadosFiltrados.flatMap(proj => {
@@ -244,7 +359,7 @@ export default function Home() {
       // A quantidade comprada no 1º mês é a que chega com base no LT
       const qtdCompradaMes1 = entregas[mesAtual] ?? 0;
       const sellOut = proj.meses[mesAtual]?.SELL_OUT ?? 0;
-      const demandaDiaria = sellOut > 0 ? sellOut / 30 : 0;
+      const demandaDiaria = sellOut > 0 ? sellOut / diasReaisMesAtual : 0;
       const coberturaDiasHoje = demandaDiaria > 0 ? Math.round(cad.ESTOQUE / demandaDiaria) : null;
 
       // Estoque projetado NA DATA DE CHEGADA (não no fim do mês!)
@@ -256,7 +371,7 @@ export default function Home() {
       const coberturaDiasChegada = demandaDiaria > 0 ? Math.round(estoqueProjetadoChegada / demandaDiaria) : null;
 
       // Risco de shelf life: cobertura na chegada >= 80% do shelf life
-      const shelfLifeRisk = cad.SHELF_LIFE > 0 && sellOut > 0 && hasShelfLifeRisk(estoqueProjetadoChegada, sellOut, 30, cad.SHELF_LIFE);
+      const shelfLifeRisk = cad.SHELF_LIFE > 0 && sellOut > 0 && hasShelfLifeRisk(estoqueProjetadoChegada, sellOut, diasReaisMesAtual, cad.SHELF_LIFE);
 
       return [{
         chave: proj.CHAVE,
@@ -316,7 +431,7 @@ export default function Home() {
 
       const sellOutAtual = proj.meses[mesAtual]?.SELL_OUT ?? 0;
       if (sellOutAtual <= 0) return;
-      const demandaDiaria = sellOutAtual / 30;
+      const demandaDiaria = sellOutAtual / diasReaisMesAtual;
 
       // Cobertura HOJE
       const cobHoje = cad.ESTOQUE / demandaDiaria;
@@ -392,22 +507,18 @@ export default function Home() {
       const objetivoMes = proj.meses[mesAtual]?.ESTOQUE_OBJETIVO ?? 0;
       estoqueObjetivoUnidadesGlobais += objetivoMes;
 
-      // Estoque na chegada: LT-based, alinhado com o motor de projeção (projection.ts)
+      // Estoque na chegada: usar o estoqueProjetadoChegada já calculado no item
+      // (mesma fórmula LT-based usada no detalhe do produto, com demandaDiária baseada nos dias reais do mês)
+      const estoqueNaChegada = item.estoqueProjetadoChegada ?? 0;
+      estoqueChegadaUnidadesGlobais += estoqueNaChegada;
+
+      // Estoque sem pedido = estoque na chegada sem a quantidade comprada neste mês
       const sellOut = proj.meses[mesAtual]?.SELL_OUT ?? 0;
-      const { ano: anoMesAtual, mes: numMesAtual } = parseMesAno(mesAtual);
-      const diasReaisMesAtual = diasNoMes(anoMesAtual, numMesAtual);
       const demandaDiaria = sellOut > 0 ? sellOut / diasReaisMesAtual : 0;
       const lt = cad.LT ?? 0;
       const consumoAteLT = demandaDiaria * lt;
       const pendRelevantePed = getPendenciaRelevante(item.chave, lt, cad.PENDENCIA ?? 0);
-      // Estoque inicial (Estoque Atual)
-      const estoqueInicialEngine = cad.ESTOQUE || 0;
-      
-      // Sem pedido = sem a quantidade comprada
-      const estoqueSemPedido = Math.max(0, Math.round(estoqueInicialEngine - consumoAteLT + pendRelevantePed));
-      
-      const estoqueNaChegada = Math.round(estoqueSemPedido + quantidadeMesAtual);
-      estoqueChegadaUnidadesGlobais += estoqueNaChegada;
+      const estoqueSemPedido = Math.max(0, Math.round((cad.ESTOQUE || 0) - consumoAteLT + pendRelevantePed));
 
       if (estoqueSemPedido > 0 && estoqueSemPedido >= objetivoMes && objetivoMes > 0) {
         skusCompradosSemNecessidadeGlobais++;
@@ -560,7 +671,7 @@ export default function Home() {
         if (!cad || !fornecedoresNoPedido.has(cad['fornecedor comercial'])) return;
         const sellOutMes = proj.meses[mesTarget]?.SELL_OUT ?? 0;
         if (sellOutMes <= 0) return;
-        const dd = sellOutMes / 30;
+        const dd = sellOutMes / diasReaisMesAtual;
 
         // Hoje
         somaPondFornHojeMes += (cad.ESTOQUE / dd) * sellOutMes;
@@ -593,7 +704,7 @@ export default function Home() {
         }
 
         if (sellOutMes > 0 && quantidadeCompradaMes > 0) {
-          somaPonderadaPedMes += (cad.ESTOQUE / (sellOutMes / 30)) * sellOutMes;
+          somaPonderadaPedMes += (cad.ESTOQUE / (sellOutMes / diasReaisMesAtual)) * sellOutMes;
           somaVolumesPedMes += sellOutMes;
         }
 
@@ -673,8 +784,7 @@ export default function Home() {
 
     // 2. Sell Out Diário do Fornecedor (R$/dia)
     let sellOutDiarioRS = 0;
-    const { ano: anoMesAtual, mes: numMesAtual } = parseMesAno(mesAtual);
-    const diasReaisMesAtual = diasNoMes(anoMesAtual, numMesAtual);
+    // Reutiliza diasReaisMesAtual já calculado no topo da função
 
     projecoesComEdicoes.forEach(proj => {
       const cad = cadastroMap.get(proj.CHAVE);
@@ -760,6 +870,16 @@ export default function Home() {
     });
   }, [editarPedido]);
 
+  // Melhoria 7: Construir mapa de estoques objetivo por CHAVE para cobertura
+  const estoquesObjetivoPorChave = useMemo(() => {
+    if (!dados?.estoques_objetivo) return undefined;
+    const map = new Map<string, Record<string, number>>();
+    dados.estoques_objetivo.forEach(eo => {
+      map.set(eo.chave, eo.meses);
+    });
+    return map;
+  }, [dados?.estoques_objetivo]);
+
   // Limpar edições inclui limpar weekly overrides de cobertura e edições semanais
   const handleLimparEdicoes = useCallback(() => {
     limparEdicoes();
@@ -832,16 +952,48 @@ export default function Home() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <input
+                type="file"
+                accept=".xlsx, .xls, .csv"
+                className="hidden"
+                ref={fileInputRef}
+                onChange={handleImportPlanilha}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1.5"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FileUp className="w-3.5 h-3.5" />
+                Importar Pedido
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
                 className="text-xs gap-1.5"
                 onClick={() => {
-                  if (dados) exportarParaCSV(dados, projecoesComEdicoes);
+                  if (dados) {
+                    const chavesFiltradas = new Set(dadosFiltrados.map(p => p.CHAVE));
+                    const projecoesExportar = projecoesComEdicoes.filter(p => chavesFiltradas.has(p.CHAVE));
+                    try {
+                      exportarParaExcel(dados, projecoesExportar, mesesVisiveis);
+                    } catch (e) {
+                      console.error("ERRO AO EXPORTAR:", e);
+                    }
+                  }
                 }}
               >
                 <Download className="w-3.5 h-3.5" />
                 Exportar{totalEdicoes > 0 ? ` (${totalEdicoes} edições)` : ''}
+              </Button>
+              <Button
+                size="sm"
+                className="text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => setValuePanelOpen(true)}
+              >
+                <DollarSign className="w-3.5 h-3.5" />
+                Compra por Valor
               </Button>
               <Button
                 size="sm"
@@ -929,6 +1081,21 @@ export default function Home() {
         meses={dados.metadata.meses}
         dataReferencia={dados.metadata.data_referencia}
         onAplicarCobertura={handleAplicarCobertura}
+        totalSKUsSemFiltro={projecoesComEdicoes.length}
+        estoquesObjetivoPorChave={estoquesObjetivoPorChave}
+      />
+
+      {/* Value Purchase Panel */}
+      <ValuePurchasePanel
+        isOpen={valuePanelOpen}
+        onClose={() => setValuePanelOpen(false)}
+        cadastros={dados.cadastro}
+        projecoes={dadosFiltrados}
+        meses={dados.metadata.meses}
+        dataReferencia={dados.metadata.data_referencia}
+        onAplicarCompraValor={handleAplicarCobertura} 
+        totalSKUsSemFiltro={projecoesComEdicoes.length}
+        estoquesObjetivoPorChave={estoquesObjetivoPorChave}
       />
 
       {/* Dialog: Programar Compras */}

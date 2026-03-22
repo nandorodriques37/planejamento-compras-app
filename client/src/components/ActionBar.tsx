@@ -6,7 +6,7 @@
 
 import { RotateCcw, Save, Trash2, Download, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { exportarParaCSV } from '../lib/dataAdapter';
+import { exportarParaExcel } from '../lib/dataAdapter';
 import type { DadosCompletos, SemanaInfo } from '../lib/calculationEngine';
 
 interface ActionBarProps {
@@ -20,7 +20,7 @@ interface ActionBarProps {
 
 export default function ActionBar({ totalEdicoes, onLimpar, dados, selectedWeeks, semanasInfo, onEnviarParaAprovacao }: ActionBarProps) {
   const handleExportCSV = () => {
-    if (dados) exportarParaCSV(dados);
+    if (dados) exportarParaExcel(dados);
   };
 
   const isVisible = totalEdicoes > 0 || selectedWeeks.size > 0;
@@ -78,7 +78,7 @@ export default function ActionBar({ totalEdicoes, onLimpar, dados, selectedWeeks
               className="text-xs gap-1.5"
             >
               <Download className="w-3.5 h-3.5" />
-              Exportar CSV
+              Exportar Excel
             </Button>
 
             <Button

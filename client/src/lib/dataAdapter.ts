@@ -20,6 +20,8 @@
 
 import type { DadosCompletos, ProjecaoSKU, PedidoPendente, EstoqueObjetivoDB } from './calculationEngine';
 import { recalcularProjecaoSKU, buildPendenciasPorSKU, agruparPendenciasPorMes } from './calculationEngine';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 /** Cache de dados já carregados e calculados. Resetado quando o mês de referência muda. */
 let cachedData: DadosCompletos | null = null;
@@ -35,12 +37,11 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
   // Verifica se o mês de referênCIA mudou (nova sessão em mês diferente = invalida cache)
   const hoje = new Date();
   const refMonth = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-  // Para garantir que o dev sempre carregue os mocks mais recentes, eu vou ignorar o cache temporariamente no Dev (Vite HMR). 
-  // O cache pode ser mantido para production se necessário (idealmente isso seria resolvido via invalidate flag)
-  // if (cachedData && cachedRefMonth === refMonth) return cachedData;
-  cachedData = null;
-
-  // Reseta cache se chegou aqui (stale ou primeira carga)
+  // Cache: retorna dados em memória se o mês de referência não mudou
+  // Em dev (Vite HMR) desabilitamos para sempre recarregar os mocks
+  if (!import.meta.env.DEV && cachedData && cachedRefMonth === refMonth) {
+    return cachedData;
+  }
   cachedData = null;
 
   try {
@@ -107,7 +108,23 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
     }
 
     // Constroi o map cadastro UMA vez para O(1) lookups em vez de O(n) por SKU
-    const cadastroMap = new Map(data.cadastro.map(c => [c.CHAVE, c]));
+    const analistas = ['Ana Silva', 'Carlos Santos', 'Fernanda Lima', 'Roberto Costa'];
+    const compradores = ['João Pedro', 'Maria Clara', 'Lucas Gomes', 'Julia Alves'];
+    const fornecedoresLog = ['Logística Rápida', 'TransNacional', 'Expresso Cargas', 'Via Sul Log'];
+    const sn = ['S', 'N'] as const;
+
+    const cadastroMap = new Map(data.cadastro.map(c => {
+      // Injetar campos caso não existam no JSON estático
+      if (!c.Analista) {
+        c.Analista = analistas[Math.floor(Math.random() * analistas.length)];
+        c.Comprador = compradores[Math.floor(Math.random() * compradores.length)];
+        c.Fornecedor_Logistico = fornecedoresLog[Math.floor(Math.random() * fornecedoresLog.length)];
+        c['Genéricos'] = sn[Math.floor(Math.random() * sn.length)];
+        c['Monitorados'] = sn[Math.floor(Math.random() * sn.length)];
+        c['Marcas Exclusivas'] = sn[Math.floor(Math.random() * sn.length)];
+      }
+      return [c.CHAVE, c];
+    }));
 
     // Recalcular todas as projeções usando o motor de cálculo TS
     const projecaoRecalculada = data.projecao.map(proj => {
@@ -189,64 +206,77 @@ export async function salvarCenarioAjustado(dados: DadosCompletos): Promise<void
 }
 
 /**
- * Exporta dados para CSV.
+ * Exporta dados para Excel (XLSX).
  * Aceita projecoes editadas (com edições do usuário aplicadas).
+ * Se mesesVisiveis for informado, exporta apenas os meses do horizonte selecionado.
  */
-export function exportarParaCSV(dados: DadosCompletos, projecoesEditadas?: ProjecaoSKU[]): void {
+export function exportarParaExcel(dados: DadosCompletos, projecoesEditadas?: ProjecaoSKU[], mesesVisiveis?: string[]): void {
+
   const projecoes = projecoesEditadas || dados.projecao;
   const cadastroMap = new Map(dados.cadastro.map(c => [c.CHAVE, c]));
-  const rows: string[] = [];
+  const mesesExportar = mesesVisiveis && mesesVisiveis.length > 0 ? mesesVisiveis : dados.metadata.meses;
+  const rows: any[][] = [];
 
   const headers = [
-    'CHAVE', 'Fornecedor', 'Produto', 'CD', 'SKU', 'Categoria Nível 3', 'Categoria Nível 4',
+    'Código Inicial', 'CHAVE', 'Fornecedor', 'Produto', 'CD', 'SKU', 'Categoria Nível 3', 'Categoria Nível 4',
     'Estoque', 'Pendência', 'LT', 'NNA', 'Frequência', 'Est.Seg.',
     'Impacto', 'Preenchimento',
     'Mês', 'Sell Out', 'Pedido', 'Entrada', 'Est.Projetado', 'Est.Objetivo'
   ];
-  rows.push(headers.join(';'));
+  rows.push(headers);
 
-  projecoes.forEach(proj => {
-    const cad = cadastroMap.get(proj.CHAVE);
-    if (!cad) return;
+  try {
+    projecoes.forEach(proj => {
+      const cad = cadastroMap.get(proj.CHAVE);
+      if (!cad) return;
 
-    dados.metadata.meses.forEach(mes => {
-      const mesData = proj.meses[mes];
-      if (!mesData) return;
+      mesesExportar.forEach(mes => {
+        const mesData = proj.meses[mes];
+        if (!mesData) return;
 
-      rows.push([
-        cad.CHAVE,
-        cad['fornecedor comercial'],
-        cad['nome produto'],
-        cad.codigo_deposito_pd,
-        cad.codigo_produto,
-        cad['nome nível 3'],
-        cad['nome nível 4'],
-        cad.ESTOQUE,
-        cad.PENDENCIA,
-        cad.LT,
-        cad.NNA,
-        cad.FREQUENCIA,
-        cad.EST_SEGURANCA,
-        cad.IMPACTO,
-        cad.PREECHIMENTO_DEMANDA_LOJA,
-        mes,
-        mesData.SELL_OUT,
-        mesData.PEDIDO,
-        mesData.ENTRADA,
-        mesData.ESTOQUE_PROJETADO,
-        mesData.ESTOQUE_OBJETIVO
-      ].join(';'));
+        rows.push([
+          cad.codigo_produto,
+          cad.CHAVE,
+          cad['fornecedor comercial'],
+          cad['nome produto'],
+          cad.codigo_deposito_pd,
+          cad.codigo_produto,
+          cad['nome nível 3'],
+          cad['nome nível 4'],
+          cad.ESTOQUE,
+          cad.PENDENCIA,
+          cad.LT,
+          cad.NNA,
+          cad.FREQUENCIA,
+          cad.EST_SEGURANCA,
+          cad.IMPACTO,
+          cad.PREECHIMENTO_DEMANDA_LOJA,
+          mes,
+          mesData.SELL_OUT,
+          mesData.PEDIDO,
+          mesData.ENTRADA,
+          mesData.ESTOQUE_PROJETADO,
+          mesData.ESTOQUE_OBJETIVO
+        ]);
+      });
     });
-  });
+  } catch(e) { 
+    console.error("Erro no build array:", e); 
+  }
 
-  const csvContent = rows.join('\n');
-  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `plano_compras_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+
+  try {
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Plano de Compras');
+
+
+    // Gera o buffer e salva o arquivo usando file-saver para contornar bloqueios do browser
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, `plano_compras_${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+  } catch(e) {
+    console.error("Erro fatal no writeFile do XLSX:", e);
+  }
 }

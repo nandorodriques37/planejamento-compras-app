@@ -114,7 +114,7 @@ export default function DashboardDetailTable({ data }: DashboardDetailTableProps
                   {formatNumber(item.estoque)}
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {item.coberturaDias === 999 ? '∞' : formatNumber(item.coberturaDias, 1)}
+                  {item.coberturaDias === 999 ? '∞' : formatNumber(Math.round(item.coberturaDias))}
                 </TableCell>
                 <TableCell className="text-right font-mono font-medium text-red-600 dark:text-red-400">
                   {item.perdaDiaria > 0 ? formatCurrency(item.perdaDiaria) : '-'}

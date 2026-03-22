@@ -32,22 +32,79 @@ export interface Filters {
   cd: string;
   busca: string;
   status: string;
+  analista: string;
+  comprador: string;
+  fornecedorLogistico: string;
+  generico: string;
+  monitorado: string;
+  marcaExclusiva: string;
+  importedSkus?: string[];
+}
+const FILTERS_STORAGE_KEY = 'planejamento_filtros';
+const HORIZONTE_STORAGE_KEY = 'planejamento_horizonte';
+
+/** Carrega filtros persistidos do localStorage (exclui campos voláteis) */
+function loadPersistedFilters(): Partial<Filters> {
+  try {
+    const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignora erros de parse */ }
+  return {};
+}
+
+function loadPersistedHorizonte(): number {
+  try {
+    const raw = localStorage.getItem(HORIZONTE_STORAGE_KEY);
+    if (raw) return parseInt(raw, 10) || 13;
+  } catch { /* ignora */ }
+  return 13;
 }
 
 export function useProjectionData() {
   const [dados, setDados] = useState<DadosCompletos | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [horizonte, setHorizonte] = useState(13);
-  const [filters, setFilters] = useState<Filters>({
+
+  // Restaurar horizonte e filtros do localStorage
+  const [horizonte, setHorizonteState] = useState(() => loadPersistedHorizonte());
+  const setHorizonte = useCallback((val: number) => {
+    setHorizonteState(val);
+    try { localStorage.setItem(HORIZONTE_STORAGE_KEY, String(val)); } catch {}
+  }, []);
+
+  const defaultFilters: Filters = {
     fornecedor: '',
     categoria: '',
     categoriaNivel4: '',
     cd: '',
     busca: '',
-    status: ''
+    status: '',
+    analista: '',
+    comprador: '',
+    fornecedorLogistico: '',
+    generico: '',
+    monitorado: '',
+    marcaExclusiva: '',
+    importedSkus: []
+  };
+
+  const [filters, setFiltersState] = useState<Filters>(() => {
+    const persisted = loadPersistedFilters();
+    return { ...defaultFilters, ...persisted };
   });
-  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse>({ fornecedores: [], categorias: [], categoriasNivel4: [], cds: [] });
+
+  const setFilters = useCallback((updater: Filters | ((prev: Filters) => Filters)) => {
+    setFiltersState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      // Persistir tudo exceto busca e importedSkus (são voláteis)
+      try {
+        const { busca, importedSkus, ...persistable } = next as Filters & { importedSkus?: string[] };
+        localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(persistable));
+      } catch {}
+      return next;
+    });
+  }, []);
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse>({ fornecedores: [], categorias: [], categoriasNivel4: [], cds: [], analistas: [], compradores: [], fornecedoresLogisticos: [], genericos: [], monitorados: [], marcasExclusivas: [] });
 
   const {
     editedCells,
@@ -176,11 +233,18 @@ export function useProjectionData() {
         ? agruparPendenciasPorMes(pedidosSKU, dados.metadata.meses)
         : undefined;
 
+      // Preservar ESTOQUE_OBJETIVO original do banco de dados
+      const estObjetivosOriginais: Record<string, number> = {};
+      dados.metadata.meses.forEach(mes => {
+        estObjetivosOriginais[mes] = proj.meses[mes]?.ESTOQUE_OBJETIVO || 0;
+      });
+
       const novaProjecao = recalcularProjecaoSKU(
         cadastro, dados.metadata.meses, sellOutOriginal,
         edicoesDoSKU, pedidosOriginais, dados.metadata.data_referencia,
-        pendMes
+        pendMes, estObjetivosOriginais
       );
+
       return { ...proj, meses: novaProjecao };
     });
   }, [dados, editedCells, cadastroMap, pedidosPendentesCompletos]);
@@ -188,13 +252,26 @@ export function useProjectionData() {
   // Filtros — usa debouncedBusca para busca textual
   const dadosFiltrados = useMemo(() => {
     if (!dados) return [];
-    return projecoesComEdicoes.filter(proj => {
+    
+    let base = projecoesComEdicoes;
+    if (filters.importedSkus && filters.importedSkus.length > 0) {
+      const importedSet = new Set(filters.importedSkus);
+      base = base.filter(proj => importedSet.has(proj.CHAVE));
+    }
+
+    return base.filter(proj => {
       const cadastro = cadastroMap.get(proj.CHAVE);
       if (!cadastro) return false;
       if (filters.fornecedor && cadastro['fornecedor comercial'] !== filters.fornecedor) return false;
       if (filters.categoria && cadastro['nome nível 3'] !== filters.categoria) return false;
       if (filters.categoriaNivel4 && cadastro['nome nível 4'] !== filters.categoriaNivel4) return false;
       if (filters.cd && String(cadastro.codigo_deposito_pd) !== filters.cd) return false;
+      if (filters.analista && cadastro.Analista !== filters.analista) return false;
+      if (filters.comprador && cadastro.Comprador !== filters.comprador) return false;
+      if (filters.fornecedorLogistico && cadastro.Fornecedor_Logistico !== filters.fornecedorLogistico) return false;
+      if (filters.generico && cadastro['Genéricos'] !== filters.generico) return false;
+      if (filters.monitorado && cadastro['Monitorados'] !== filters.monitorado) return false;
+      if (filters.marcaExclusiva && cadastro['Marcas Exclusivas'] !== filters.marcaExclusiva) return false;
       if (debouncedBusca) {
         const busca = debouncedBusca.toLowerCase();
         const match = cadastro['nome produto'].toLowerCase().includes(busca) ||
@@ -210,7 +287,7 @@ export function useProjectionData() {
       }
       return true;
     });
-  }, [projecoesComEdicoes, dados, filters.fornecedor, filters.categoria, filters.categoriaNivel4, filters.cd, filters.status, debouncedBusca, cadastroMap]);
+  }, [projecoesComEdicoes, dados, filters.fornecedor, filters.categoria, filters.categoriaNivel4, filters.cd, filters.status, filters.analista, filters.comprador, filters.fornecedorLogistico, filters.generico, filters.monitorado, filters.marcaExclusiva, filters.importedSkus, debouncedBusca, cadastroMap]);
 
   // Ref para acessar projeções atuais dentro do callback de cascata
   const projecoesRef = useRef(projecoesComEdicoes);

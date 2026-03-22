@@ -202,46 +202,32 @@ export function distribuirPedidoMultiMes(
 ): WeekDistribution[] {
     if (semanas.length === 0) return [];
 
-    // Agrupar semanas por mês de chegada
-    const gruposPorMes = new Map<string, number[]>();
-    semanas.forEach((sem, idx) => {
-        const target = sem.mesChegada || mesAtual;
-        if (!gruposPorMes.has(target)) gruposPorMes.set(target, []);
-        gruposPorMes.get(target)!.push(idx);
-    });
-
     const result: WeekDistribution[] = new Array(semanas.length);
+    const pedido = pedidoPorMes[mesAtual] || 0;
+    const totalDias = semanas.reduce((acc, sem) => acc + sem.dias, 0);
 
-    // Para cada grupo de mês, distribuir proporcionalmente o PEDIDO desse mês
-    Array.from(gruposPorMes.entries()).forEach(([monthKey, indices]) => {
-        const pedido = pedidoPorMes[monthKey] || 0;
-        const totalDias = indices.reduce((acc: number, i: number) => acc + semanas[i].dias, 0);
-        const isCurrentMonth = monthKey === mesAtual;
-
-        if (totalDias === 0) {
-            indices.forEach((i: number) => {
-                result[i] = { valor: 0, mesOrigem: monthKey, isCurrentMonth };
-            });
-            return;
-        }
-
-        let acumulado = 0;
-        const lastIdx = indices[indices.length - 1];
-
-        indices.forEach((i: number) => {
-            if (i === lastIdx) {
-                // Último bloco absorve diferença de arredondamento
-                result[i] = {
-                    valor: pedido - acumulado,
-                    mesOrigem: monthKey,
-                    isCurrentMonth
-                };
-            } else {
-                const valor = Math.round(pedido * (semanas[i].dias / totalDias));
-                acumulado += valor;
-                result[i] = { valor, mesOrigem: monthKey, isCurrentMonth };
-            }
+    if (totalDias === 0) {
+        semanas.forEach((_, i) => {
+            result[i] = { valor: 0, mesOrigem: mesAtual, isCurrentMonth: true };
         });
+        return result;
+    }
+
+    let acumulado = 0;
+    const lastIdx = semanas.length - 1;
+
+    semanas.forEach((sem, i) => {
+        if (i === lastIdx) {
+            result[i] = {
+                valor: pedido - acumulado,
+                mesOrigem: mesAtual,
+                isCurrentMonth: true
+            };
+        } else {
+            const valor = Math.round(pedido * (sem.dias / totalDias));
+            acumulado += valor;
+            result[i] = { valor, mesOrigem: mesAtual, isCurrentMonth: true };
+        }
     });
 
     return result;
