@@ -12,6 +12,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { AlertTriangle, AlertCircle, CheckCircle2, Pencil, BarChart3, ArrowUpDown, ArrowUp, ArrowDown, Sigma, Undo2, Package, Hourglass } from 'lucide-react';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from './ui/empty';
 import { Checkbox } from './ui/checkbox';
+import { EditableCell } from './ui/EditableCell';
 import type { ProjecaoSKU, SKUCadastro, SemanaInfo, WeekDistribution } from '../lib/calculationEngine';
 import { formatNumber, formatCurrency, formatMes, getStatusSKU, hasShelfLifeRisk, getShelfLifeRiskStatus, calcularSemanasRestantes, calcularSemanasComLT, distribuirPedidoMultiMes, parseMesAno, diasNoMes, calcularLostSalesSKU } from '../lib/calculationEngine';
 
@@ -34,111 +35,19 @@ interface ProjectionTableProps {
   onToggleWeek: (weekIdx: number) => void;
 }
 
-type SortField = 'status' | 'produto' | 'cd' | 'lt' | 'estoque' | 'cob_est' | 'cob_ep' | 'pendencia' | 'aprovacao' | 'nna' | 'impacto' | 'preenchimento' | 'obj_dias' | 'cobertura_m1' | null;
+type SortField = 'status' | 'produto' | 'cd' | 'lt' | 'estoque' | 'cob_est' | 'cob_ep' | 'pendencia' | 'aprovacao' | 'nna' | 'impacto' | 'preenchimento' | 'obj_dias' | 'cobertura_m1' | 'sell_out_m1' | null;
 type SortDirection = 'asc' | 'desc';
 
 function StatusBadge({ status }: { status: 'ok' | 'warning' | 'critical' }) {
   if (status === 'ok') {
-    return (
-      <span className="badge-ok inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap">
-        <CheckCircle2 className="w-3 h-3" /> OK
-      </span>
-    );
+    return <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-emerald-200 bg-emerald-50 text-emerald-700 text-[9px] uppercase font-bold tracking-wider leading-none">OK</span>;
   }
   if (status === 'warning') {
-    return (
-      <span className="badge-warning inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap">
-        <AlertTriangle className="w-3 h-3" /> Ponto de Pedido
-      </span>
-    );
+    return <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-700 text-[9px] uppercase font-bold tracking-wider leading-none">Pedido</span>;
   }
-  return (
-    <span className="badge-critical inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap">
-      <AlertCircle className="w-3 h-3" /> Ruptura
-    </span>
-  );
+  return <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-red-200 bg-red-50 text-red-700 text-[9px] uppercase font-bold tracking-wider leading-none">Ruptura</span>;
 }
 
-function EditableCell({ 
-  value, 
-  isEdited, 
-  onEdit,
-  onUndo
-}: { 
-  value: number; 
-  isEdited: boolean; 
-  onEdit: (val: number) => void;
-  onUndo?: () => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(String(value));
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditing(true);
-    setTempValue(String(value));
-    setTimeout(() => inputRef.current?.select(), 0);
-  };
-
-  const handleConfirm = () => {
-    setEditing(false);
-    const numVal = parseInt(tempValue) || 0;
-    if (numVal !== value) {
-      onEdit(numVal);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleConfirm();
-    if (e.key === 'Escape') setEditing(false);
-  };
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (isEdited && onUndo) {
-      e.preventDefault();
-      e.stopPropagation();
-      onUndo();
-    }
-  };
-
-  if (editing) {
-    return (
-      <input
-        ref={inputRef}
-        type="number"
-        value={tempValue}
-        onChange={(e) => setTempValue(e.target.value)}
-        onBlur={handleConfirm}
-        onKeyDown={handleKeyDown}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full px-1 py-0.5 text-xs font-mono text-right bg-primary/10 border border-primary rounded outline-none tabular-nums"
-        style={{ minWidth: 50 }}
-      />
-    );
-  }
-
-  return (
-    <div
-      onDoubleClick={handleDoubleClick}
-      onContextMenu={handleContextMenu}
-      className={`
-        group relative px-2 py-1.5 text-right text-xs font-mono cursor-pointer
-        border-b border-dashed border-primary/30
-        hover:bg-primary/5 transition-colors
-        ${isEdited ? 'cell-edited font-bold' : 'font-semibold text-primary'}
-      `}
-      title={isEdited ? "Duplo clique para editar · Botão direito para desfazer" : "Duplo clique para editar"}
-    >
-      {formatNumber(value)}
-      {isEdited ? (
-        <Undo2 className="w-2.5 h-2.5 absolute right-0.5 top-0.5 text-amber-500/60 opacity-0 group-hover:opacity-100 transition-opacity" />
-      ) : (
-        <Pencil className="w-2.5 h-2.5 absolute right-0.5 top-0.5 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
-      )}
-    </div>
-  );
-}
 
 function calcularCoberturaDias(estoqueProjetado: number, sellOut: number, diasMes: number): number {
   const demandaDiaria = sellOut / diasMes;
@@ -169,11 +78,11 @@ function statusToNum(status: 'ok' | 'warning' | 'critical'): number {
 }
 
 function getMonthBg(mesIdx: number): string {
-  return mesIdx % 2 === 0 ? 'bg-muted/25' : '';
+  return mesIdx % 2 === 0 ? 'bg-slate-50/40 dark:bg-muted/25' : 'bg-white dark:bg-transparent';
 }
 
 function getMonthBorder(): string {
-  return 'border-l-2 border-l-border/50';
+  return 'border-l border-slate-200 dark:border-border/50';
 }
 
 function SortIcon({ field, currentField, direction }: { field: SortField; currentField: SortField; direction: SortDirection }) {
@@ -213,8 +122,8 @@ export default function ProjectionTable({
   const fixedBodyRef = useRef<HTMLDivElement>(null);
   const scrollBodyRef = useRef<HTMLDivElement>(null);
   const totalsScrollRef = useRef<HTMLDivElement>(null);
-  const [sortField, setSortField] = useState<SortField>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortField, setSortField] = useState<SortField>('sell_out_m1');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [produtoWidth, setProdutoWidth] = useState(180);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   
@@ -273,8 +182,11 @@ export default function ProjectionTable({
     const pedidoPorMes: Record<string, number> = {};
     pedidoPorMes[mesAtual] = projecaoMeses[mesAtual]?.PEDIDO || 0;
 
-    return distribuirPedidoMultiMes(mesAtual, pedidoPorMes, semanasComLT);
-  }, [temSemanas, weeklyEdits, coverageWeeklyEdits, dataReferencia, meses, semanasInfo]);
+    const cad = cadastroMap.get(chave);
+    const multiplo = cad?.MULTIPLO_EMBALAGEM || 1;
+
+    return distribuirPedidoMultiMes(mesAtual, pedidoPorMes, semanasComLT, multiplo);
+  }, [temSemanas, weeklyEdits, coverageWeeklyEdits, dataReferencia, meses, semanasInfo, cadastroMap]);
 
   // Handler para edição de uma semana (com suporte a multi-mês via LT)
   const handleWeekEdit = useCallback((chave: string, semanaIdx: number, novoValor: number, projecaoMeses: Record<string, import('../lib/calculationEngine').MesData>, ltDias: number) => {
@@ -405,6 +317,8 @@ export default function ProjectionTable({
   const sortedProjecoes = useMemo(() => {
     if (!sortField) return projecoes;
     const firstMes = meses[0];
+    const { ano: anoFirst, mes: mesFirst } = firstMes ? parseMesAno(firstMes) : { ano: 0, mes: 0 };
+    const diasSort = (anoFirst && mesFirst) ? diasNoMes(anoFirst, mesFirst) : 30;
 
     return [...projecoes].sort((a, b) => {
       const cadA = cadastroMap.get(a.CHAVE);
@@ -416,8 +330,8 @@ export default function ProjectionTable({
 
       switch (sortField) {
         case 'status': {
-          valA = statusToNum(getStatusSKU(a.meses, allMeses, cadA));
-          valB = statusToNum(getStatusSKU(b.meses, allMeses, cadB));
+          valA = a.kpis ? statusToNum(a.kpis.status) : 0;
+          valB = b.kpis ? statusToNum(b.kpis.status) : 0;
           break;
         }
         case 'produto':
@@ -437,23 +351,13 @@ export default function ProjectionTable({
           valB = cadB.ESTOQUE || 0;
           break;
         case 'cob_est': {
-          const { ano: anoFirst, mes: mesFirst } = parseMesAno(firstMes);
-          const diasFirst = diasNoMes(anoFirst, mesFirst);
-          const ddA = ((a.meses[firstMes]?.SELL_OUT || 0) / diasFirst);
-          const ddB = ((b.meses[firstMes]?.SELL_OUT || 0) / diasFirst);
-          valA = ddA > 0 ? Math.round((cadA.ESTOQUE || 0) / ddA) : ((cadA.ESTOQUE || 0) > 0 ? 999 : 0);
-          valB = ddB > 0 ? Math.round((cadB.ESTOQUE || 0) / ddB) : ((cadB.ESTOQUE || 0) > 0 ? 999 : 0);
+          valA = a.kpis ? a.kpis.coberturaEstoqueDias : 0;
+          valB = b.kpis ? b.kpis.coberturaEstoqueDias : 0;
           break;
         }
         case 'cob_ep': {
-          const { ano: anoFirstEP, mes: mesFirstEP } = parseMesAno(firstMes);
-          const diasFirstEP = diasNoMes(anoFirstEP, mesFirstEP);
-          const ddAep = ((a.meses[firstMes]?.SELL_OUT || 0) / diasFirstEP);
-          const ddBep = ((b.meses[firstMes]?.SELL_OUT || 0) / diasFirstEP);
-          const estPendA = (cadA.ESTOQUE || 0) + (cadA.PENDENCIA || 0);
-          const estPendB = (cadB.ESTOQUE || 0) + (cadB.PENDENCIA || 0);
-          valA = ddAep > 0 ? Math.round(estPendA / ddAep) : (estPendA > 0 ? 999 : 0);
-          valB = ddBep > 0 ? Math.round(estPendB / ddBep) : (estPendB > 0 ? 999 : 0);
+          valA = a.kpis ? a.kpis.coberturaEstoquePendenciaDias : 0;
+          valB = b.kpis ? b.kpis.coberturaEstoquePendenciaDias : 0;
           break;
         }
         case 'pendencia':
@@ -477,22 +381,20 @@ export default function ProjectionTable({
           valB = cadB.PREECHIMENTO_DEMANDA_LOJA || 0;
           break;
         case 'obj_dias': {
-          const dA1 = a.meses[firstMes];
-          const dB1 = b.meses[firstMes];
-          const soA = dA1?.SELL_OUT || 0;
-          const soB = dB1?.SELL_OUT || 0;
-          const fbA = (cadA.LT || 0) + (cadA.FREQUENCIA || 0) + (cadA.EST_SEGURANCA || 0);
-          const fbB = (cadB.LT || 0) + (cadB.FREQUENCIA || 0) + (cadB.EST_SEGURANCA || 0);
-          valA = soA > 0 ? Math.round((dA1!.ESTOQUE_OBJETIVO) / (soA / diasNoMes(parseMesAno(firstMes).ano, parseMesAno(firstMes).mes))) : fbA;
-          valB = soB > 0 ? Math.round((dB1!.ESTOQUE_OBJETIVO) / (soB / diasNoMes(parseMesAno(firstMes).ano, parseMesAno(firstMes).mes))) : fbB;
+          valA = a.kpis ? a.kpis.objetivoDias : 0;
+          valB = b.kpis ? b.kpis.objetivoDias : 0;
           break;
         }
         case 'cobertura_m1': {
           const dA = a.meses[firstMes];
           const dB = b.meses[firstMes];
-          const diasSort = diasNoMes(parseMesAno(firstMes).ano, parseMesAno(firstMes).mes);
           valA = dA ? calcularCoberturaDias(dA.ESTOQUE_PROJETADO, dA.SELL_OUT, diasSort) : 0;
           valB = dB ? calcularCoberturaDias(dB.ESTOQUE_PROJETADO, dB.SELL_OUT, diasSort) : 0;
+          break;
+        }
+        case 'sell_out_m1': {
+          valA = a.kpis ? a.kpis.sellOutM1 : 0;
+          valB = b.kpis ? b.kpis.sellOutM1 : 0;
           break;
         }
       }
@@ -592,16 +494,16 @@ export default function ProjectionTable({
   }
 
   // Column widths
-  const colWidth = 78;
+  const colWidth = 66; // Enxugado para caber mais dados na tela
   const mesWidth = colWidth * 6; // Normal month: 6 columns
   // Mês 1 com semanas: 5 colunas normais + N colunas semanais (em vez de 1 Pedido)
   const mesWidthMes1 = temSemanas ? colWidth * (5 + numSemanas) : mesWidth;
-  const extraInfoWidth = 590;
-  const fixedWidth = 28 + 130 + produtoWidth + 42;
+  const extraInfoWidth = 490;
+  const fixedWidth = 28 + 95 + produtoWidth + 36;
   // Total scrollable width: extra info + month 1 (possibly wider) + remaining months
   const totalScrollWidth = extraInfoWidth + mesWidthMes1 + (meses.length > 1 ? (meses.length - 1) * mesWidth : 0);
 
-  const headerCellBase = "flex items-end pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider cursor-pointer group select-none hover:bg-muted/80 transition-colors";
+  const headerCellBase = "flex items-end pt-2 pb-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest cursor-pointer group select-none hover:bg-slate-100 dark:hover:bg-muted/80 transition-colors";
 
   // Render a single row (reused by both fixed and scrollable panes)
   const renderFixedRow = (proj: ProjecaoSKU, rowIdx: number) => {
@@ -630,8 +532,8 @@ export default function ProjectionTable({
     return (
       <div
         key={proj.CHAVE}
-        className={`flex border-b border-border/60 transition-colors cursor-pointer
-          ${isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : globalIdx % 2 === 1 ? 'bg-muted/15 hover:bg-primary/5 dark:hover:bg-primary/10' : 'hover:bg-primary/5 dark:hover:bg-primary/10'}
+        className={`flex border-b border-slate-100 dark:border-border/60 transition-colors cursor-pointer group
+          ${isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : globalIdx % 2 === 1 ? 'bg-slate-50/50 dark:bg-muted/15 hover:bg-slate-50 dark:hover:bg-primary/10' : 'bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-primary/10'}
           ${isCritical ? 'row-critical-pulse' : ''}
         `}
         style={{ height: ROW_HEIGHT }}
@@ -640,7 +542,7 @@ export default function ProjectionTable({
         <div className="w-[28px] px-1 flex items-center justify-center">
           <BarChart3 className={`w-3.5 h-3.5 transition-colors ${isSelected ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/60'}`} />
         </div>
-        <div className="w-[130px] px-2 flex items-center gap-0.5">
+        <div className="w-[95px] px-1.5 flex items-center gap-0.5 overflow-hidden">
           <span title={lostSalesText || undefined}>
             <StatusBadge status={status} />
           </span>
@@ -654,12 +556,12 @@ export default function ProjectionTable({
           <p className="text-xs font-medium text-foreground truncate leading-tight" title={cad['nome produto']}>
             {cad['nome produto']}
           </p>
-          <p className="text-[10px] text-muted-foreground truncate leading-tight">
-            {cad['fornecedor comercial']}
+          <p className="text-[10px] text-muted-foreground truncate leading-tight" title={`${cad.codigo_produto} - ${cad['fornecedor comercial']}`}>
+            <span className="font-mono opacity-70">{cad.codigo_produto}</span> - {cad['fornecedor comercial']}
           </p>
         </div>
-        <div className="w-[42px] px-1 flex items-center justify-center">
-          <span className="text-xs font-mono text-muted-foreground">{cad.codigo_deposito_pd}</span>
+        <div className="w-[36px] px-1 flex items-center justify-center">
+          <span className="text-[11px] font-mono text-muted-foreground">{cad.codigo_deposito_pd}</span>
         </div>
       </div>
     );
@@ -686,47 +588,47 @@ export default function ProjectionTable({
     return (
       <div
         key={proj.CHAVE}
-        className={`flex border-b border-border/60 transition-colors
-          ${isSelected ? 'bg-primary/10' : globalIdx % 2 === 1 ? 'bg-muted/15 hover:bg-primary/5 dark:hover:bg-primary/10' : 'hover:bg-primary/5 dark:hover:bg-primary/10'}
+        className={`flex border-b border-slate-100 dark:border-border/60 transition-colors group
+          ${isSelected ? 'bg-primary/5' : globalIdx % 2 === 1 ? 'bg-slate-50/50 dark:bg-muted/15 hover:bg-slate-50 dark:hover:bg-primary/10' : 'bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-primary/10'}
           ${isCritical ? 'row-critical-pulse' : ''}
         `}
         style={{ height: ROW_HEIGHT }}
       >
         {/* Extra info columns */}
         <div className="flex-shrink-0 flex border-r border-border/40" style={{ width: extraInfoWidth }}>
-          <div className="w-[45px] px-1 flex items-center justify-end">
-            <span className="text-xs font-mono">{cad?.LT}d</span>
+          <div className="w-[38px] px-1 flex items-center justify-end">
+            <span className="text-[11px] font-mono">{cad?.LT}d</span>
           </div>
-          <div className="w-[65px] px-1 flex items-center justify-end">
-            <span className="text-xs font-mono tabular-nums">{formatNumber(cad?.ESTOQUE || 0)}</span>
+          <div className="w-[58px] px-1 flex items-center justify-end">
+            <span className="text-[11px] font-mono tabular-nums">{formatNumber(cad?.ESTOQUE || 0)}</span>
           </div>
-          <div className="w-[55px] px-1 flex items-center justify-end" title={`Cob. Estoque: ${cobEstDias} dias (Obj: ${estObjDias}d)`}>
-            <span className={`text-xs font-mono tabular-nums font-semibold ${getCoberturaColor(cobEstDias, estObjDias)}`}>
+          <div className="w-[48px] px-1 flex items-center justify-end" title={`Cob. Estoque: ${cobEstDias} dias (Obj: ${estObjDias}d)`}>
+            <span className={`text-[11px] font-mono tabular-nums font-semibold ${getCoberturaColor(cobEstDias, estObjDias)}`}>
               {cobEstDias >= 999 ? '∞' : `${cobEstDias}d`}
             </span>
           </div>
-          <div className="w-[55px] px-1 flex items-center justify-end" title={`Cob. Est+Pend: ${cobEPDias} dias (Obj: ${estObjDias}d)`}>
-            <span className={`text-xs font-mono tabular-nums font-semibold ${getCoberturaColor(cobEPDias, estObjDias)}`}>
+          <div className="w-[48px] px-1 flex items-center justify-end" title={`Cob. Est+Pend: ${cobEPDias} dias (Obj: ${estObjDias}d)`}>
+            <span className={`text-[11px] font-mono tabular-nums font-semibold ${getCoberturaColor(cobEPDias, estObjDias)}`}>
               {cobEPDias >= 999 ? '∞' : `${cobEPDias}d`}
             </span>
           </div>
-          <div className="w-[70px] px-1 flex items-center justify-end">
-            <span className="text-xs font-mono tabular-nums text-blue-600 dark:text-blue-400">{formatNumber(cad?.PENDENCIA || 0)}</span>
+          <div className="w-[58px] px-1 flex items-center justify-end">
+            <span className="text-[11px] font-mono tabular-nums text-blue-600 dark:text-blue-400">{formatNumber(cad?.PENDENCIA || 0)}</span>
           </div>
-          <div className="w-[70px] px-1 flex items-center justify-end" title="Pedidos em Análise/Aprovado">
-            <span className="text-xs font-mono tabular-nums text-purple-600 dark:text-purple-400 font-semibold">{formatNumber(cad?.QTD_EM_APROVACAO || 0)}</span>
+          <div className="w-[58px] px-1 flex items-center justify-end" title="Pedidos em Análise/Aprovado">
+            <span className="text-[11px] font-mono tabular-nums text-purple-600 dark:text-purple-400 font-semibold">{formatNumber(cad?.QTD_EM_APROVACAO || 0)}</span>
           </div>
-          <div className="w-[55px] px-1 flex items-center justify-end">
-            <span className="text-xs font-mono tabular-nums text-muted-foreground">{formatNumber(cad?.NNA || 0)}</span>
+          <div className="w-[44px] px-1 flex items-center justify-end">
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground">{formatNumber(cad?.NNA || 0)}</span>
           </div>
-          <div className="w-[60px] px-1 flex items-center justify-end">
-            <span className="text-xs font-mono tabular-nums text-muted-foreground">{formatNumber(cad?.IMPACTO || 0)}</span>
+          <div className="w-[48px] px-1 flex items-center justify-end">
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground">{formatNumber(cad?.IMPACTO || 0)}</span>
           </div>
-          <div className="w-[60px] px-1 flex items-center justify-end">
-            <span className="text-xs font-mono tabular-nums text-muted-foreground">{formatNumber(cad?.PREECHIMENTO_DEMANDA_LOJA || 0)}</span>
+          <div className="w-[46px] px-1 flex items-center justify-end">
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground">{formatNumber(cad?.PREECHIMENTO_DEMANDA_LOJA || 0)}</span>
           </div>
-          <div className="w-[55px] px-1 flex items-center justify-end">
-            <span className="text-xs font-mono tabular-nums font-semibold text-primary">{estObjDias}d</span>
+          <div className="w-[44px] px-1 flex items-center justify-end">
+            <span className="text-[11px] font-mono tabular-nums font-semibold text-primary">{estObjDias}d</span>
           </div>
         </div>
 
@@ -831,7 +733,7 @@ export default function ProjectionTable({
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden shadow-card">
+    <div className="bg-white dark:bg-card border border-slate-200/80 dark:border-border rounded-xl overflow-hidden shadow-sm">
       {/* Mobile card view */}
       <div className="md:hidden space-y-2 p-3 max-h-[500px] overflow-y-auto">
         {sortedProjecoes.slice(0, 30).map(proj => {
@@ -868,10 +770,10 @@ export default function ProjectionTable({
         {/* ===== FIXED COLUMNS (left) ===== */}
         <div className="flex-shrink-0 border-r-2 border-border z-10 bg-card" style={{ width: fixedWidth }}>
           {/* Header */}
-          <div className="flex bg-muted/50 border-b border-border" style={{ height: 56 }}>
+          <div className="flex bg-slate-50/80 dark:bg-muted/50 border-b border-slate-200 dark:border-border" style={{ height: 56 }}>
             <div className="w-[28px] px-1 flex items-center justify-center text-[10px] font-semibold text-muted-foreground" />
             <div 
-              className={`w-[130px] px-2 ${headerCellBase} text-muted-foreground gap-0.5`}
+              className={`w-[95px] px-1.5 ${headerCellBase} text-muted-foreground gap-0.5`}
               onClick={() => handleSort('status')}
               title="Ordenar por Status"
             >
@@ -894,7 +796,7 @@ export default function ProjectionTable({
               />
             </div>
             <div 
-              className={`w-[42px] px-1 justify-center ${headerCellBase} text-muted-foreground gap-0.5`}
+              className={`w-[36px] px-1 justify-center ${headerCellBase} text-muted-foreground gap-0.5`}
               onClick={() => handleSort('cd')}
               title="Ordenar por CD"
             >
@@ -932,38 +834,38 @@ export default function ProjectionTable({
         <div className="flex-1 overflow-hidden">
           {/* Header */}
           <div className="overflow-hidden" ref={scrollContainerRef}>
-            <div className="flex bg-muted/50 border-b border-border" style={{ minWidth: totalScrollWidth, height: 56 }}>
+            <div className="flex bg-slate-50/80 dark:bg-muted/50 border-b border-slate-200 dark:border-border" style={{ minWidth: totalScrollWidth, height: 56 }}>
               {/* Extra info column headers */}
               <div className="flex-shrink-0 flex border-r border-border/60" style={{ width: extraInfoWidth }}>
-                <div className={`w-[45px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('lt')} title="Ordenar por Lead Time">
+                <div className={`w-[38px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('lt')} title="Ordenar por Lead Time">
                   <span>LT</span><SortIcon field="lt" currentField={sortField} direction={sortDirection} />
                 </div>
-                <div className={`w-[65px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('estoque')} title="Ordenar por Estoque Atual">
-                  <span>Estoque</span><SortIcon field="estoque" currentField={sortField} direction={sortDirection} />
+                <div className={`w-[58px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('estoque')} title="Ordenar por Estoque Atual">
+                  <span>Est.</span><SortIcon field="estoque" currentField={sortField} direction={sortDirection} />
                 </div>
-                <div className={`w-[55px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('cob_est')} title="Ordenar por Cobertura do Estoque (dias)">
-                  <span>Cob.Est.</span><SortIcon field="cob_est" currentField={sortField} direction={sortDirection} />
+                <div className={`w-[48px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('cob_est')} title="Ordenar por Cobertura do Estoque (dias)">
+                  <span>C:Est</span><SortIcon field="cob_est" currentField={sortField} direction={sortDirection} />
                 </div>
-                <div className={`w-[55px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('cob_ep')} title="Ordenar por Cobertura Estoque + Pendência (dias)">
-                  <span>Cob.E+P</span><SortIcon field="cob_ep" currentField={sortField} direction={sortDirection} />
+                <div className={`w-[48px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('cob_ep')} title="Ordenar por Cobertura Estoque + Pendência (dias)">
+                  <span>C:E+P</span><SortIcon field="cob_ep" currentField={sortField} direction={sortDirection} />
                 </div>
-                <div className={`w-[70px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('pendencia')} title="Ordenar por Pendência (Pedidos da Fonte)">
+                <div className={`w-[58px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('pendencia')} title="Ordenar por Pendência (Pedidos da Fonte)">
                   <span>Pend.</span><SortIcon field="pendencia" currentField={sortField} direction={sortDirection} />
                 </div>
-                <div className={`w-[70px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('aprovacao')} title="Ordenar por Pedidos em Aprovação">
+                <div className={`w-[58px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('aprovacao')} title="Ordenar por Pedidos em Aprovação">
                   <span>Aprov.</span><SortIcon field="aprovacao" currentField={sortField} direction={sortDirection} />
                 </div>
-                <div className={`w-[55px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('nna')} title="Ordenar por NNA">
+                <div className={`w-[44px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('nna')} title="Ordenar por NNA">
                   <span>NNA</span><SortIcon field="nna" currentField={sortField} direction={sortDirection} />
                 </div>
-                <div className={`w-[60px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('impacto')} title="Ordenar por Impacto">
-                  <span>Impacto</span><SortIcon field="impacto" currentField={sortField} direction={sortDirection} />
+                <div className={`w-[48px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('impacto')} title="Ordenar por Impacto">
+                  <span>Imp.</span><SortIcon field="impacto" currentField={sortField} direction={sortDirection} />
                 </div>
-                <div className={`w-[60px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('preenchimento')} title="Ordenar por Preenchimento">
-                  <span>Preench.</span><SortIcon field="preenchimento" currentField={sortField} direction={sortDirection} />
+                <div className={`w-[46px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('preenchimento')} title="Ordenar por Preenchimento">
+                  <span>Pre.</span><SortIcon field="preenchimento" currentField={sortField} direction={sortDirection} />
                 </div>
-                <div className={`w-[55px] px-1 justify-end ${headerCellBase} text-primary gap-0.5`} onClick={() => handleSort('obj_dias')} title="Ordenar por Estoque Objetivo em dias">
-                  <span>Obj.(d)</span><SortIcon field="obj_dias" currentField={sortField} direction={sortDirection} />
+                <div className={`w-[44px] px-1 justify-end ${headerCellBase} text-primary gap-0.5`} onClick={() => handleSort('obj_dias')} title="Ordenar por Estoque Objetivo em dias">
+                  <span>Ob(d)</span><SortIcon field="obj_dias" currentField={sortField} direction={sortDirection} />
                 </div>
               </div>
 
@@ -974,15 +876,21 @@ export default function ProjectionTable({
 
                 return (
                   <div key={mes} className={`flex-shrink-0 ${getMonthBorder()} ${getMonthBg(mesIdx)}`} style={{ width: currentMesWidth }}>
-                    <div className="relative px-2 py-1.5 text-center border-b border-border/30">
-                      <div className="absolute top-0 left-2 right-2 h-[3px] rounded-b-sm bg-primary/40" />
-                      <span className="text-[11px] font-bold text-foreground tracking-wide">
+                    <div className="relative px-2 py-1.5 text-center border-b border-slate-100 dark:border-border/30 bg-white dark:bg-card">
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-primary/20 group-hover:bg-primary/40 transition-colors" />
+                      <span className="text-[10px] font-bold text-slate-700 dark:text-foreground tracking-widest uppercase">
                         <span className="text-primary/50 font-mono mr-1">{mesIdx + 1}.</span>
                         {formatMes(mes)}
                       </span>
                     </div>
                     <div className="flex">
-                      <div style={{ width: colWidth }} className="px-1 py-1 text-[9px] font-semibold text-muted-foreground text-right uppercase">Sell Out</div>
+                      {mesIdx === 0 ? (
+                        <div style={{ width: colWidth }} className="px-1 py-1 text-[9px] font-semibold text-muted-foreground text-right uppercase cursor-pointer hover:bg-muted/80 transition-colors group flex items-center justify-end gap-0.5" onClick={() => handleSort('sell_out_m1')} title="Ordenar por Sell Out no 1º mês">
+                          <span className={sortField === 'sell_out_m1' ? 'text-primary' : ''}>Sell Out</span><SortIcon field="sell_out_m1" currentField={sortField} direction={sortDirection} />
+                        </div>
+                      ) : (
+                        <div style={{ width: colWidth }} className="px-1 py-1 text-[9px] font-semibold text-muted-foreground text-right uppercase">Sell Out</div>
+                      )}
                       {isMes1ComSemanas ? (
                         /* Colunas semanais de Pedido para o mês 1 */
                         semanasInfo.map((sem, semIdx) => (
@@ -1052,16 +960,16 @@ export default function ProjectionTable({
           >
             <div className="flex" style={{ minWidth: totalScrollWidth, height: TOTALS_ROW_HEIGHT }}>
               <div className="flex-shrink-0 flex border-r border-border/40" style={{ width: extraInfoWidth }}>
-                <div className="w-[45px] px-1 flex items-center justify-end"><span className="text-xs font-mono font-bold text-primary">—</span></div>
-                <div className="w-[65px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalEstoque)}</span></div>
-                <div className="w-[55px] px-1 flex items-center justify-end"><span className="text-xs font-mono font-bold text-primary">—</span></div>
-                <div className="w-[55px] px-1 flex items-center justify-end"><span className="text-xs font-mono font-bold text-primary">—</span></div>
-                <div className="w-[70px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalPendencia)}</span></div>
-                <div className="w-[70px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalAprovacao)}</span></div>
-                <div className="w-[55px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalNNA)}</span></div>
-                <div className="w-[60px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalImpacto)}</span></div>
-                <div className="w-[60px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalPreench)}</span></div>
-                <div className="w-[55px] px-1 flex items-center justify-end"><span className="text-xs font-mono font-bold text-primary">—</span></div>
+                <div className="w-[38px] px-1 flex items-center justify-end"><span className="text-[11px] font-mono font-bold text-primary">—</span></div>
+                <div className="w-[58px] px-1 flex items-center justify-end"><span className="text-[11px] font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalEstoque)}</span></div>
+                <div className="w-[48px] px-1 flex items-center justify-end"><span className="text-[11px] font-mono font-bold text-primary">—</span></div>
+                <div className="w-[48px] px-1 flex items-center justify-end"><span className="text-[11px] font-mono font-bold text-primary">—</span></div>
+                <div className="w-[58px] px-1 flex items-center justify-end"><span className="text-[11px] font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalPendencia)}</span></div>
+                <div className="w-[58px] px-1 flex items-center justify-end"><span className="text-[11px] font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalAprovacao)}</span></div>
+                <div className="w-[44px] px-1 flex items-center justify-end"><span className="text-[11px] font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalNNA)}</span></div>
+                <div className="w-[48px] px-1 flex items-center justify-end"><span className="text-[11px] font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalImpacto)}</span></div>
+                <div className="w-[46px] px-1 flex items-center justify-end"><span className="text-[11px] font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalPreench)}</span></div>
+                <div className="w-[44px] px-1 flex items-center justify-end"><span className="text-[11px] font-mono font-bold text-primary">—</span></div>
               </div>
               {meses.map((mes, mesIdx) => {
                 const t = totals.porMes[mes];

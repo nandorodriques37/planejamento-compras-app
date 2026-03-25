@@ -166,19 +166,25 @@ export default function SKUChart({ projecao, cadastro, meses, onClose }: SKUChar
         {/* Chart */}
         <div className="px-6 py-3 h-[200px] sm:h-[260px]">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+            <ComposedChart data={chartData} margin={{ top: 15, right: 20, left: 10, bottom: 5 }}>
+              <defs>
+                <linearGradient id="colorPedido" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="oklch(0.72 0.11 178)" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="oklch(0.72 0.11 178)" stopOpacity={0.2} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="opacity-70 dark:opacity-20" />
               <XAxis 
                 dataKey="mes" 
-                tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+                tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
                 tickLine={false}
-                axisLine={{ stroke: 'var(--border)' }}
+                axisLine={false}
               />
               <YAxis 
                 domain={yDomain}
-                tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+                tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
                 tickLine={false}
-                axisLine={{ stroke: 'var(--border)' }}
+                axisLine={false}
                 tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)}
               />
               <Tooltip content={<CustomTooltip />} />
@@ -192,41 +198,40 @@ export default function SKUChart({ projecao, cadastro, meses, onClose }: SKUChar
               {/* Barras de Pedido (background) */}
               <Bar 
                 dataKey="Pedido" 
-                fill="oklch(0.72 0.11 178)" 
-                opacity={0.2}
-                radius={[2, 2, 0, 0]}
-                barSize={20}
+                fill="url(#colorPedido)" 
+                radius={[4, 4, 0, 0]}
+                barSize={24}
               />
 
-              {/* Linha de Estoque Objetivo (tracejada) */}
+              {/* Linha de Estoque Objetiva (tracejada suave) */}
               <Line
                 type="monotone"
                 dataKey="Estoque Objetivo"
                 stroke="#f59e0b"
                 strokeWidth={1.5}
-                strokeDasharray="6 3"
+                strokeDasharray="4 4"
                 dot={false}
-                activeDot={{ r: 3 }}
+                activeDot={{ r: 4, strokeWidth: 0 }}
               />
 
-              {/* Linha de Sell Out */}
+              {/* Linha de Sell Out (Suave azul) */}
               <Line
                 type="monotone"
                 dataKey="Sell Out"
                 stroke="#3b82f6"
                 strokeWidth={2}
-                dot={{ r: 2, fill: '#3b82f6' }}
-                activeDot={{ r: 4 }}
+                dot={{ r: 3, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }}
+                activeDot={{ r: 5, strokeWidth: 0 }}
               />
 
-              {/* Linha de Estoque Projetado */}
+              {/* Linha de Estoque Projetado (Suave esmeralda escuro) */}
               <Line
                 type="monotone"
                 dataKey="Estoque Projetado"
-                stroke="oklch(0.72 0.11 178)"
+                stroke="oklch(0.55 0.1 178)"
                 strokeWidth={2.5}
-                dot={{ r: 3, fill: 'oklch(0.72 0.11 178)' }}
-                activeDot={{ r: 5 }}
+                dot={{ r: 3, fill: 'oklch(0.55 0.1 178)', strokeWidth: 2, stroke: '#fff' }}
+                activeDot={{ r: 6, strokeWidth: 0 }}
               />
             </ComposedChart>
           </ResponsiveContainer>

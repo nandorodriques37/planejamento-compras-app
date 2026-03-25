@@ -46,6 +46,14 @@ export default function SKUStatusPieChart({ data, onPieClick }: SKUStatusPieChar
     <div className="flex items-center gap-4">
       <ResponsiveContainer width="100%" height={220}>
         <PieChart>
+          <defs>
+            {chartData.map((item, i) => (
+              <linearGradient key={`pieGrad-${i}`} id={`colorPie-${i}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={item.color} stopOpacity={0.9} />
+                <stop offset="95%" stopColor={item.color} stopOpacity={0.5} />
+              </linearGradient>
+            ))}
+          </defs>
           <Pie
             data={chartData}
             cx="50%"
@@ -59,7 +67,7 @@ export default function SKUStatusPieChart({ data, onPieClick }: SKUStatusPieChar
             style={{ cursor: onPieClick ? 'pointer' : 'default' }}
           >
             {chartData.map((entry, index) => (
-              <Cell key={index} fill={entry.color} />
+              <Cell key={index} fill={`url(#colorPie-${index})`} className="outline-none" />
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />

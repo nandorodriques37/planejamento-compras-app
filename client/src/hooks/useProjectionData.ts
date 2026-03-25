@@ -155,18 +155,51 @@ export function useProjectionData() {
     return dados?.pedidos_pendentes ?? [];
   }, [dados?.pedidos_pendentes, cadastroMap]);
 
+  const prevProjecoesRef = useRef<ProjecaoSKU[]>([]);
+  const lastEditedCellsRef = useRef<Map<string, number>>(new Map());
+  const lastPendenciasRef = useRef<PedidoPendente[] | null>(null);
+
   // Projeções com edições aplicadas
   const projecoesComEdicoes = useMemo(() => {
     if (!dados) return [];
+    
     const pendSKUMap = buildPendenciasPorSKU(pedidosPendentesCompletos);
-    return dados.projecao.map(proj => {
+    
+    // Identificar chaves que mudaram nas edições para calcular apenas as diferenças e economizar re-randerizações O(N)
+    const changedSkus = new Set<string>();
+    const oldEdits = lastEditedCellsRef.current;
+    
+    for (const [key, val] of editedCells.entries()) {
+      if (oldEdits.get(key) !== val) {
+        changedSkus.add(key.split('|')[0]);
+      }
+    }
+    for (const key of oldEdits.keys()) {
+      if (!editedCells.has(key)) {
+        changedSkus.add(key.split('|')[0]);
+      }
+    }
+    
+    lastEditedCellsRef.current = editedCells;
+    
+    const needsFullRebuild = prevProjecoesRef.current.length === 0 || 
+                             prevProjecoesRef.current.length !== dados.projecao.length ||
+                             lastPendenciasRef.current !== pedidosPendentesCompletos;
+                             
+    lastPendenciasRef.current = pedidosPendentesCompletos;
+
+    const result = dados.projecao.map((proj, idx) => {
+      // Otimização: se o SKU não teve edições alteradas e não é um rebuild completo, usar cache!
+      const cachedProj = prevProjecoesRef.current[idx];
+      if (!needsFullRebuild && cachedProj && cachedProj.CHAVE === proj.CHAVE && !changedSkus.has(proj.CHAVE)) {
+        return cachedProj;
+      }
+        
       const edicoesDoSKU: Record<string, number | null> = {};
-      let temEdicao = false;
       dados.metadata.meses.forEach(mes => {
         const key = `${proj.CHAVE}|${mes}`;
         if (editedCells.has(key)) {
           edicoesDoSKU[mes] = editedCells.get(key)!;
-          temEdicao = true;
         } else {
           edicoesDoSKU[mes] = null;
         }
@@ -177,9 +210,12 @@ export function useProjectionData() {
 
       const sellOutOriginal: Record<string, number> = {};
       const pedidosOriginais: Record<string, number> = {};
+      const estObjetivosOriginais: Record<string, number> = {};
+      
       dados.metadata.meses.forEach(mes => {
         sellOutOriginal[mes] = proj.meses[mes]?.SELL_OUT || 0;
         pedidosOriginais[mes] = proj.meses[mes]?.PEDIDO || 0;
+        estObjetivosOriginais[mes] = proj.meses[mes]?.ESTOQUE_OBJETIVO || 0;
       });
 
       // Agregar pendências distribuídas por mês para este SKU
@@ -188,20 +224,43 @@ export function useProjectionData() {
         ? agruparPendenciasPorMes(pedidosSKU, dados.metadata.meses)
         : undefined;
 
-      // Preservar ESTOQUE_OBJETIVO original do banco de dados
-      const estObjetivosOriginais: Record<string, number> = {};
-      dados.metadata.meses.forEach(mes => {
-        estObjetivosOriginais[mes] = proj.meses[mes]?.ESTOQUE_OBJETIVO || 0;
-      });
-
       const novaProjecao = recalcularProjecaoSKU(
         cadastro, dados.metadata.meses, sellOutOriginal,
         edicoesDoSKU, pedidosOriginais, dados.metadata.data_referencia,
         pendMes, estObjetivosOriginais
       );
+      
+      const status = getStatusSKU(novaProjecao, dados.metadata.meses, cadastro);
+      
+      // Calcular KPIs da projeção atual pre-cacheados
+      const firstMes = dados.metadata.meses[0];
+      const mes1Data = novaProjecao[firstMes];
+      const fallbackObjDias = (cadastro.LT || 0) + (cadastro.FREQUENCIA || 0) + (cadastro.EST_SEGURANCA || 0);
+      let demandaDiariaMes1 = 1;
+      
+      if (firstMes) {
+          const parts = firstMes.split('_');
+          if (parts.length === 2) {
+              const ano = parseInt(parts[0], 10);
+              const mesNum = parseInt(parts[1], 10);
+              const diasMes1 = new Date(ano, mesNum, 0).getDate();
+              demandaDiariaMes1 = (mes1Data?.SELL_OUT || 0) / diasMes1;
+          }
+      }
+      
+      const kpis = {
+          status,
+          coberturaEstoqueDias: demandaDiariaMes1 > 0 ? Math.round((cadastro.ESTOQUE || 0) / demandaDiariaMes1) : ((cadastro.ESTOQUE || 0) > 0 ? 999 : 0),
+          coberturaEstoquePendenciaDias: demandaDiariaMes1 > 0 ? Math.round(((cadastro.ESTOQUE || 0) + (cadastro.PENDENCIA || 0)) / demandaDiariaMes1) : (((cadastro.ESTOQUE || 0) + (cadastro.PENDENCIA || 0)) > 0 ? 999 : 0),
+          objetivoDias: demandaDiariaMes1 > 0 ? Math.round((mes1Data?.ESTOQUE_OBJETIVO || 0) / demandaDiariaMes1) : fallbackObjDias,
+          sellOutM1: mes1Data?.SELL_OUT || 0
+      };
 
-      return { ...proj, meses: novaProjecao };
+      return { ...proj, meses: novaProjecao, kpis };
     });
+    
+    prevProjecoesRef.current = result;
+    return result;
   }, [dados, editedCells, cadastroMap, pedidosPendentesCompletos]);
 
   // Filtros — usa debouncedBusca para busca textual
@@ -235,10 +294,7 @@ export function useProjectionData() {
         if (!match) return false;
       }
       if (filters.status) {
-        const cadastro = cadastroMap.get(proj.CHAVE);
-        if (!cadastro) return false;
-        const status = getStatusSKU(proj.meses, dados.metadata.meses, cadastro);
-        if (status !== filters.status) return false;
+        if (proj.kpis?.status !== filters.status) return false;
       }
       return true;
     });

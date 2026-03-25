@@ -104,12 +104,8 @@ export default function Home() {
   // Contagem de SKUs críticos para badge do sidebar
   const skusCriticos = useMemo(() => {
     if (!dados) return 0;
-    return dadosFiltrados.filter(proj => {
-      const cad = cadastroMap.get(proj.CHAVE);
-      if (!cad) return false;
-      return getStatusSKU(proj.meses, dados.metadata.meses, cad) === 'critical';
-    }).length;
-  }, [dadosFiltrados, dados, cadastroMap]);
+    return dadosFiltrados.filter(proj => proj.kpis?.status === 'critical').length;
+  }, [dadosFiltrados, dados]);
 
   const [coveragePanelOpen, setCoveragePanelOpen] = useState(false);
   const [valuePanelOpen, setValuePanelOpen] = useState(false);
@@ -357,15 +353,15 @@ export default function Home() {
 
       <main className="flex-1 overflow-y-auto bg-background">
         {/* Page Header */}
-        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
-          <div className="px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 z-20 bg-white/80 dark:bg-background/95 backdrop-blur-md border-b border-slate-200 dark:border-border">
+          <div className="px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-lg font-bold text-foreground">Planejamento de Compras</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Ajuste os pedidos sugeridos e visualize o impacto na projeção de estoque
+              <h1 className="text-xl font-bold text-slate-900 dark:text-foreground tracking-tight">Abastecimento de CD</h1>
+              <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5 font-medium uppercase tracking-wider">
+                Simulador de Compras
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 type="file"
                 accept=".xlsx, .xls, .csv"
@@ -376,7 +372,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs gap-1.5"
+                className="text-[11px] font-medium text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 border-slate-200 shadow-sm gap-1.5 transition-all"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <FileUp className="w-3.5 h-3.5" />
@@ -385,7 +381,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs gap-1.5"
+                className="text-[11px] font-medium text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 border-slate-200 shadow-sm gap-1.5 transition-all"
                 onClick={() => {
                   if (dados) {
                     const chavesFiltradas = new Set(dadosFiltrados.map(p => p.CHAVE));
@@ -399,22 +395,23 @@ export default function Home() {
                 }}
               >
                 <Download className="w-3.5 h-3.5" />
-                Exportar{totalEdicoes > 0 ? ` (${totalEdicoes} edições)` : ''}
+                Exportar{totalEdicoes > 0 ? ` (${totalEdicoes})` : ''}
               </Button>
+              <div className="w-px h-6 bg-slate-200 dark:bg-border mx-1 hidden md:block" />
               <Button
                 size="sm"
-                className="text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800 shadow-sm gap-1.5 transition-all"
                 onClick={() => setValuePanelOpen(true)}
               >
-                <DollarSign className="w-3.5 h-3.5" />
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 Compra por Valor
               </Button>
               <Button
                 size="sm"
-                className="text-xs gap-1.5 bg-primary hover:bg-primary/90"
+                className="text-[11px] font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm gap-1.5 transition-all"
                 onClick={() => setCoveragePanelOpen(true)}
               >
-                <ShoppingCart className="w-3.5 h-3.5" />
+                <ShoppingCart className="w-3.5 h-3.5 text-slate-500" />
                 Compra de Cobertura
               </Button>
             </div>

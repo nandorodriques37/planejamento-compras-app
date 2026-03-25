@@ -148,6 +148,7 @@ export interface HomeKPIs {
     pmpHojeDias: number | null;
     pmeHojeDias: number | null;
     valorLostSalesRisco: number;
+    valorNNA: number;
 }
 
 export interface CDSummary {

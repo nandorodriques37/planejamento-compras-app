@@ -107,10 +107,22 @@ export default function SalesLossChart({ data, onBarClick }: SalesLossChartProps
         onClick={handleBarClick}
         style={{ cursor: onBarClick ? 'pointer' : 'default' }}
       >
-        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+        <defs>
+          <linearGradient id="colorLoss" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.9} />
+            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.4} />
+          </linearGradient>
+          <linearGradient id="colorRisk" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.9} />
+            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.4} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="opacity-70 dark:opacity-20" />
         <XAxis
           dataKey="fornecedorLabel"
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+          axisLine={false}
+          tickLine={false}
           angle={-45}
           textAnchor="end"
           interval={0}
@@ -118,29 +130,31 @@ export default function SalesLossChart({ data, onBarClick }: SalesLossChartProps
         />
         <YAxis
           tickFormatter={formatYAxis}
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+          axisLine={false}
+          tickLine={false}
           width={72}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'oklch(0.5 0 0 / 0.08)' }} />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(226, 232, 240, 0.4)' }} />
         <Legend
           verticalAlign="top"
           height={36}
           formatter={(value: string) => (
-            <span className="text-xs text-foreground">{value}</span>
+            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{value}</span>
           )}
         />
         <Bar
           dataKey="perdaRupturaTotal"
           name="Ruptura Total (estoque zero)"
           stackId="loss"
-          fill="oklch(0.637 0.237 25.331)"
+          fill="url(#colorLoss)"
           radius={[0, 0, 0, 0]}
         />
         <Bar
           dataKey="perdaRiscoCritico"
           name="Risco de Ruptura (estoque crítico)"
           stackId="loss"
-          fill="oklch(0.769 0.188 70.08)"
+          fill="url(#colorRisk)"
           radius={[4, 4, 0, 0]}
         />
       </BarChart>

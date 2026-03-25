@@ -47,9 +47,18 @@ export interface MesData {
   ENTRADA: number;
 }
 
+export interface ProjecaoKPIs {
+  status: 'ok' | 'warning' | 'critical';
+  coberturaEstoqueDias: number;
+  coberturaEstoquePendenciaDias: number;
+  objetivoDias: number;
+  sellOutM1: number;
+}
+
 export interface ProjecaoSKU {
   CHAVE: string;
   meses: Record<string, MesData>;
+  kpis?: ProjecaoKPIs;
 }
 
 export interface ContaAPagar {
@@ -167,8 +176,9 @@ export interface SemanaInfo {
   fim: number;
   /** Quantidade de dias efetivos nesta semana */
   dias: number;
-  /** Data em que o pedido seria feito (hoje para semana atual, 1º dia do bloco para futuras) */
-  dataOrdem?: Date;
+  /** (Opção 4) Quantidade de dias úteis considerando finais de semana */
+  diasUteis?: number;
+  /** Data em que o pedido seria feito (hoje para semana atual, 1º dia do bloco para futuras) */  dataOrdem?: Date;
   /** Data estimada de chegada (dataOrdem + LT) */
   dataChegada?: Date;
   /** Se o pedido chega dentro do mês (true = elegível para pedido) */

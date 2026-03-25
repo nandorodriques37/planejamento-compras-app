@@ -37,8 +37,8 @@ export default function ActionBar({ totalEdicoes, onLimpar, dados, selectedWeeks
       transition-all duration-300 ease-in-out
       ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}
     `}>
-      <div className="bg-card/95 backdrop-blur-sm border-t border-border shadow-lg">
-        <div className="max-w-[1920px] mx-auto px-6 py-3 flex items-center justify-between">
+      <div className="bg-white/95 dark:bg-card/95 backdrop-blur-md border-t border-slate-200 dark:border-border shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
+        <div className="max-w-[1920px] mx-auto px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
           {/* Left: info */}
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -60,12 +60,12 @@ export default function ActionBar({ totalEdicoes, onLimpar, dados, selectedWeeks
           </div>
 
           {/* Right: actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={onLimpar}
-              className="text-xs gap-1.5"
+              className="text-[11px] font-medium text-slate-600 bg-white hover:bg-red-50 hover:text-red-700 hover:border-red-200 shadow-sm gap-1.5 transition-all"
             >
               <Trash2 className="w-3.5 h-3.5" />
               Limpar Edições
@@ -75,27 +75,29 @@ export default function ActionBar({ totalEdicoes, onLimpar, dados, selectedWeeks
               variant="outline"
               size="sm"
               onClick={handleExportCSV}
-              className="text-xs gap-1.5"
+              className="text-[11px] font-medium text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 border-slate-200 shadow-sm gap-1.5 transition-all"
             >
               <Download className="w-3.5 h-3.5" />
               Exportar Excel
             </Button>
 
+            <div className="w-px h-6 bg-slate-200 dark:bg-border mx-1 hidden md:block" />
+
             <Button
               size="sm"
               disabled={selectedWeeks.size === 0}
               onClick={onEnviarParaAprovacao}
-              className="text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+              className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-sm gap-1.5 disabled:opacity-50 transition-all"
             >
-              <Send className="w-3.5 h-3.5" />
+              <Send className="w-3.5 h-3.5 text-emerald-600" />
               Enviar para Aprovação
             </Button>
 
             <Button
               size="sm"
-              className="text-xs gap-1.5 bg-primary hover:bg-primary/90"
+              className="text-[11px] font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm gap-1.5 transition-all"
             >
-              <Save className="w-3.5 h-3.5" />
+              <Save className="w-3.5 h-3.5 text-slate-500" />
               Salvar Cenário
             </Button>
           </div>

@@ -18,8 +18,20 @@ const CicloEstoque = lazy(() => import("./pages/CicloEstoque"));
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/compras" component={Home} />
+      <Route path="/">
+        {() => (
+          <Suspense fallback={<LoadingSpinner />}>
+            <Home />
+          </Suspense>
+        )}
+      </Route>
+      <Route path="/compras">
+        {() => (
+          <Suspense fallback={<LoadingSpinner />}>
+            <Home />
+          </Suspense>
+        )}
+      </Route>
       <Route path="/dashboard">
         {() => (
           <Suspense fallback={<LoadingSpinner />}>

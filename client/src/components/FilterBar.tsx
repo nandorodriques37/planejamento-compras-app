@@ -4,6 +4,7 @@
  */
 
 import { Search, Filter, X } from 'lucide-react';
+import { ComboboxFilter } from './ComboboxFilter';
 import type { Filters } from '../hooks/useProjectionData';
 
 interface FilterBarProps {
@@ -50,7 +51,7 @@ export default function FilterBar({
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+    <div className="bg-white dark:bg-card border border-slate-200/80 dark:border-border rounded-xl shadow-sm p-4 space-y-3">
       {/* Row 1: Search + Horizonte */}
       <div className="flex items-center gap-4">
         {/* Search */}
@@ -61,7 +62,7 @@ export default function FilterBar({
             placeholder="Buscar produto, SKU ou chave..."
             value={filters.busca}
             onChange={(e) => updateFilter('busca', e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary"
+            className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50/50 dark:bg-background border border-slate-200 dark:border-input rounded-md focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400"
           />
         </div>
 
@@ -85,178 +86,170 @@ export default function FilterBar({
         </div>
       </div>
 
-      {/* Row 2: Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-shrink-0">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          {activeFiltersCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 rounded-full bg-primary text-[8px] text-primary-foreground font-bold flex items-center justify-center px-0.5">
-              {activeFiltersCount}
-            </span>
-          )}
+      {/* Row 2: Filters Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-3 pt-2">
+        
+        {/* Fornecedor */}
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Fornecedor</label>
+          <ComboboxFilter
+            value={filters.fornecedor || ""}
+            onValueChange={(val) => updateFilter('fornecedor', val)}
+            options={filterOptions.fornecedores.map(f => ({ label: f, value: f }))}
+            placeholder="Todos Fornecedores"
+          />
         </div>
 
-        {/* Fornecedor */}
-        <select
-          value={filters.fornecedor}
-          onChange={(e) => updateFilter('fornecedor', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[140px]"
-        >
-          <option value="">Todos Fornecedores</option>
-          {filterOptions.fornecedores.map(f => (
-            <option key={f} value={f}>{f}</option>
-          ))}
-        </select>
-
         {/* Categoria Nível 3 */}
-        <select
-          value={filters.categoria}
-          onChange={(e) => updateFilter('categoria', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[140px]"
-        >
-          <option value="">Todas Cat. Nível 3</option>
-          {filterOptions.categorias.map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Categoria Nível 3</label>
+          <ComboboxFilter
+            value={filters.categoria || ""}
+            onValueChange={(val) => updateFilter('categoria', val)}
+            options={filterOptions.categorias.map(c => ({ label: c, value: c }))}
+            placeholder="Todas Categorias"
+          />
+        </div>
 
         {/* Categoria Nível 4 */}
-        <select
-          value={filters.categoriaNivel4}
-          onChange={(e) => updateFilter('categoriaNivel4', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[140px]"
-        >
-          <option value="">Todas Cat. Nível 4</option>
-          {filterOptions.categoriasNivel4.map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Categoria Nível 4</label>
+          <ComboboxFilter
+            value={filters.categoriaNivel4 || ""}
+            onValueChange={(val) => updateFilter('categoriaNivel4', val)}
+            options={filterOptions.categoriasNivel4.map(c => ({ label: c, value: c }))}
+            placeholder="Todas Cat. Nível 4"
+          />
+        </div>
 
         {/* CD */}
-        <select
-          value={filters.cd}
-          onChange={(e) => updateFilter('cd', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[80px]"
-        >
-          <option value="">Todos CDs</option>
-          {filterOptions.cds.map(cd => (
-            <option key={cd} value={cd}>CD {cd}</option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Depósito / CD</label>
+          <ComboboxFilter
+            value={filters.cd || ""}
+            onValueChange={(val) => updateFilter('cd', val)}
+            options={filterOptions.cds.map(cd => ({ label: `CD ${cd}`, value: cd }))}
+            placeholder="Todos CDs"
+          />
+        </div>
 
         {/* Status */}
-        <select
-          value={filters.status}
-          onChange={(e) => updateFilter('status', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[100px]"
-        >
-          <option value="">Todos Status</option>
-          <option value="ok">OK</option>
-          <option value="warning">Ponto de Pedido</option>
-          <option value="critical">Ruptura</option>
-        </select>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Status do SKU</label>
+          <ComboboxFilter
+            value={filters.status || ""}
+            onValueChange={(val) => updateFilter('status', val)}
+            options={[
+              { label: 'OK', value: 'ok' },
+              { label: 'Ponto de Pedido', value: 'warning' },
+              { label: 'Ruptura', value: 'critical' }
+            ]}
+            placeholder="Todos Status"
+          />
+        </div>
 
         {/* Analista */}
-        <select
-          value={filters.analista || ''}
-          onChange={(e) => updateFilter('analista', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[100px]"
-        >
-          <option value="">Analista (Todos)</option>
-          {filterOptions.analistas?.map(a => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Analista</label>
+          <ComboboxFilter
+            value={filters.analista || ""}
+            onValueChange={(val) => updateFilter('analista', val)}
+            options={(filterOptions.analistas || []).map(a => ({ label: a, value: a }))}
+            placeholder="Todos Analistas"
+          />
+        </div>
 
         {/* Comprador */}
-        <select
-          value={filters.comprador || ''}
-          onChange={(e) => updateFilter('comprador', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[100px]"
-        >
-          <option value="">Comprador (Todos)</option>
-          {filterOptions.compradores?.map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Comprador</label>
+          <ComboboxFilter
+            value={filters.comprador || ""}
+            onValueChange={(val) => updateFilter('comprador', val)}
+            options={(filterOptions.compradores || []).map(c => ({ label: c, value: c }))}
+            placeholder="Todos Compradores"
+          />
+        </div>
 
         {/* Fornecedor Logístico */}
-        <select
-          value={filters.fornecedorLogistico || ''}
-          onChange={(e) => updateFilter('fornecedorLogistico', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[140px]"
-        >
-          <option value="">Forn. Logístico (Todos)</option>
-          {filterOptions.fornecedoresLogisticos?.map(f => (
-            <option key={f} value={f}>{f}</option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Fornecedor Logístico</label>
+          <ComboboxFilter
+            value={filters.fornecedorLogistico || ""}
+            onValueChange={(val) => updateFilter('fornecedorLogistico', val)}
+            options={(filterOptions.fornecedoresLogisticos || []).map(f => ({ label: f, value: f }))}
+            placeholder="Todos Logísticos"
+          />
+        </div>
 
         {/* Genéricos */}
-        <select
-          value={filters.generico || ''}
-          onChange={(e) => updateFilter('generico', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[100px]"
-        >
-          <option value="">Genéricos (Todos)</option>
-          {filterOptions.genericos?.map(g => (
-            <option key={g} value={g}>{g === 'S' ? 'Sim' : 'Não'}</option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Genéricos</label>
+          <ComboboxFilter
+            value={filters.generico || ""}
+            onValueChange={(val) => updateFilter('generico', val)}
+            options={(filterOptions.genericos || []).map(g => ({ label: g === 'S' ? 'Sim' : 'Não', value: g }))}
+            placeholder="Todos"
+          />
+        </div>
 
         {/* Monitorados */}
-        <select
-          value={filters.monitorado || ''}
-          onChange={(e) => updateFilter('monitorado', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[100px]"
-        >
-          <option value="">Monitorados (Todos)</option>
-          {filterOptions.monitorados?.map(m => (
-            <option key={m} value={m}>{m === 'S' ? 'Sim' : 'Não'}</option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Monitorados</label>
+          <ComboboxFilter
+            value={filters.monitorado || ""}
+            onValueChange={(val) => updateFilter('monitorado', val)}
+            options={(filterOptions.monitorados || []).map(m => ({ label: m === 'S' ? 'Sim' : 'Não', value: m }))}
+            placeholder="Todos"
+          />
+        </div>
 
         {/* Marcas Exclusivas */}
-        <select
-          value={filters.marcaExclusiva || ''}
-          onChange={(e) => updateFilter('marcaExclusiva', e.target.value)}
-          className="text-xs bg-background border border-input rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring/30 min-w-[120px]"
-        >
-          <option value="">Marcas Excl. (Todas)</option>
-          {filterOptions.marcasExclusivas?.map(m => (
-            <option key={m} value={m}>{m === 'S' ? 'Sim' : 'Não'}</option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold px-0.5">Marcas Exclusivas</label>
+          <ComboboxFilter
+            value={filters.marcaExclusiva || ""}
+            onValueChange={(val) => updateFilter('marcaExclusiva', val)}
+            options={(filterOptions.marcasExclusivas || []).map(m => ({ label: m === 'S' ? 'Sim' : 'Não', value: m }))}
+            placeholder="Todas"
+          />
+        </div>
 
-        {/* Filtro Importação Ativa */}
-        {filters.importedSkus && filters.importedSkus.length > 0 && (
-          <div className="flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full pl-3 pr-1 py-1 text-xs font-semibold">
-            {filters.importedSkus.length} SKUs Importados
-            <button
-              onClick={() => onFiltersChange({ ...filters, importedSkus: [] })}
-              className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
-              title="Limpar filtro de importação"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+        {/* Ações e Tags Ativas */}
+        <div className="col-span-full flex flex-wrap items-center gap-3 pt-2 mt-1 border-t border-slate-100 dark:border-slate-800">
+          <div className="relative flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+            <Filter className="w-3.5 h-3.5" />
+            <span>Filtros Aplicados: {activeFiltersCount}</span>
           </div>
-        )}
 
-        {/* Clear filters */}
-        {hasActiveFilters && (
-          <button
-            onClick={clearFilters}
-            className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors"
-          >
-            <X className="w-3 h-3" />
-            Limpar filtros
-          </button>
-        )}
+          {/* Filtro Importação Ativa */}
+          {filters.importedSkus && filters.importedSkus.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full pl-3 pr-1 py-1 text-xs font-semibold">
+              {filters.importedSkus.length} SKUs Importados
+              <button
+                onClick={() => onFiltersChange({ ...filters, importedSkus: [] })}
+                className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                title="Limpar filtro de importação"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
 
-        {/* Counter */}
-        <span className="ml-auto text-xs text-muted-foreground">
-          Exibindo <strong className="text-foreground">{totalFiltrados}</strong> de {totalSKUs} SKU/CD
-        </span>
+          {/* Clear filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 text-xs text-destructive hover:bg-destructive/10 px-2 py-1 rounded font-medium transition-colors ml-auto"
+            >
+              <X className="w-3 h-3" />
+              Limpar Todos
+            </button>
+          )}
+
+          <span className="ml-auto text-[11px] uppercase tracking-wider font-semibold text-muted-foreground bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
+            Exibindo <strong className="text-foreground">{totalFiltrados}</strong> de {totalSKUs}
+          </span>
+        </div>
       </div>
     </div>
   );

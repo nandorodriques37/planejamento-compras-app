@@ -145,14 +145,14 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
   const calcPerc = (val: number, total: number) => total > 0 ? Math.round((val / total) * 100) : 0;
 
   return (
-    <div className="px-4 pb-4" onClick={e => e.stopPropagation()}>
-      <div className="flex flex-col gap-3">
+    <div className="px-4 pb-3" onClick={e => e.stopPropagation()}>
+      <div className="flex flex-col gap-2.5">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           {fornecedorNome ? (
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="text-sm font-semibold text-foreground">{fornecedorNome}</span>
+            <div className="flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+              <span className="text-xs font-bold text-foreground">{fornecedorNome}</span>
             </div>
           ) : <div />}
 
@@ -160,7 +160,7 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
             <div className="flex items-center bg-muted/50 p-1 rounded-lg">
               <button
                 onClick={() => setActiveTab('global')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'global' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${activeTab === 'global' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 Visão Global
               </button>
@@ -168,7 +168,7 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
                 <button
                   key={mes}
                   onClick={() => setActiveTab(mes)}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === mes ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${activeTab === mes ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   {mes.replace('_', '-').split('-').reverse().join('/')}
                 </button>
@@ -177,51 +177,51 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
           )}
         </div>
 
-        {/* KPI Cards Grid - 2 rows of 4 cards on desktop, 1 or 2 on mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* KPI Cards Grid - Macrodensity layout */}
+        <div className="flex overflow-x-auto pb-2 -mx-4 px-4 snap-x md:mx-0 md:px-0 md:pb-0 md:grid md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 [&>div]:shrink-0 [&>div]:w-[140px] md:[&>div]:w-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
           {/* Card 1: Cobertura Fornecedor Hoje ➔ Chegada */}
-          <div className="rounded-lg border p-3 bg-card border-border" title="Cobertura Total do Portfólio do Fornecedor (Hoje ➔ Chegada)">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Building2 className="w-4 h-4 text-slate-500" />
-              <span className="text-xs font-medium text-muted-foreground line-clamp-1">Cob. Fornecedor</span>
+          <div className="rounded border px-2.5 py-2 bg-card border-border flex flex-col justify-between" title="Cobertura Total do Portfólio do Fornecedor (Hoje ➔ Chegada)">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Building2 className="w-3 h-3 text-slate-500" />
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">Cob. Fornec.</span>
             </div>
-            <div className="text-lg font-bold tabular-nums text-foreground flex items-center justify-between">
+            <div className="text-sm font-bold tabular-nums text-foreground flex items-center justify-between mt-auto">
               <span>{currentData.coberturaFornecedorDiasHoje !== null ? `${currentData.coberturaFornecedorDiasHoje}d` : '—'}</span>
-              <span className="text-muted-foreground mx-1 text-sm font-normal">➔</span>
+              <span className="text-muted-foreground/50 mx-1 text-xs font-normal">➔</span>
               <span className="text-primary">{currentData.coberturaFornecedorDiasChegada !== null ? `${currentData.coberturaFornecedorDiasChegada}d` : '—'}</span>
             </div>
           </div>
 
           {/* Card 2: Cobertura Itens Pedido Hoje ➔ Chegada */}
-          <div className={`rounded-lg border p-3 ${pedColors.bg} ${pedColors.border}`} title="Cobertura apenas dos Itens no Pedido (Hoje ➔ Chegada)">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Package className={`w-4 h-4 ${pedColors.icon}`} />
-              <span className="text-xs font-medium text-muted-foreground line-clamp-1">Cob. Itens Pedido</span>
+          <div className={`rounded border px-2.5 py-2 flex flex-col justify-between ${pedColors.bg} ${pedColors.border}`} title="Cobertura apenas dos Itens no Pedido (Hoje ➔ Chegada)">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Package className={`w-3 h-3 ${pedColors.icon}`} />
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">Cob. Pedido</span>
             </div>
-            <div className={`text-lg font-bold tabular-nums ${pedColors.text} flex items-center justify-between`}>
+            <div className={`text-sm font-bold tabular-nums ${pedColors.text} flex items-center justify-between mt-auto`}>
               <span>{currentData.coberturaPedidoDiasHoje !== null ? `${currentData.coberturaPedidoDiasHoje}d` : '—'}</span>
-              <span className="text-muted-foreground/60 mx-1 text-sm font-normal">➔</span>
+              <span className="text-muted-foreground/40 mx-1 text-xs font-normal">➔</span>
               <span className="opacity-90">{currentData.coberturaDataChegadaDias !== null ? `${currentData.coberturaDataChegadaDias}d` : '—'}</span>
             </div>
           </div>
 
           {/* Card 3: Efetividade */}
-          <div className="rounded-lg border p-3 bg-card border-border" title="Estoque Projetado na Chegada vs Estoque Objetivo">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Target className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="text-xs font-medium text-muted-foreground line-clamp-1">Efetividade</span>
+          <div className="rounded border px-2.5 py-2 bg-card border-border flex flex-col justify-between" title="Estoque Projetado na Chegada vs Estoque Objetivo">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Target className="w-3 h-3 text-primary flex-shrink-0" />
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">Efetividade</span>
             </div>
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-lg font-bold tabular-nums text-foreground">
+            <div className="flex items-baseline gap-1 flex-wrap mt-auto">
+              <span className="text-sm font-bold tabular-nums text-foreground">
                 {formatNumber(currentData.estoqueChegada)}
               </span>
-              <span className="text-[10px] text-muted-foreground font-medium">
-                / {formatNumber(currentData.estoqueObjetivo)} obj.
+              <span className="text-[9px] text-muted-foreground font-medium">
+                / {formatNumber(currentData.estoqueObjetivo)} obj
               </span>
             </div>
             {currentData.estoqueObjetivo > 0 && (
-              <div className="flex h-1.5 rounded-full overflow-hidden mt-1 bg-muted">
+              <div className="flex h-1 rounded-full overflow-hidden mt-1.5 bg-muted">
                 <div
                   className={`h-full ${currentData.estoqueChegada >= currentData.estoqueObjetivo ? 'bg-teal-500' : 'bg-primary'}`}
                   style={{ width: `${Math.min(100, (currentData.estoqueChegada / currentData.estoqueObjetivo) * 100)}%` }}
@@ -229,69 +229,69 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
               </div>
             )}
             {currentData.estoqueObjetivo === 0 && (
-              <div className="mt-1 text-[10px] text-muted-foreground">Meta não definida</div>
+              <div className="mt-1 text-[9px] text-muted-foreground">Meta não definida</div>
             )}
           </div>
 
           {/* Card 4: Risco Hoje */}
-          <div className={`rounded-lg border p-3 ${currentData.skusCriticosHoje > 0 ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800' : 'bg-card border-border'}`} title="SKUs em ruptura HOJE">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Flame className={`w-4 h-4 ${currentData.skusCriticosHoje > 0 ? 'text-rose-500' : 'text-muted-foreground'}`} />
-              <span className="text-xs font-medium text-muted-foreground line-clamp-1">Risco Hoje</span>
+          <div className={`rounded border px-2.5 py-2 flex flex-col justify-between ${currentData.skusCriticosHoje > 0 ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800' : 'bg-card border-border'}`} title="SKUs em ruptura HOJE">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Flame className={`w-3 h-3 ${currentData.skusCriticosHoje > 0 ? 'text-rose-500' : 'text-muted-foreground'}`} />
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">Risco Hoje</span>
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <div className={`text-2xl font-bold tabular-nums leading-none ${currentData.skusCriticosHoje > 0 ? 'text-rose-700 dark:text-rose-300' : 'text-foreground'}`}>
+            <div className="flex items-baseline gap-1.5 mt-auto">
+              <div className={`text-base font-bold tabular-nums leading-none ${currentData.skusCriticosHoje > 0 ? 'text-rose-700 dark:text-rose-300' : 'text-foreground'}`}>
                 {currentData.skusCriticosHoje}
               </div>
-              <span className="text-xs font-medium text-muted-foreground border-l pl-1.5 opacity-80">
+              <span className="text-[10px] font-medium text-muted-foreground border-l border-border/60 pl-1.5 opacity-80">
                 {calcPerc(currentData.skusCriticosHoje, totalFornecedorSkus)}%
               </span>
             </div>
           </div>
 
           {/* Card 5: Excesso na Chegada */}
-          <div className={`rounded-lg border p-3 ${currentData.skusCompradosSemNecessidade > 0 ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800' : 'bg-card border-border'}`} title="SKUs comprados sem necessidade">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Wallet className={`w-4 h-4 ${currentData.skusCompradosSemNecessidade > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
-              <span className="text-xs font-medium text-muted-foreground line-clamp-1">Excesso na Chegada</span>
+          <div className={`rounded border px-2.5 py-2 flex flex-col justify-between ${currentData.skusCompradosSemNecessidade > 0 ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800' : 'bg-card border-border'}`} title="SKUs comprados sem necessidade">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Wallet className={`w-3 h-3 ${currentData.skusCompradosSemNecessidade > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">Excesso Chegada</span>
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <div className={`text-2xl font-bold tabular-nums leading-none ${currentData.skusCompradosSemNecessidade > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}`}>
+            <div className="flex items-baseline gap-1.5 mt-auto">
+              <div className={`text-base font-bold tabular-nums leading-none ${currentData.skusCompradosSemNecessidade > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}`}>
                 {currentData.skusCompradosSemNecessidade}
               </div>
-              <span className="text-xs font-medium text-muted-foreground border-l pl-1.5 opacity-80">
+              <span className="text-[10px] font-medium text-muted-foreground border-l border-border/60 pl-1.5 opacity-80">
                 {calcPerc(currentData.skusCompradosSemNecessidade, totalFornecedorSkus)}%
               </span>
             </div>
           </div>
 
           {/* Card 6: Risco Shelf Life */}
-          <div className={`rounded-lg border p-3 ${currentData.skusShelfLifeRisk > 0 ? 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800' : 'bg-card border-border'}`} title="SKUs com risco de vencimento (cobertura > 80% shelf life)">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Hourglass className={`w-4 h-4 ${currentData.skusShelfLifeRisk > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
-              <span className="text-xs font-medium text-muted-foreground line-clamp-1">Risco Shelf Life</span>
+          <div className={`rounded border px-2.5 py-2 flex flex-col justify-between ${currentData.skusShelfLifeRisk > 0 ? 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800' : 'bg-card border-border'}`} title="SKUs com risco de vencimento (cobertura > 80% shelf life)">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Hourglass className={`w-3 h-3 ${currentData.skusShelfLifeRisk > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">Shelf Life</span>
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <div className={`text-2xl font-bold tabular-nums leading-none ${currentData.skusShelfLifeRisk > 0 ? 'text-orange-700 dark:text-orange-300' : 'text-foreground'}`}>
+            <div className="flex items-baseline gap-1.5 mt-auto">
+              <div className={`text-base font-bold tabular-nums leading-none ${currentData.skusShelfLifeRisk > 0 ? 'text-orange-700 dark:text-orange-300' : 'text-foreground'}`}>
                 {currentData.skusShelfLifeRisk}
               </div>
-              <span className="text-xs font-medium text-muted-foreground border-l pl-1.5 opacity-80">
+              <span className="text-[10px] font-medium text-muted-foreground border-l border-border/60 pl-1.5 opacity-80">
                 {calcPerc(currentData.skusShelfLifeRisk, totalFornecedorSkus)}%
               </span>
             </div>
           </div>
 
           {/* Card 7: Geral */}
-          <div className="rounded-lg border p-3 bg-muted/20 border-border" title="Informações Complementares">
-            <div className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Geral</div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Portfólio SKU</span>
-                <span className="font-medium text-foreground">{totalFornecedorSkus}</span>
+          <div className="rounded border px-2.5 py-2 bg-muted/20 border-border flex flex-col justify-between" title="Informações Complementares">
+            <div className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider font-bold">Resumo</div>
+            <div className="flex flex-col gap-1 mt-auto">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground">Portfólio:</span>
+                <span className="font-semibold text-foreground">{totalFornecedorSkus}</span>
               </div>
               {dataChegadaFormatada && activeTab === 'global' && (
-                <div className="flex flex-col text-[10px] border-t pt-1.5 mt-0.5">
-                  <span className="text-muted-foreground">Est. Chegada 1º Lote</span>
+                <div className="flex items-center justify-between text-[11px] border-t border-border/50 pt-1 mt-0.5">
+                  <span className="text-muted-foreground">Chegada:</span>
                   <span className="font-semibold text-foreground">{dataChegadaFormatada}</span>
                 </div>
               )}
@@ -300,16 +300,16 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
 
           {/* Card 8: Prazo de Pagamento */}
           {prazoPagamento != null && (
-            <div className="rounded-lg border p-3 bg-card border-border" title="Prazo de Pagamento">
-              <div className="flex items-center gap-2 mb-1.5">
-                <CalendarClock className="w-4 h-4 text-blue-500" />
-                <span className="text-xs font-medium text-muted-foreground line-clamp-1">Prazo Pgto</span>
+            <div className="rounded border px-2.5 py-2 bg-card border-border flex flex-col justify-between" title="Prazo de Pagamento">
+              <div className="flex items-center gap-1.5 mb-1">
+                <CalendarClock className="w-3 h-3 text-blue-500" />
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">Prazo Pgto</span>
               </div>
-              <div className="text-lg font-bold tabular-nums text-foreground">
+              <div className="text-sm font-bold tabular-nums text-foreground mt-auto">
                 {prazoPagamentoPadrao != null && prazoPagamento !== prazoPagamentoPadrao ? (
                   <>
-                    <span className="text-muted-foreground line-through text-sm">{prazoPagamentoPadrao}d</span>
-                    <span className="text-muted-foreground mx-1 text-sm font-normal">&raquo;</span>
+                    <span className="text-muted-foreground line-through text-xs">{prazoPagamentoPadrao}d</span>
+                    <span className="text-muted-foreground mx-1 text-xs font-normal">&raquo;</span>
                     <span className="text-blue-600 dark:text-blue-400">{prazoPagamento}d</span>
                   </>
                 ) : (
@@ -321,12 +321,12 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
 
           {/* Card 9: PME Loja */}
           {kpis.pmeLojaGlobais != null && (
-            <div className="rounded-lg border p-3 bg-card border-border" title="Prazo Médio de Estoque nas Lojas (estoque loja / demanda diária). Usado na composição do PME total.">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Building2 className="w-4 h-4 text-violet-500" />
-                <span className="text-xs font-medium text-muted-foreground line-clamp-1">PME Loja</span>
+            <div className="rounded border px-2.5 py-2 bg-card border-border flex flex-col justify-between" title="Prazo Médio de Estoque nas Lojas (estoque loja / demanda diária). Usado na composição do PME total.">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Building2 className="w-3 h-3 text-violet-500" />
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">PME Loja</span>
               </div>
-              <div className="text-lg font-bold tabular-nums text-foreground">
+              <div className="text-sm font-bold tabular-nums text-foreground mt-auto">
                 {kpis.pmeLojaGlobais}d
               </div>
             </div>
@@ -334,12 +334,12 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
 
           {/* Card 10: PMP Projetado */}
           {kpis.pmpProjetado != null && (
-            <div className="rounded-lg border p-3 bg-card border-border" title="Prazo Médio de Pagamento projetado na chegada (média ponderada: contas existentes + novo pedido)">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Truck className="w-4 h-4 text-blue-500" />
-                <span className="text-xs font-medium text-muted-foreground line-clamp-1">PMP Projetado</span>
+            <div className="rounded border px-2.5 py-2 bg-card border-border flex flex-col justify-between" title="Prazo Médio de Pagamento projetado na chegada (média ponderada: contas existentes + novo pedido)">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Truck className="w-3 h-3 text-blue-500" />
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">PMP Proj.</span>
               </div>
-              <div className="text-lg font-bold tabular-nums text-foreground">
+              <div className="text-sm font-bold tabular-nums text-foreground mt-auto">
                 {kpis.pmpProjetado}d
               </div>
             </div>
@@ -357,16 +357,16 @@ function KpiPanel({ kpis, fornecedorNome, prazoPagamentoPadrao, prazoPagamento }
               const bgColor = diff > 0 ? "bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800" : "bg-teal-50 border-teal-200 dark:bg-teal-950/30 dark:border-teal-800";
               
               return (
-                <div className={`rounded-lg border p-3 ${bgColor}`} title={`PME Total (CD ${pmeCd}d + Loja ${pmeLoja}d = ${pmeTotal}d) - PMP ${kpis.pmpProjetado != null ? 'Projetado' : 'Padrão'} (${pmp}d)`}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <CalendarClock className={`w-4 h-4 ${diff > 0 ? 'text-rose-500' : 'text-teal-500'}`} />
-                    <span className="text-xs font-medium text-muted-foreground line-clamp-1">PME <span className="mx-0.5">-</span> PMP</span>
+                <div className={`rounded border px-2.5 py-2 flex flex-col justify-between ${bgColor}`} title={`PME Total (CD ${pmeCd}d + Loja ${pmeLoja}d = ${pmeTotal}d) - PMP ${kpis.pmpProjetado != null ? 'Projetado' : 'Padrão'} (${pmp}d)`}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <CalendarClock className={`w-3 h-3 ${diff > 0 ? 'text-rose-500' : 'text-teal-500'}`} />
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">PME <span className="mx-0.5">-</span> PMP</span>
                   </div>
-                  <div className={`text-lg font-bold tabular-nums ${cicloColor}`}>
+                  <div className={`text-sm font-bold tabular-nums mt-auto ${cicloColor}`}>
                     {diff > 0 ? `+${diff}` : diff}d
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
-                    ({pmeCd}d + {pmeLoja}d) − {pmp}d
+                  <div className="text-[9px] text-muted-foreground mt-0.5">
+                    ({pmeCd} + {pmeLoja}) - {pmp}
                   </div>
                 </div>
               );
@@ -491,11 +491,11 @@ function PedidoCard({
 
       {/* Action buttons — sempre visíveis fora do detalhamento */}
       <div className="px-4 pb-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="text-xs gap-1.5 text-foreground border-border hover:bg-muted"
+            className="w-full sm:w-auto text-xs gap-1.5 text-foreground border-border hover:bg-muted"
             onClick={(e) => { e.stopPropagation(); exportPedidoParaExcel(pedido, itensOrdenados); }}
           >
             <Download className="w-3.5 h-3.5" />
@@ -504,7 +504,7 @@ function PedidoCard({
           <Button
             variant="ghost"
             size="sm"
-            className="text-xs gap-1.5 text-muted-foreground hover:bg-muted"
+            className="w-full sm:w-auto text-xs gap-1.5 text-muted-foreground hover:bg-muted"
             onClick={() => setIsExpanded(v => !v)}
           >
             <Package className="w-3.5 h-3.5" />
@@ -520,7 +520,7 @@ function PedidoCard({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 sm:flex-none text-xs gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10"
+                  className="w-full sm:w-auto text-xs gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10"
                   onClick={() => onRejeitar(pedido.id)}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -528,7 +528,7 @@ function PedidoCard({
                 </Button>
                 <Button
                   size="sm"
-                  className="flex-1 sm:flex-none text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="w-full sm:w-auto text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => onAprovar(pedido.id)}
                 >
                   <Check className="w-3.5 h-3.5" />
@@ -539,7 +539,7 @@ function PedidoCard({
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 sm:flex-none text-xs gap-1.5 text-muted-foreground border-border hover:bg-muted"
+              className="w-full sm:w-auto text-xs gap-1.5 text-muted-foreground border-border hover:bg-muted"
               onClick={() => onCancelar(pedido.id)}
             >
               <Trash2 className="w-3.5 h-3.5" />

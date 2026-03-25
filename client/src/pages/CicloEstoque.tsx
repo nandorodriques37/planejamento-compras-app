@@ -143,9 +143,26 @@ const CustomYAxisTick = (props: any) => {
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={data.evolucaoMensal} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="mes" tickFormatter={(val) => val.replace('_', '-').split('-').reverse().join('/')} />
-                      <YAxis yAxisId="left" />
+                      <defs>
+                        <linearGradient id="colorPme" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.2} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="opacity-70 dark:opacity-20" />
+                      <XAxis 
+                        dataKey="mes" 
+                        tickFormatter={(val) => val.replace('_', '-').split('-').reverse().join('/')} 
+                        tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        yAxisId="left" 
+                        tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <Tooltip
                         formatter={(value: number, name: string) => [`${value} dias`, name]}
                         labelFormatter={(label) => `Mês: ${label.toString().replace('_', '-').split('-').reverse().join('/')}`}
@@ -154,8 +171,8 @@ const CustomYAxisTick = (props: any) => {
                       <Bar 
                         yAxisId="left" 
                         dataKey="pmeMenosPmp" 
-                        name="PME - PMP (Cap. de Giro)" 
-                        fill="#3b82f6" 
+                        name="PME - PMP" 
+                        fill="url(#colorPme)" 
                         radius={[4, 4, 0, 0]}
                         barSize={32}
                       />
@@ -205,13 +222,27 @@ const CustomYAxisTick = (props: any) => {
                         data={data.rankingFornecedores}
                         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                        <XAxis type="number" tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} />
+                        <defs>
+                          <linearGradient id="colorForn" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.9} />
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.5} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" className="opacity-70 dark:opacity-20" />
+                        <XAxis 
+                          type="number" 
+                          tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} 
+                          tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
                         <YAxis 
                           type="category" 
                           dataKey="nome" 
                           width={150} 
                           tick={<CustomYAxisTick maxChars={22} />} 
+                          axisLine={false}
+                          tickLine={false}
                         />
                         <Tooltip 
                           formatter={(value: number) => [formatCurrency(value), "R$ Médio"]}
@@ -219,7 +250,7 @@ const CustomYAxisTick = (props: any) => {
                         />
                         <Bar 
                           dataKey="valorFinanceiro" 
-                          fill="#6366f1" 
+                          fill="url(#colorForn)" 
                           radius={[0, 4, 4, 0]} 
                           barSize={16}
                         />
@@ -238,13 +269,27 @@ const CustomYAxisTick = (props: any) => {
                         data={data.rankingProdutos}
                         margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                        <XAxis type="number" tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} />
+                        <defs>
+                          <linearGradient id="colorProd" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="5%" stopColor="#ec4899" stopOpacity={0.9} />
+                            <stop offset="95%" stopColor="#ec4899" stopOpacity={0.5} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" className="opacity-70 dark:opacity-20" />
+                        <XAxis 
+                          type="number" 
+                          tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} 
+                          tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
                         <YAxis 
                           type="category" 
                           dataKey="nome" 
                           width={200} 
                           tick={<CustomYAxisTick maxChars={35} />}
+                          axisLine={false}
+                          tickLine={false}
                         />
                         <Tooltip 
                           formatter={(value: number) => [formatCurrency(value), "R$ Médio"]}
@@ -252,7 +297,7 @@ const CustomYAxisTick = (props: any) => {
                         />
                         <Bar 
                           dataKey="valorFinanceiro" 
-                          fill="#ec4899" 
+                          fill="url(#colorProd)" 
                           radius={[0, 4, 4, 0]} 
                           barSize={16}
                         />

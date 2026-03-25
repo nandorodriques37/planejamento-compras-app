@@ -445,6 +445,7 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
     let countComLT = 0;
     let estoqueProjetadoFinal = 0;
     let valorLostSalesRisco = 0;
+    let valorNNA = 0;
 
     // Para o PME e PMP Hoje
     let somaPonderadaPmeHoje = 0;
@@ -481,6 +482,8 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
         if (cad.SHELF_LIFE > 0 && getShelfLifeRiskStatus(proj.meses, db.metadata.meses, cad.SHELF_LIFE)) {
             skusShelfLifeRisk++;
         }
+
+        valorNNA += (cad.NNA || 0) * (cad.CUSTO_LIQUIDO || 0);
 
         // PME Hoje Global
         const sellOutMes1 = proj.meses[firstMonth]?.SELL_OUT ?? 0;
@@ -543,7 +546,8 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
         skusShelfLifeRisk,
         pmpHojeDias,
         pmeHojeDias,
-        valorLostSalesRisco
+        valorLostSalesRisco,
+        valorNNA
     };
 }
 
@@ -745,8 +749,8 @@ export async function getCicloEstoqueData(filters: Filters): Promise<CicloEstoqu
     const fornecedoresUnicos = new Set<string>();
 
     // Caches and helpers
-    let somaPonderadaPmeLojaGlobal = 0;
-    let somaVolumesPmeGlobal = 0;
+    let estoqueTotalLojaRS = 0;
+    let sellOutDiarioLojaRS = 0;
     const firstMonth = db.metadata.meses[0];
 
     const fornecedorR$: Record<string, number> = {};
@@ -762,18 +766,14 @@ export async function getCicloEstoqueData(filters: Filters): Promise<CicloEstoqu
 
         // Apenas para PME Loja (usamos metricas iniciais da HOME)
         const sellOutMes1 = proj.meses[firstMonth]?.SELL_OUT ?? 0;
-        if (sellOutMes1 > 0) {
-           const dbFull = db as any; // Using dynamic property as it might be stored
-           // For PME Loja we'd normally need estoqueLojaMap. For now, since mockDataLake does not 
-           // have direct access to local estoques de loja, we'll use a mocked percentage or cad.EST_LOJA if available.
-           // To keep it simple, we simulate PME Loja as roughly 30% of total PME or read if pre-stored.
-           const estoqueLoja = (cad as any).ESTOQUE_LOJA ?? (cad.ESTOQUE * 0.3); 
-           const demandaDiaria = sellOutMes1 / diasNoMes(parseMesAno(firstMonth).ano, parseMesAno(firstMonth).mes);
-           if (demandaDiaria > 0) {
-              somaPonderadaPmeLojaGlobal += (estoqueLoja / demandaDiaria) * sellOutMes1;
-           }
-           somaVolumesPmeGlobal += sellOutMes1;
-        }
+        const custo = cad.CUSTO_LIQUIDO || 0;
+        
+        // Simulação do PME Loja em Reais
+        const estoqueLoja = (cad as any).ESTOQUE_LOJA ?? (cad.ESTOQUE * 0.3); 
+        estoqueTotalLojaRS += estoqueLoja * custo;
+        
+        const demandaDiaria = sellOutMes1 / diasNoMes(parseMesAno(firstMonth).ano, parseMesAno(firstMonth).mes);
+        sellOutDiarioLojaRS += demandaDiaria * custo;
 
         // 2. Rankings de Estoque Médio Projetado (R$)
         let somaEstoqueR$ = 0;
@@ -781,7 +781,7 @@ export async function getCicloEstoqueData(filters: Filters): Promise<CicloEstoqu
         mesesParaConsiderar.forEach(mes => {
             const mData = proj.meses[mes];
             if (mData) {
-                somaEstoqueR$ += Math.max(0, mData.ESTOQUE_PROJETADO) * (cad.CUSTO_LIQUIDO || 0);
+                somaEstoqueR$ += Math.max(0, mData.ESTOQUE_PROJETADO) * custo;
                 countMeses++;
             }
         });
@@ -794,18 +794,15 @@ export async function getCicloEstoqueData(filters: Filters): Promise<CicloEstoqu
         produtoR$[prodName] = (produtoR$[prodName] || 0) + medioR$;
     });
 
-    const pmeLojaFixo = somaVolumesPmeGlobal > 0 ? Math.round(somaPonderadaPmeLojaGlobal / somaVolumesPmeGlobal) : 0;
+    const pmeLojaFixo = sellOutDiarioLojaRS > 0 ? Math.round(estoqueTotalLojaRS / sellOutDiarioLojaRS) : 0;
 
     // 3. Montar a série mensal de PME CD e PMP
     const evolucaoMensal: MensalCicloItem[] = [];
 
-    const passivos = buildFluxoPassivos(db);
-
     mesesParaConsiderar.forEach((mes, index) => {
-        let somaPonderadaPmeCd = 0;
-        let somaVolumesPmeCd = 0;
+        let estoqueTotalCdRS = 0;
         let sellOutDiarioRSMes = 0;
-        let valorComprasMes = 0;
+        let passivoEstimadoMesaRS = 0;
 
         filtered.forEach(proj => {
             const cad = dbCadastroMap.get(proj.CHAVE);
@@ -814,39 +811,30 @@ export async function getCicloEstoqueData(filters: Filters): Promise<CicloEstoqu
             const d = proj.meses[mes];
             if (!d) return;
 
-            const diasRealMes = 30; // Pode-se extrair dias reais, mas para KPI global 30 serve
+            const diasRealMes = 30; // Pode-se usar dias reais, mas para KPI global 30 serve
             const sellOutMes = d.SELL_OUT;
             const estoqueCdFimMes = Math.max(0, d.ESTOQUE_PROJETADO);
             const entradaPlanejada = d.ENTRADA; // Volume que entra neste mês
+            const custo = cad.CUSTO_LIQUIDO || 0;
 
-            if (sellOutMes > 0) {
-                const demandaDiaria = sellOutMes / diasRealMes;
-                somaPonderadaPmeCd += (estoqueCdFimMes / demandaDiaria) * sellOutMes;
-                somaVolumesPmeCd += sellOutMes;
-                
-                sellOutDiarioRSMes += demandaDiaria * (cad.CUSTO_LIQUIDO || 0);
-            }
+            // PME CD: Estoque Total R$ e COGS Diário R$
+            estoqueTotalCdRS += estoqueCdFimMes * custo;
+            
+            const demandaDiaria = sellOutMes / diasRealMes;
+            sellOutDiarioRSMes += demandaDiaria * custo;
 
-            valorComprasMes += entradaPlanejada * (cad.CUSTO_LIQUIDO || 0);
+            // PMP Projetado: Calculado de forma proporcional à Entrada x Prazo de Pagamento do Fornecedor
+            // Focando exatamente nos SKUs filtrados para evitar distorções
+            const fornecedorInfo = db.fornecedores.find(f => f.nome === cad['fornecedor comercial']);
+            const prazoPagamento = fornecedorInfo?.PRAZO_PAGAMENTO || 30; 
+            
+            const valorComprasMes = entradaPlanejada * custo;
+            // Passivo gerado no mês estimado como a média da dívida gerada (compras diárias * prazo)
+            passivoEstimadoMesaRS += (valorComprasMes / diasRealMes) * prazoPagamento;
         });
 
-        // Novo Motor de PMP: Cálculo do saldo de Contas a Pagar projetado para o FIM do mês
-        const { ano: mAno, mes: mMes } = parseMesAno(mes);
-        const lastDay = diasNoMes(mAno, mMes);
-        const mesTargetEndIso = `${mes.replace('_', '-')}-${String(lastDay).padStart(2, '0')}`;
-        
-        let passivoDoMes = 0;
-        passivos.forEach(p => {
-            if (!fornecedoresUnicos.has(p.fornecedor)) return;
-            // A dívida entra no saldo do mês se foi emitida ANTES do fim do mes
-            // e vence DEPOIS do fim do mês
-            if (p.emissao <= mesTargetEndIso && p.vencimento >= mesTargetEndIso) {
-                passivoDoMes += p.valor;
-            }
-        });
-
-        const pmeCdMes = somaVolumesPmeCd > 0 ? Math.round(somaPonderadaPmeCd / somaVolumesPmeCd) : 0;
-        const pmpMes = sellOutDiarioRSMes > 0 ? Math.round(passivoDoMes / sellOutDiarioRSMes) : 0;
+        const pmeCdMes = sellOutDiarioRSMes > 0 ? Math.round(estoqueTotalCdRS / sellOutDiarioRSMes) : 0;
+        const pmpMes = sellOutDiarioRSMes > 0 ? Math.round(passivoEstimadoMesaRS / sellOutDiarioRSMes) : 0;
 
         evolucaoMensal.push({
             mes,

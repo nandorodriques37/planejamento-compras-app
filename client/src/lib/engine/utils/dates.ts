@@ -9,6 +9,22 @@ export function diasNoMes(ano: number, mes: number): number {
 }
 
 /**
+ * Calcula a quantidade de dias úteis entre dois dias do mesmo mês/ano
+ * Considera dias úteis: Segunda (1) a Sexta (5).
+ */
+export function calcularDiasUteis(ano: number, mes: number, diaInicio: number, diaFim: number): number {
+    let diasUteis = 0;
+    for (let d = diaInicio; d <= diaFim; d++) {
+        const date = new Date(Date.UTC(ano, mes - 1, d));
+        const dayOfWeek = date.getUTCDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 0=Domingo, 6=Sábado
+            diasUteis++;
+        }
+    }
+    return diasUteis;
+}
+
+/**
  * Converte string "YYYY_MM" para { ano, mes }
  */
 export function parseMesAno(mesAno: string): { ano: number; mes: number } {
@@ -75,7 +91,8 @@ export function calcularSemanasRestantes(ano: number, mes: number, diaReferencia
                 label: bloco.label,
                 inicio: inicioEfetivo,
                 fim: fimEfetivo,
-                dias
+                dias,
+                diasUteis: calcularDiasUteis(ano, mes, inicioEfetivo, fimEfetivo)
             });
         }
     }
@@ -115,120 +132,155 @@ export function calcularSemanasComLT(
 }
 
 /**
- * Distribui o pedido mensal proporcionalmente pelas semanas restantes.
- * Respeita o campo `elegivel`: semanas não-elegíveis recebem 0.
- * O último bloco elegível absorve a diferença de arredondamento.
+ * Aplica o múltiplo de embalagem (MOQ) consolidando valores nas semanas
+ * Puxando a necessidade futura para a semana atual afim de completar a caixa.
+ */
+export function aplicarMultiploEmbalagemSemanas(valores: number[], multiplo: number): number[] {
+    if (!multiplo || multiplo <= 1) return valores;
+    const resultado = [...valores];
+    
+    let acumuladorSobra = 0;
+    for (let i = 0; i < resultado.length; i++) {
+        let valorFaltante = resultado[i] - acumuladorSobra;
+        
+        if (valorFaltante <= 0) {
+            acumuladorSobra = Math.abs(valorFaltante);
+            resultado[i] = 0;
+            continue;
+        }
+        
+        const valorLote = Math.ceil(valorFaltante / multiplo) * multiplo;
+        resultado[i] = valorLote;
+        acumuladorSobra = valorLote - valorFaltante;
+    }
+    return resultado;
+}
+
+/**
+ * Distribui o pedido mensal pelas semanas restantes respeitando `elegivel`.
+ * Utiliza "Continuous Proportion Allocation" (maior precisão geométrica)
+ * Evita o risco matemático de semanas gerando valores negativos no final do mês.
  */
 export function distribuirPedidoPorSemanas(
     pedidoMensal: number,
-    semanas: SemanaInfo[]
+    semanas: SemanaInfo[],
+    multiploEmbalagem?: number,
+    pesosSazonais?: number[]
 ): number[] {
-    if (semanas.length === 0) return [];
-
-    // Somar dias apenas das semanas elegíveis (elegivel === undefined é tratado como true)
-    const diasElegiveis = semanas.reduce(
-        (acc, s) => acc + (s.elegivel === false ? 0 : s.dias), 0
-    );
-    if (diasElegiveis === 0) return semanas.map(() => 0);
-
-    // Encontrar o último índice elegível (para absorver arredondamento)
-    let lastElegivelIdx = -1;
-    for (let i = semanas.length - 1; i >= 0; i--) {
-        if (semanas[i].elegivel !== false) {
-            lastElegivelIdx = i;
-            break;
-        }
-    }
+    if (semanas.length === 0 || pedidoMensal === 0) return semanas.map(() => 0);
 
     const resultado: number[] = [];
-    let acumulado = 0;
+    let targetRestante = pedidoMensal;
+    let somaPesos = 0;
+
+    const pesosSemana = semanas.map((s, i) => {
+        if (s.elegivel === false) return 0;
+        let peso = 0;
+        if (pesosSazonais && pesosSazonais.length > i) peso = pesosSazonais[i];
+        else if (s.diasUteis !== undefined) peso = s.diasUteis;
+        else peso = s.dias;
+        somaPesos += peso;
+        return peso;
+    });
+
+    if (somaPesos === 0) return semanas.map(() => 0);
+    let pesosRestantes = somaPesos;
 
     for (let i = 0; i < semanas.length; i++) {
-        if (semanas[i].elegivel === false) {
+        const pesoVar = pesosSemana[i];
+        if (pesoVar === 0 || pesosRestantes <= 0 || targetRestante <= 0) {
             resultado.push(0);
             continue;
         }
 
-        if (i === lastElegivelIdx) {
-            // Último bloco elegível absorve a diferença de arredondamento
-            resultado.push(pedidoMensal - acumulado);
-        } else {
-            const valor = Math.round(pedidoMensal * (semanas[i].dias / diasElegiveis));
-            resultado.push(valor);
-            acumulado += valor;
+        const proporcao = pesoVar / pesosRestantes;
+        const valorExato = targetRestante * proporcao;
+        let valor = Math.round(valorExato);
+
+        if (pesosRestantes - pesoVar <= 0) { // Último bloco válido
+             valor = targetRestante;
         }
+
+        resultado.push(valor);
+        targetRestante -= valor;
+        pesosRestantes -= pesoVar;
     }
 
-    return resultado;
+    return multiploEmbalagem ? aplicarMultiploEmbalagemSemanas(resultado, multiploEmbalagem) : resultado;
 }
 
 /**
- * Distribui o pedido do mês 1 proporcionalmente por TODAS as semanas,
- * ignorando o campo `elegivel`. Todas as semanas recebem volume do mês atual.
- * O último bloco absorve a diferença de arredondamento.
+ * Distribui O pedido do mês 1 simples, proporcional, baseando-se em pesos / dias úteis.
  */
 export function distribuirPedidoSimples(
     pedidoMensal: number,
-    semanas: SemanaInfo[]
+    semanas: SemanaInfo[],
+    multiploEmbalagem?: number,
+    pesosSazonais?: number[]
 ): number[] {
-    if (semanas.length === 0) return [];
-
-    const totalDias = semanas.reduce((acc, s) => acc + s.dias, 0);
-    if (totalDias === 0) return semanas.map(() => 0);
+    if (semanas.length === 0 || pedidoMensal === 0) return semanas.map(() => 0);
 
     const resultado: number[] = [];
-    let acumulado = 0;
+    let targetRestante = pedidoMensal;
+    let somaPesos = 0;
+
+    const pesosSemana = semanas.map((s, i) => {
+        let peso = 0;
+        if (pesosSazonais && pesosSazonais.length > i) peso = pesosSazonais[i];
+        else if (s.diasUteis !== undefined) peso = s.diasUteis;
+        else peso = s.dias;
+        somaPesos += peso;
+        return peso;
+    });
+
+    if (somaPesos === 0) return semanas.map(() => 0);
+    let pesosRestantes = somaPesos;
 
     for (let i = 0; i < semanas.length; i++) {
-        if (i === semanas.length - 1) {
-            resultado.push(pedidoMensal - acumulado);
-        } else {
-            const valor = Math.round(pedidoMensal * (semanas[i].dias / totalDias));
-            resultado.push(valor);
-            acumulado += valor;
+        const pesoVar = pesosSemana[i];
+        if (pesosRestantes <= 0 || targetRestante <= 0) {
+            resultado.push(0);
+            continue;
         }
+
+        const proporcao = pesoVar / pesosRestantes;
+        const valorExato = targetRestante * proporcao;
+        let valor = Math.round(valorExato);
+
+        if (i === semanas.length - 1 || pesosRestantes - pesoVar <= 0) {
+             valor = targetRestante;
+        }
+
+        resultado.push(valor);
+        targetRestante -= valor;
+        pesosRestantes -= pesoVar;
     }
 
-    return resultado;
+    return multiploEmbalagem ? aplicarMultiploEmbalagemSemanas(resultado, multiploEmbalagem) : resultado;
 }
 
 /**
- * Distribui pedidos por semanas com antecipação de meses futuros.
+ * Distribui pedidos por semanas com retorno tipado do Mês Origem.
  */
 export function distribuirPedidoMultiMes(
     mesAtual: string,
     pedidoPorMes: Record<string, number>,
-    semanas: SemanaInfo[]
+    semanas: SemanaInfo[],
+    multiploEmbalagem?: number,
+    pesosSazonais?: number[]
 ): WeekDistribution[] {
     if (semanas.length === 0) return [];
-
-    const result: WeekDistribution[] = new Array(semanas.length);
     const pedido = pedidoPorMes[mesAtual] || 0;
-    const totalDias = semanas.reduce((acc, sem) => acc + sem.dias, 0);
-
-    if (totalDias === 0) {
-        semanas.forEach((_, i) => {
-            result[i] = { valor: 0, mesOrigem: mesAtual, isCurrentMonth: true };
-        });
-        return result;
+    
+    if (pedido === 0) {
+         return semanas.map(() => ({ valor: 0, mesOrigem: mesAtual, isCurrentMonth: true }));
     }
 
-    let acumulado = 0;
-    const lastIdx = semanas.length - 1;
+    const distribuicaoBase = distribuirPedidoSimples(pedido, semanas, multiploEmbalagem, pesosSazonais);
 
-    semanas.forEach((sem, i) => {
-        if (i === lastIdx) {
-            result[i] = {
-                valor: pedido - acumulado,
-                mesOrigem: mesAtual,
-                isCurrentMonth: true
-            };
-        } else {
-            const valor = Math.round(pedido * (sem.dias / totalDias));
-            acumulado += valor;
-            result[i] = { valor, mesOrigem: mesAtual, isCurrentMonth: true };
-        }
-    });
-
-    return result;
+    return distribuicaoBase.map(valor => ({
+        valor,
+        mesOrigem: mesAtual,
+        isCurrentMonth: true
+    }));
 }

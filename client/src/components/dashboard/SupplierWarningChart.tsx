@@ -73,31 +73,41 @@ export default function SupplierWarningChart({ data, onBarClick }: SupplierWarni
         onClick={handleBarClick}
         style={{ cursor: onBarClick ? 'pointer' : 'default' }}
       >
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} className="opacity-30" />
+        <defs>
+          <linearGradient id="colorWarning" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.9} />
+            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.4} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" className="opacity-70 dark:opacity-20" />
         <XAxis
           type="number"
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+          axisLine={false}
+          tickLine={false}
           allowDecimals={false}
         />
         <YAxis
           dataKey="fornecedorLabel"
           type="category"
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+          axisLine={false}
+          tickLine={false}
           width={80}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'oklch(0.5 0 0 / 0.08)' }} />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(226, 232, 240, 0.4)' }} />
         <Legend
           verticalAlign="top"
           height={36}
           formatter={(value: string) => (
-            <span className="text-xs text-foreground">{value}</span>
+            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{value}</span>
           )}
         />
         <Bar
           dataKey="skusAtenção"
           name="Ponto de Pedido (Atenção)"
-          fill="oklch(0.769 0.188 70.08)"
-          radius={[4, 4, 0, 0]}
+          fill="url(#colorWarning)"
+          radius={[0, 4, 4, 0]}
         />
       </BarChart>
     </ResponsiveContainer>

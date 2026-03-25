@@ -94,39 +94,53 @@ export default function SupplierCriticalChart({ data, onBarClick }: SupplierCrit
         onClick={handleBarClick}
         style={{ cursor: onBarClick ? 'pointer' : 'default' }}
       >
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} className="opacity-30" />
+        <defs>
+          <linearGradient id="colorRup" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.9} />
+            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.4} />
+          </linearGradient>
+          <linearGradient id="colorCrit" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="5%" stopColor="oklch(0.60 0.2 70)" stopOpacity={0.9} />
+            <stop offset="95%" stopColor="oklch(0.60 0.2 70)" stopOpacity={0.4} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" className="opacity-70 dark:opacity-20" />
         <XAxis
           type="number"
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+          axisLine={false}
+          tickLine={false}
           allowDecimals={false}
         />
         <YAxis
           dataKey="fornecedorLabel"
           type="category"
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+          axisLine={false}
+          tickLine={false}
           width={80}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'oklch(0.5 0 0 / 0.08)' }} />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(226, 232, 240, 0.4)' }} />
         <Legend
           verticalAlign="top"
           height={36}
           formatter={(value: string) => (
-            <span className="text-xs text-foreground">{value}</span>
+            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{value}</span>
           )}
         />
         <Bar
           dataKey="skusRupturaTotal"
           name="Ruptura Total"
           stackId="critical"
-          fill="oklch(0.637 0.237 25.331)"
+          fill="url(#colorRup)"
           radius={[0, 0, 0, 0]}
         />
         <Bar
           dataKey="skusRiscoCritico"
           name="Risco Crítico"
           stackId="critical"
-          fill="oklch(0.60 0.2 70)"
-          radius={[4, 4, 0, 0]}
+          fill="url(#colorCrit)"
+          radius={[0, 4, 4, 0]}
         />
       </BarChart>
     </ResponsiveContainer>

@@ -96,7 +96,7 @@ export function calcularCoberturaPorData(
             const pedidoNormalMes = projecaoNormal[mesKey]?.PEDIDO || 0;
 
             const semanasMes = calcularSemanasRestantes(ano, mes, 1);
-            const weekValues = distribuirPedidoSimples(pedidoNormalMes, semanasMes);
+            const weekValues = distribuirPedidoSimples(pedidoNormalMes, semanasMes, cadastro.MULTIPLO_EMBALAGEM);
 
             let diasAntecipadosNoMes = 0;
             let valorAntecipadoNoMes = 0;

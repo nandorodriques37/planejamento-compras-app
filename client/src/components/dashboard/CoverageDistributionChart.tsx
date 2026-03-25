@@ -3,6 +3,7 @@ import {
   Bar,
   XAxis,
   YAxis,
+  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Cell,
@@ -51,17 +52,33 @@ export default function CoverageDistributionChart({ data, onBarClick }: Coverage
           onClick={handleBarClick}
           style={{ cursor: onBarClick ? 'pointer' : 'default' }}
         >
-          <XAxis type="number" tick={{ fontSize: 11 }} />
+          <defs>
+            {data.map((item, i) => (
+              <linearGradient key={`grad-${i}`} id={`colorCov-${i}`} x1="0" y1="0" x2="1" y2="0">
+                <stop offset="5%" stopColor={item.color} stopOpacity={0.9} />
+                <stop offset="95%" stopColor={item.color} stopOpacity={0.4} />
+              </linearGradient>
+            ))}
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" className="opacity-70 dark:opacity-20" />
+          <XAxis 
+            type="number" 
+            tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }} 
+            axisLine={false} 
+            tickLine={false} 
+          />
           <YAxis
             type="category"
             dataKey="label"
-            tick={{ fontSize: 11 }}
+            tick={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }}
+            axisLine={false}
+            tickLine={false}
             width={72}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'oklch(0.5 0 0 / 0.08)' }} />
-          <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={28}>
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(226, 232, 240, 0.4)' }} />
+          <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={26}>
             {data.map((entry, index) => (
-              <Cell key={index} fill={entry.color} />
+              <Cell key={index} fill={`url(#colorCov-${index})`} />
             ))}
           </Bar>
         </BarChart>

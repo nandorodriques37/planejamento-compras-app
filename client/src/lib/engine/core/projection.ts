@@ -69,13 +69,20 @@ export function getShelfLifeRiskStatus(
 /**
  * Calcula o índice do mês de chegada baseado na data real do pedido.
  * Utiliza estritamente funções UTC para manter a consistência de fusos.
+ * OTIMIZADO: Memoization level cache para evitar criação exaustiva de objetos Date
  */
+const cacheIndiceMes = new Map<string, number>();
+
 export function calcularIndiceMesChegada(
     indiceMesPedido: number,
     ltDias: number,
     meses: string[],
     dataReferencia?: string
 ): number {
+    const cacheKey = `${indiceMesPedido}_${ltDias}_${meses[0] || 'empty'}_${dataReferencia || 'none'}`;
+    const cached = cacheIndiceMes.get(cacheKey);
+    if (cached !== undefined) return cached;
+
     const mesPedido = parseMesAno(meses[indiceMesPedido]);
 
     let dataPedido: Date;
@@ -97,9 +104,12 @@ export function calcularIndiceMesChegada(
     const indiceChegada = meses.indexOf(mesChegadaKey);
 
     if (indiceChegada === -1) {
-        return Math.min(indiceMesPedido + Math.ceil(ltDias / 30), meses.length - 1);
+        const fallBackIdx = Math.min(indiceMesPedido + Math.ceil(ltDias / 30), meses.length - 1);
+        cacheIndiceMes.set(cacheKey, fallBackIdx);
+        return fallBackIdx;
     }
 
+    cacheIndiceMes.set(cacheKey, indiceChegada);
     return indiceChegada;
 }
 

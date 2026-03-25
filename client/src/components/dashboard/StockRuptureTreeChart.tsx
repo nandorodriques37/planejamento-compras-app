@@ -26,9 +26,10 @@ function CustomTreemapContent(props: any) {
         width={width}
         height={height}
         fill={color}
-        rx={4}
-        stroke="var(--background, #fff)"
-        strokeWidth={2}
+        fillOpacity={0.85}
+        rx={3}
+        stroke="var(--background, #ffffff)"
+        strokeWidth={1.5}
       />
       {width > 60 && height > 35 && (
         <>
