@@ -18,6 +18,36 @@ export function hasShelfLifeRisk(
 }
 
 /**
+ * Calcula a perda financeira (Lost Sales) se a cobertura de estoque 
+ * não for suficiente para cobrir os dias de Lead Time do fornecedor.
+ */
+export function calcularLostSalesSKU(
+    estoqueAtual: number,
+    demandaDiariaM1: number,
+    lt: number,
+    custoLiquido: number
+): { unidadesPerdidas: number; valorPerdido: number; diasRuptura: number } {
+    if (lt <= 0 || demandaDiariaM1 <= 0) return { unidadesPerdidas: 0, valorPerdido: 0, diasRuptura: 0 };
+    
+    const estoqueEfetivo = Math.max(0, estoqueAtual);
+    const coberturaDias = estoqueEfetivo / demandaDiariaM1;
+    
+    if (coberturaDias >= lt) {
+        return { unidadesPerdidas: 0, valorPerdido: 0, diasRuptura: 0 };
+    }
+    
+    const diasRuptura = lt - coberturaDias;
+    const unidadesPerdidas = diasRuptura * demandaDiariaM1;
+    const valorPerdido = unidadesPerdidas * custoLiquido;
+    
+    return {
+        unidadesPerdidas: Math.round(unidadesPerdidas),
+        valorPerdido,
+        diasRuptura: Math.round(diasRuptura)
+    };
+}
+
+/**
  * Verifica se qualquer mês da projeção tem risco de shelf life.
  */
 export function getShelfLifeRiskStatus(

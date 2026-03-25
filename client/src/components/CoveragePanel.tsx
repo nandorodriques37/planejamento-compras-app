@@ -135,6 +135,16 @@ export default function CoveragePanel({
   const totalPedidoNormal = useMemo(() => resultadosComPedido.reduce((acc, r) => acc + r.pedidoNormalMes1, 0), [resultadosComPedido]);
   const totalAntecipado = useMemo(() => resultadosComPedido.reduce((acc, r) => acc + r.totalAntecipado, 0), [resultadosComPedido]);
 
+  const LIMIT_M3 = 50; // Teto Logístico de Exemplo (Hardcoded temporário)
+  const volumeTotalM3 = useMemo(() => {
+    return resultadosComPedido.reduce((acc, r) => {
+      const cad = cadastros.find(c => c.CHAVE === r.chave);
+      if (!cad) return acc;
+      const volUnit = ((cad.COMPRIMENTO || 0) * (cad.ALTURA || 0) * (cad.LARGURA || 0)) / 1000000;
+      return acc + (volUnit * r.pedidoCoberturaArredondado);
+    }, 0);
+  }, [resultadosComPedido, cadastros]);
+
   // Melhoria 3: Contagem AGREGADA de meses zerados e parciais (todos os SKUs)
   const { totalMesesZerados, totalMesesParciais } = useMemo(() => {
     let zerados = 0;
@@ -283,6 +293,16 @@ export default function CoveragePanel({
               </div>
             )}
 
+            {/* Restrição Logística */}
+            {volumeTotalM3 > LIMIT_M3 && (
+              <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-2.5 flex gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-[10px] text-red-700 dark:text-red-300 leading-relaxed">
+                  <strong>Sobrecarga Logística:</strong> O volume total estimado é de <strong>{volumeTotalM3.toFixed(2)} m³</strong>, excedendo a capacidade de segurança recomendada nesta doca (<strong>{LIMIT_M3} m³</strong>). Avalie a quebra dos despachos.
+                </p>
+              </div>
+            )}
+
             {/* Data de referência + Date picker */}
             <div className="flex items-end gap-3">
               <div className="flex-1">
@@ -342,23 +362,25 @@ export default function CoveragePanel({
                 </span>
               </div>
 
-              {/* Melhoria 3: Contagem agregada */}
-              <div className="grid grid-cols-3 gap-x-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">SKUs:</span>
-                  <span className="text-xs font-semibold text-foreground">{resultadosComPedido.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">Meses zerados:</span>
-                  <span className="text-xs font-semibold text-destructive">
-                    {totalMesesZerados}
+              {/* Melhoria 3: Contagem agregada e Capacidade Logística */}
+              <div className="grid grid-cols-2 gap-y-2 gap-x-2 mt-2">
+                <div className="flex items-center justify-between bg-white dark:bg-black/20 px-2 py-1 rounded">
+                  <span className="text-[10px] text-muted-foreground font-medium">Cubagem:</span>
+                  <span className={`text-xs font-bold font-mono ${volumeTotalM3 > LIMIT_M3 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    {volumeTotalM3.toFixed(2)} m³
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">Mês parcial:</span>
-                  <span className="text-xs font-semibold text-amber-600">
-                    {totalMesesParciais}
-                  </span>
+                <div className="flex items-center justify-between bg-white dark:bg-black/20 px-2 py-1 rounded">
+                  <span className="text-[10px] text-muted-foreground font-medium">SKUs alvo:</span>
+                  <span className="text-xs font-semibold text-foreground font-mono">{resultadosComPedido.length}</span>
+                </div>
+                <div className="flex items-center justify-between bg-white dark:bg-black/20 px-2 py-1 rounded">
+                  <span className="text-[10px] text-muted-foreground font-medium">Meses Zeros:</span>
+                  <span className="text-xs font-semibold text-destructive font-mono">{totalMesesZerados}</span>
+                </div>
+                <div className="flex items-center justify-between bg-white dark:bg-black/20 px-2 py-1 rounded">
+                  <span className="text-[10px] text-muted-foreground font-medium">Mês parcial:</span>
+                  <span className="text-xs font-semibold text-amber-600 font-mono">{totalMesesParciais}</span>
                 </div>
               </div>
             </div>

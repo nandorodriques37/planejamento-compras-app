@@ -1,11 +1,16 @@
 import type { PaginatedRequest, PaginatedResponse, Filters, HomeKPIs, CDSummary, AugmentedSKU, CicloEstoqueData, MensalCicloItem, RankItem, MetadataResponse, FilterOptionsResponse, ProjectionsResponse, DatabaseOverviewResponse, DashboardSKUDetail, DashboardSupplierAgg, CDMapEntry, CDMonthData, WarehouseCapacityData } from './types';
 import type { DadosCompletos } from '../engine/types';
 import { obterProjecaoInicial } from '../dataAdapter';
-import { getStatusSKU, getShelfLifeRiskStatus, formatMes, parseMesAno, diasNoMes } from '../calculationEngine';
+import { getStatusSKU, getShelfLifeRiskStatus, formatMes, parseMesAno, diasNoMes, calcularLostSalesSKU } from '../calculationEngine';
 
 // "Database" state
 let dbDados: DadosCompletos | null = null;
 let dbCadastroMap: Map<string, import('../engine/types').SKUCadastro> = new Map();
+
+export function invalidateDataLakeCache() {
+    dbDados = null;
+    dbCadastroMap.clear();
+}
 
 /**
  * Initializes our mock database
@@ -15,6 +20,85 @@ async function getDB(): Promise<DadosCompletos> {
     dbDados = await obterProjecaoInicial();
     dbCadastroMap = new Map(dbDados.cadastro.map(c => [c.CHAVE, c]));
     return dbDados;
+}
+
+export interface PassivoItem {
+    fornecedor: string;
+    valor: number;
+    emissao: string;
+    vencimento: string; // YYYY-MM-DD
+    origem: 'contas_a_pagar' | 'pedidos_pendentes' | 'pedidos_projetados';
+}
+
+export function buildFluxoPassivos(db: DadosCompletos): PassivoItem[] {
+    const passivos: PassivoItem[] = [];
+    const prazosForn = new Map<string, number>();
+    (db.fornecedores || []).forEach(f => {
+        prazosForn.set(f.nome, f.PRAZO_PAGAMENTO || 0);
+    });
+
+    const cadastroMap = new Map();
+    (db.cadastro).forEach(c => cadastroMap.set(c.CHAVE, c));
+
+    (db.contas_a_pagar || []).forEach(conta => {
+        const d = new Date(conta.data_vencimento + "T00:00:00");
+        d.setDate(d.getDate() - 30); // Estimativa de emissão 30 dias atrás
+        passivos.push({
+            fornecedor: conta.nome_fornecedor,
+            valor: conta.valor_nota,
+            emissao: d.toISOString().split('T')[0],
+            vencimento: conta.data_vencimento,
+            origem: 'contas_a_pagar'
+        });
+    });
+
+    // 2. Pedidos Pendentes (Não Faturados)
+    (db.pedidos_pendentes || []).forEach(p => {
+        if (p.status_faturamento === 'faturado') return;
+        
+        const cad = cadastroMap.get(p.chave);
+        if (!cad) return;
+        const prazoForn = prazosForn.get(cad['fornecedor comercial']) || 0;
+        
+        const baseDate = p.data_pedido || p.data_chegada_prevista || new Date().toISOString().split('T')[0];
+        const diasAdicionais = (p.tempo_faturamento || 0) + prazoForn;
+        
+        const d = new Date(baseDate + "T00:00:00");
+        d.setDate(d.getDate() + diasAdicionais);
+        const vencimento = d.toISOString().split('T')[0];
+        
+        passivos.push({
+            fornecedor: cad['fornecedor comercial'],
+            valor: p.quantidade * (cad.CUSTO_LIQUIDO || 0),
+            emissao: p.data_chegada_prevista || baseDate,
+            vencimento,
+            origem: 'pedidos_pendentes'
+        });
+    });
+
+    // 3. Pedidos Projetados
+    (db.pedidos_projetados || []).forEach(p => {
+        const cad = cadastroMap.get(p.chave);
+        if (!cad) return;
+        const prazoForn = prazosForn.get(cad['fornecedor comercial']) || 0;
+        
+        const baseDate = p.data_pedido || p.data_chegada_prevista || new Date().toISOString().split('T')[0];
+        const diasAdicionais = (p.tempo_faturamento || 0) + prazoForn;
+        
+        const d = new Date(baseDate + "T00:00:00");
+        d.setDate(d.getDate() + diasAdicionais);
+        const vencimento = d.toISOString().split('T')[0];
+        
+        passivos.push({
+            fornecedor: cad['fornecedor comercial'],
+            valor: p.quantidade * (cad.CUSTO_LIQUIDO || 0),
+            emissao: p.data_chegada_prevista || baseDate,
+            vencimento,
+            origem: 'pedidos_projetados'
+        });
+    });
+
+    return passivos;
 }
 
 // Utility: Simulate Network Delay
@@ -360,6 +444,7 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
     let somaLt = 0;
     let countComLT = 0;
     let estoqueProjetadoFinal = 0;
+    let valorLostSalesRisco = 0;
 
     // Para o PME e PMP Hoje
     let somaPonderadaPmeHoje = 0;
@@ -405,17 +490,22 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
             somaPonderadaPmeHoje += cobHoje * sellOutMes1;
             somaVolumesPmeHoje += sellOutMes1;
         }
+
+        if (cad.LT > 0 && sellOutMes1 > 0) {
+            const demandaDiaria = sellOutMes1 / diasMesAtual;
+            const { valorPerdido } = calcularLostSalesSKU(cad.ESTOQUE, demandaDiaria, cad.LT, cad.CUSTO_LIQUIDO || 0);
+            valorLostSalesRisco += valorPerdido;
+        }
     });
 
-    // ── Cálculo do PMP Hoje ────────────────────────────────────────────────
-    // 1. Total a Pagar (R$): Notas Fiscais a Vencer (apenas fornecedores de produtos mostrados)
+    // 1. Total a Pagar (R$): Novo Motor PMP (Contas + Pedidos em transito + Projetados)
     let somaLivreAPagar = 0;
-    if (db.contas_a_pagar) {
-        db.contas_a_pagar.forEach(conta => {
-            if (!fornecedoresUnicos.has(conta.nome_fornecedor)) return;
-            somaLivreAPagar += conta.valor_nota;
-        });
-    }
+    const fluxoGlobal = buildFluxoPassivos(db);
+    fluxoGlobal.forEach(p => {
+        if (p.origem !== 'pedidos_projetados' && fornecedoresUnicos.has(p.fornecedor)) {
+            somaLivreAPagar += p.valor;
+        }
+    });
 
     // 2. Sell Out Diário Global (R$/dia) dos fornecedores atuais
     let sellOutDiarioRSGlobal = 0;
@@ -452,7 +542,8 @@ export async function getHomeKPIs(filters: Filters): Promise<HomeKPIs> {
         countComLT,
         skusShelfLifeRisk,
         pmpHojeDias,
-        pmeHojeDias
+        pmeHojeDias,
+        valorLostSalesRisco
     };
 }
 
@@ -708,17 +799,7 @@ export async function getCicloEstoqueData(filters: Filters): Promise<CicloEstoqu
     // 3. Montar a série mensal de PME CD e PMP
     const evolucaoMensal: MensalCicloItem[] = [];
 
-    // Primeiro mapeamos as faturas originais ativas
-    let faturasAberto = 0;
-    if (db.contas_a_pagar) {
-        db.contas_a_pagar.forEach(conta => {
-            if (fornecedoresUnicos.has(conta.nome_fornecedor)) {
-                faturasAberto += conta.valor_nota;
-            }
-        });
-    }
-
-    let accumulatedFaturas = faturasAberto;
+    const passivos = buildFluxoPassivos(db);
 
     mesesParaConsiderar.forEach((mes, index) => {
         let somaPonderadaPmeCd = 0;
@@ -749,24 +830,20 @@ export async function getCicloEstoqueData(filters: Filters): Promise<CicloEstoqu
             valorComprasMes += entradaPlanejada * (cad.CUSTO_LIQUIDO || 0);
         });
 
-        // Simulador muito simplificado do Passivo e Pagamentos ao longo do tempo:
-        // Supomos que a divida cai em X% de pagamentos efetuados e aumenta com novas compras
-        // PMP(t) = (Passivo Anterior - Pagamentos + Compras do Mês) / Demanda Diária
-        // Já que é um simulador frontend e não temos cronogramas de faturas futuros:
+        // Novo Motor de PMP: Cálculo do saldo de Contas a Pagar projetado para o FIM do mês
+        const { ano: mAno, mes: mMes } = parseMesAno(mes);
+        const lastDay = diasNoMes(mAno, mMes);
+        const mesTargetEndIso = `${mes.replace('_', '-')}-${String(lastDay).padStart(2, '0')}`;
         
-        // Simulação: Parte das faturas em aberto é paga no mês e o novo pedido entra no passivo
-        // A regra mais prática para não explodir infinitamente o PMP é usar a mesma regra da tela Home para simular o passivo
-        // Se as compras forem equivalentes a demanda, o pmp tende ao prazo médio geral (ex 30d ~ 60d)
-        // Se as faturas somam X e eu vendo D, PMP = X/D.
-        
-        let passivoDoMes = accumulatedFaturas;
-        if (index > 0) {
-            // Se estamos projetando mês a frente, abstração simples: 
-            // O montante do passivo tende ao montante recém comprado + uma sobra. 
-            // Aqui assumimos que metade do passivo anterior foi pago e novas entradas são assumidas a 60 dias (2 meses).
-            accumulatedFaturas = (accumulatedFaturas * 0.5) + valorComprasMes;
-            passivoDoMes = accumulatedFaturas;
-        }
+        let passivoDoMes = 0;
+        passivos.forEach(p => {
+            if (!fornecedoresUnicos.has(p.fornecedor)) return;
+            // A dívida entra no saldo do mês se foi emitida ANTES do fim do mes
+            // e vence DEPOIS do fim do mês
+            if (p.emissao <= mesTargetEndIso && p.vencimento >= mesTargetEndIso) {
+                passivoDoMes += p.valor;
+            }
+        });
 
         const pmeCdMes = somaVolumesPmeCd > 0 ? Math.round(somaPonderadaPmeCd / somaVolumesPmeCd) : 0;
         const pmpMes = sellOutDiarioRSMes > 0 ? Math.round(passivoDoMes / sellOutDiarioRSMes) : 0;

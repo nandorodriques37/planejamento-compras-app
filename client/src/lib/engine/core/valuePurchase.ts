@@ -94,31 +94,51 @@ export function calcularAntecipacaoPorValor(
         for (let i = 1; i < meses.length && gap > 0; i++) {
             const mesFuturo = meses[i];
             
-            // Qual é o valor total de pedidos normais disponíveis para puxar neste mês para todos os SKUs?
-            let valorDisponivelNoMes = 0;
-            const pedidosParaPuxar = new Map<string, { qtd: number, custo: number }>();
+            // Extrair todos os pedidos normais deste mês futuro
+            const pedidosKvp: Array<{ chave: string; qtd: number; custo: number; cad: SKUCadastro }> = [];
 
             for (const { cad } of skusDisponiveis) {
                 const projNormal = projecoesNormais.get(cad.CHAVE)!;
                 const pedidoMes = projNormal[mesFuturo]?.PEDIDO || 0;
                 if (pedidoMes > 0) {
                     const custo = cad.CUSTO_LIQUIDO || 0;
-                    valorDisponivelNoMes += (pedidoMes * custo);
-                    pedidosParaPuxar.set(cad.CHAVE, { qtd: pedidoMes, custo });
+                    pedidosKvp.push({ chave: cad.CHAVE, qtd: pedidoMes, custo, cad });
                 }
             }
 
-            if (valorDisponivelNoMes === 0) continue;
+            if (pedidosKvp.length === 0) continue;
+
+            // NOVA LÓGICA: S&OP Ranked Priority (Algoritmo Guloso)
+            // Prioriza puxar primeiro os itens Críticos (Monitorados), depois Marcas Exclusivas, depois por Impacto.
+            pedidosKvp.sort((a, b) => {
+                const aMon = a.cad['Monitorados'] === 'S' ? 1 : 0;
+                const bMon = b.cad['Monitorados'] === 'S' ? 1 : 0;
+                if (aMon !== bMon) return bMon - aMon;
+
+                const aExc = a.cad['Marcas Exclusivas'] === 'S' ? 1 : 0;
+                const bExc = b.cad['Marcas Exclusivas'] === 'S' ? 1 : 0;
+                if (aExc !== bExc) return bExc - aExc;
+
+                const aImp = a.cad.IMPACTO || 0;
+                const bImp = b.cad.IMPACTO || 0;
+                if (aImp !== bImp) return bImp - aImp;
+
+                return b.custo - a.custo;
+            });
 
             const { ano, mes: mesNum } = parseMesAno(mesFuturo);
             const diasNoMesFuturo = diasNoMes(ano, mesNum);
 
-            if (valorDisponivelNoMes <= gap) {
-                // Puxamos 100% de todos os SKUs para o Mês 1
-                for (const [chave, info] of pedidosParaPuxar.entries()) {
-                    const state = rateios.get(chave)!;
+            for (const info of pedidosKvp) {
+                if (gap <= 0) break; // Orçamento acabou totalmente
+
+                const valorTotalSKU = info.qtd * info.custo;
+                const state = rateios.get(info.chave)!;
+
+                if (valorTotalSKU <= gap) {
+                    // Tem dinheiro pra antecipar 100% do pedido deste SKU
                     state.totalQtdAntecipado += info.qtd;
-                    state.valorAtingido += (info.qtd * info.custo);
+                    state.valorAtingido += valorTotalSKU;
                     
                     state.meses.push({
                         mes: mesFuturo,
@@ -131,20 +151,15 @@ export function calcularAntecipacaoPorValor(
                     });
                     
                     state.prevs.push({ mes: mesFuturo, valorOriginal: info.qtd, valorAjustado: 0 });
-                }
-                gap -= valorDisponivelNoMes;
-            } else {
-                // Precisamos puxar apenas uma fração.
-                // Proporcionaliza o corte para não estourar o orçamento exato!
-                const fracao = gap / valorDisponivelNoMes;
-                
-                for (const [chave, info] of pedidosParaPuxar.entries()) {
-                    const state = rateios.get(chave)!;
+                    gap -= valorTotalSKU;
+                } else {
+                    // O gap só permite antecipar uma fração DESTE SKU específico
+                    const fracao = gap / valorTotalSKU;
                     const qtdAPuxar = info.qtd * fracao;
                     const mantido = info.qtd - qtdAPuxar;
                     
                     state.totalQtdAntecipado += qtdAPuxar;
-                    state.valorAtingido += (qtdAPuxar * info.custo);
+                    state.valorAtingido += gap; // Usou o restinho exato do dinheiro
                     
                     state.meses.push({
                         mes: mesFuturo,
@@ -157,9 +172,8 @@ export function calcularAntecipacaoPorValor(
                     });
                     
                     state.prevs.push({ mes: mesFuturo, valorOriginal: info.qtd, valorAjustado: mantido });
+                    gap = 0; // Finaliza o orçamento
                 }
-                // O gap está matematicamente coberto (ignorando arredondamentos de embalagem que faremos a seguir)
-                gap = 0; 
             }
         }
     }

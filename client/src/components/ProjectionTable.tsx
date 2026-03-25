@@ -13,7 +13,7 @@ import { AlertTriangle, AlertCircle, CheckCircle2, Pencil, BarChart3, ArrowUpDow
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from './ui/empty';
 import { Checkbox } from './ui/checkbox';
 import type { ProjecaoSKU, SKUCadastro, SemanaInfo, WeekDistribution } from '../lib/calculationEngine';
-import { formatNumber, formatMes, getStatusSKU, hasShelfLifeRisk, getShelfLifeRiskStatus, calcularSemanasRestantes, calcularSemanasComLT, distribuirPedidoMultiMes, parseMesAno, diasNoMes } from '../lib/calculationEngine';
+import { formatNumber, formatCurrency, formatMes, getStatusSKU, hasShelfLifeRisk, getShelfLifeRiskStatus, calcularSemanasRestantes, calcularSemanasComLT, distribuirPedidoMultiMes, parseMesAno, diasNoMes, calcularLostSalesSKU } from '../lib/calculationEngine';
 
 interface ProjectionTableProps {
   projecoes: ProjecaoSKU[];
@@ -34,7 +34,7 @@ interface ProjectionTableProps {
   onToggleWeek: (weekIdx: number) => void;
 }
 
-type SortField = 'status' | 'produto' | 'cd' | 'lt' | 'estoque' | 'cob_est' | 'cob_ep' | 'pendencia' | 'nna' | 'impacto' | 'preenchimento' | 'obj_dias' | 'cobertura_m1' | null;
+type SortField = 'status' | 'produto' | 'cd' | 'lt' | 'estoque' | 'cob_est' | 'cob_ep' | 'pendencia' | 'aprovacao' | 'nna' | 'impacto' | 'preenchimento' | 'obj_dias' | 'cobertura_m1' | null;
 type SortDirection = 'asc' | 'desc';
 
 function StatusBadge({ status }: { status: 'ok' | 'warning' | 'critical' }) {
@@ -460,6 +460,10 @@ export default function ProjectionTable({
           valA = cadA.PENDENCIA || 0;
           valB = cadB.PENDENCIA || 0;
           break;
+        case 'aprovacao':
+          valA = cadA.QTD_EM_APROVACAO || 0;
+          valB = cadB.QTD_EM_APROVACAO || 0;
+          break;
         case 'nna':
           valA = cadA.NNA || 0;
           valB = cadB.NNA || 0;
@@ -526,12 +530,13 @@ export default function ProjectionTable({
 
   // Totals — optimized with cadastroMap
   const totals = useMemo(() => {
-    let totalEstoque = 0, totalPendencia = 0, totalNNA = 0, totalImpacto = 0, totalPreench = 0;
+    let totalEstoque = 0, totalPendencia = 0, totalAprovacao = 0, totalNNA = 0, totalImpacto = 0, totalPreench = 0;
     projecoes.forEach(proj => {
       const cad = cadastroMap.get(proj.CHAVE);
       if (cad) {
         totalEstoque += cad.ESTOQUE || 0;
         totalPendencia += cad.PENDENCIA || 0;
+        totalAprovacao += cad.QTD_EM_APROVACAO || 0;
         totalNNA += cad.NNA || 0;
         totalImpacto += cad.IMPACTO || 0;
         totalPreench += cad.PREECHIMENTO_DEMANDA_LOJA || 0;
@@ -554,7 +559,7 @@ export default function ProjectionTable({
       porMes[mes] = { sellOut, pedido, entrada, estProj, estObj };
     });
 
-    return { totalEstoque, totalPendencia, totalNNA, totalImpacto, totalPreench, porMes };
+    return { totalEstoque, totalPendencia, totalAprovacao, totalNNA, totalImpacto, totalPreench, porMes };
   }, [projecoes, cadastroMap, meses]);
 
   // Totais semanais: soma dos valores semanais individuais de cada SKU (respeita LT por SKU)
@@ -591,7 +596,7 @@ export default function ProjectionTable({
   const mesWidth = colWidth * 6; // Normal month: 6 columns
   // Mês 1 com semanas: 5 colunas normais + N colunas semanais (em vez de 1 Pedido)
   const mesWidthMes1 = temSemanas ? colWidth * (5 + numSemanas) : mesWidth;
-  const extraInfoWidth = 520;
+  const extraInfoWidth = 590;
   const fixedWidth = 28 + 130 + produtoWidth + 42;
   // Total scrollable width: extra info + month 1 (possibly wider) + remaining months
   const totalScrollWidth = extraInfoWidth + mesWidthMes1 + (meses.length > 1 ? (meses.length - 1) * mesWidth : 0);
@@ -608,6 +613,20 @@ export default function ProjectionTable({
     const isCritical = status === 'critical';
     const temRiscoShelfLife = cad.SHELF_LIFE > 0 && getShelfLifeRiskStatus(proj.meses, allMeses, cad.SHELF_LIFE);
 
+    let lostSalesText = '';
+    if (isCritical && cad.LT > 0) {
+      const mes1Data = proj.meses[meses[0]];
+      if (mes1Data && mes1Data.SELL_OUT > 0) {
+        const { ano: anoM1Tbl, mes: mesM1Tbl } = parseMesAno(meses[0]);
+        const diasMes1 = diasNoMes(anoM1Tbl, mesM1Tbl);
+        const demandaDiaria = mes1Data.SELL_OUT / diasMes1;
+        const ls = calcularLostSalesSKU(cad.ESTOQUE || 0, demandaDiaria, cad.LT, cad.CUSTO_LIQUIDO || 0);
+        if (ls.unidadesPerdidas > 0) {
+          lostSalesText = `Ruptura Estimada: ${ls.diasRuptura}d\nPerda: ${ls.unidadesPerdidas} un. (${formatCurrency(ls.valorPerdido)})`;
+        }
+      }
+    }
+
     return (
       <div
         key={proj.CHAVE}
@@ -622,7 +641,9 @@ export default function ProjectionTable({
           <BarChart3 className={`w-3.5 h-3.5 transition-colors ${isSelected ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/60'}`} />
         </div>
         <div className="w-[130px] px-2 flex items-center gap-0.5">
-          <StatusBadge status={status} />
+          <span title={lostSalesText || undefined}>
+            <StatusBadge status={status} />
+          </span>
           {temRiscoShelfLife && (
             <span title="Risco de vencimento (Shelf Life)" className="flex-shrink-0">
               <Hourglass className="w-3 h-3 text-orange-500" />
@@ -691,6 +712,9 @@ export default function ProjectionTable({
           </div>
           <div className="w-[70px] px-1 flex items-center justify-end">
             <span className="text-xs font-mono tabular-nums text-blue-600 dark:text-blue-400">{formatNumber(cad?.PENDENCIA || 0)}</span>
+          </div>
+          <div className="w-[70px] px-1 flex items-center justify-end" title="Pedidos em Análise/Aprovado">
+            <span className="text-xs font-mono tabular-nums text-purple-600 dark:text-purple-400 font-semibold">{formatNumber(cad?.QTD_EM_APROVACAO || 0)}</span>
           </div>
           <div className="w-[55px] px-1 flex items-center justify-end">
             <span className="text-xs font-mono tabular-nums text-muted-foreground">{formatNumber(cad?.NNA || 0)}</span>
@@ -926,6 +950,9 @@ export default function ProjectionTable({
                 <div className={`w-[70px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('pendencia')} title="Ordenar por Pendência (Pedidos da Fonte)">
                   <span>Pend.</span><SortIcon field="pendencia" currentField={sortField} direction={sortDirection} />
                 </div>
+                <div className={`w-[70px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('aprovacao')} title="Ordenar por Pedidos em Aprovação">
+                  <span>Aprov.</span><SortIcon field="aprovacao" currentField={sortField} direction={sortDirection} />
+                </div>
                 <div className={`w-[55px] px-1 justify-end ${headerCellBase} text-muted-foreground gap-0.5`} onClick={() => handleSort('nna')} title="Ordenar por NNA">
                   <span>NNA</span><SortIcon field="nna" currentField={sortField} direction={sortDirection} />
                 </div>
@@ -1030,6 +1057,7 @@ export default function ProjectionTable({
                 <div className="w-[55px] px-1 flex items-center justify-end"><span className="text-xs font-mono font-bold text-primary">—</span></div>
                 <div className="w-[55px] px-1 flex items-center justify-end"><span className="text-xs font-mono font-bold text-primary">—</span></div>
                 <div className="w-[70px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalPendencia)}</span></div>
+                <div className="w-[70px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalAprovacao)}</span></div>
                 <div className="w-[55px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalNNA)}</span></div>
                 <div className="w-[60px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalImpacto)}</span></div>
                 <div className="w-[60px] px-1 flex items-center justify-end"><span className="text-xs font-mono tabular-nums font-bold text-primary">{formatNumber(totals.totalPreench)}</span></div>

@@ -147,6 +147,7 @@ export interface HomeKPIs {
     skusShelfLifeRisk: number;
     pmpHojeDias: number | null;
     pmeHojeDias: number | null;
+    valorLostSalesRisco: number;
 }
 
 export interface CDSummary {

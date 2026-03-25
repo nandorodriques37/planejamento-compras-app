@@ -150,53 +150,9 @@ export function useProjectionData() {
     return dados.metadata.meses.slice(0, horizonte);
   }, [dados, horizonte]);
 
-  // ── Pendencias: mock + pedidos ativos do dia (pendentes + aprovados) ────────
+  // ── Pendencias: provém integralmente do Supabase (dataAdapter injeta os pendentes/aprovados) ────────
   const pedidosPendentesCompletos = useMemo(() => {
-    const base: PedidoPendente[] = dados?.pedidos_pendentes ?? [];
-
-    // Ler pedidos do localStorage e filtrar ativos (pendentes + aprovados)
-    let ativos: PedidoAprovacao[] = [];
-    try {
-      const raw = localStorage.getItem('pedidos_aprovacao');
-      if (raw) {
-        const todos = JSON.parse(raw) as PedidoAprovacao[];
-        ativos = todos.filter(p => p.status === 'pendente' || p.status === 'aprovado');
-      }
-    } catch { /* ignore */ }
-
-    if (ativos.length === 0) return base;
-
-    // Converter itens dos pedidos ativos em PedidoPendente
-    const sinteticos: PedidoPendente[] = [];
-    const hoje = new Date();
-
-    ativos.forEach(pedido => {
-      pedido.itens.forEach(item => {
-        // Buscar LT do cadastro
-        const cad = cadastroMap.get(item.chave);
-        const lt = cad?.LT ?? 0;
-
-        // Para cada mês de entrega, gerar uma pendência
-        if (item.entregas) {
-          Object.entries(item.entregas).forEach(([_mes, qtd]) => {
-            if (qtd <= 0) return;
-            // Data de chegada: hoje + LT
-            const chegada = new Date(hoje);
-            chegada.setDate(chegada.getDate() + lt);
-            const dataStr = `${chegada.getFullYear()}-${String(chegada.getMonth() + 1).padStart(2, '0')}-${String(chegada.getDate()).padStart(2, '0')}`;
-  
-            sinteticos.push({
-              chave: item.chave,
-              numero_pedido: `SIM-${pedido.id}`,
-              quantidade: qtd,
-              data_chegada_prevista: dataStr,
-            });
-          });
-        }
-      });
-    });
-
-    return [...base, ...sinteticos];
+    return dados?.pedidos_pendentes ?? [];
   }, [dados?.pedidos_pendentes, cadastroMap]);
 
   // Projeções com edições aplicadas
@@ -215,7 +171,6 @@ export function useProjectionData() {
           edicoesDoSKU[mes] = null;
         }
       });
-      if (!temEdicao) return proj;
 
       const cadastro = cadastroMap.get(proj.CHAVE);
       if (!cadastro) return proj;

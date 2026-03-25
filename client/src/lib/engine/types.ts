@@ -22,6 +22,9 @@ export interface SKUCadastro {
   ALTURA: number;       // cm
   LARGURA: number;      // cm
 
+  /** Nova métrica visível na tabela da Home */
+  QTD_EM_APROVACAO?: number;
+
   // Novos campos aleatórios gerados pelo adapter (mock)
   Analista?: string;
   Comprador?: string;
@@ -61,6 +64,26 @@ export interface EstoqueLoja {
   estoque_loja: number;
 }
 
+export interface PedidoPendente {
+  chave: string;
+  numero_pedido: string;
+  quantidade: number;
+  data_pedido?: string; // "YYYY-MM-DD"
+  data_chegada_prevista: string; // "YYYY-MM-DD"
+  tempo_faturamento?: number;
+  status_faturamento?: string;
+}
+
+export interface PedidoProjetado {
+  chave: string;
+  quantidade: number;
+  data_pedido: string; // "YYYY-MM-DD"
+  data_chegada_prevista: string; // "YYYY-MM-DD"
+  tempo_faturamento: number;
+}
+
+export type PendenciasPorMes = Record<string, number>;
+
 export interface EstoqueObjetivoDB {
   chave: string;
   meses: Record<string, number>;
@@ -79,6 +102,7 @@ export interface DadosCompletos {
   fornecedores: FornecedorCadastro[];
   pedidos_pendentes?: PedidoPendente[];
   contas_a_pagar?: ContaAPagar[];
+  pedidos_projetados?: PedidoProjetado[];
   estoque_loja?: EstoqueLoja[];
   estoques_objetivo?: EstoqueObjetivoDB[];
 }
@@ -132,14 +156,7 @@ export interface CoberturaResultado {
   multiploEmbalagem: number;
 }
 
-export interface PedidoPendente {
-  chave: string;
-  numero_pedido: string;
-  quantidade: number;
-  data_chegada_prevista: string; // "YYYY-MM-DD"
-}
 
-export type PendenciasPorMes = Record<string, number>;
 
 export interface SemanaInfo {
   /** Rótulo: "S1", "S2", ..., "S5" */

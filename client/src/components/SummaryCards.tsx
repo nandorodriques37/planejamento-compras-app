@@ -21,6 +21,7 @@ interface SummaryCardsProps {
   loading: boolean;
   totalSKUs: number; // For the sublabel context
   horizonte?: number;
+  pedidosPendentes?: number;
 }
 
 interface CardConfig {
@@ -37,7 +38,7 @@ interface CardConfig {
   formatter?: (n: number) => string;
 }
 
-export default function SummaryCards({ kpis, loading, totalSKUs, horizonte }: SummaryCardsProps) {
+export default function SummaryCards({ kpis, loading, totalSKUs, horizonte, pedidosPendentes = 0 }: SummaryCardsProps) {
   if (loading || !kpis) {
     // Show skeleton layout similar to the parent one to keep it seamless, or let parent handle skeleton
     return null; // Will be handled by the skeleton loader in Home.tsx when loading
@@ -58,7 +59,9 @@ export default function SummaryCards({ kpis, loading, totalSKUs, horizonte }: Su
     { icon: ShoppingCart, label: 'Valor Total Pedidos', numericValue: kpis.valorTotalPedidos, displayValue: formatCurrency(kpis.valorTotalPedidos), sublabel: `Horizonte: ${horizonte || 6} meses`, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', formatter: formatCurrency },
     { icon: AlertTriangle, label: 'SKUs em Ponto de Pedido', numericValue: skusWarning, displayValue: String(skusWarning), sublabel: 'Estoque abaixo do ponto de pedido', color: 'text-amber-500 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', formatter: (n: number) => String(n) },
     { icon: TrendingDown, label: 'SKUs em Ponto de Ruptura', numericValue: skusCriticos, displayValue: String(skusCriticos), sublabel: 'Risco de ruptura de estoque', color: 'text-destructive', bg: 'bg-destructive/10', formatter: (n: number) => String(n) },
+    { icon: TrendingDown, label: 'Perda Financeira (Ruptura)', numericValue: kpis.valorLostSalesRisco, displayValue: formatCurrency(kpis.valorLostSalesRisco), sublabel: 'Custo logístico de ruptura pré-espera', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30', formatter: formatCurrency },
     { icon: Hourglass, label: 'Risco Shelf Life', numericValue: kpis.skusShelfLifeRisk, displayValue: String(kpis.skusShelfLifeRisk), sublabel: 'Cobertura > 80% do shelf life', color: 'text-orange-500 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/30', formatter: (n: number) => String(n) },
+    { icon: ShoppingCart, label: 'Pedidos em Análise', numericValue: pedidosPendentes, displayValue: String(pedidosPendentes), sublabel: 'Aguardando aprovação no funil', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-950/30', formatter: (n: number) => String(n) },
     { icon: Clock, label: 'Cobertura em Dias', numericValue: coberturaGlobalDias, displayValue: `${coberturaGlobalDias}d`, sublabel: `Projetado no fim do horizonte: ${kpis.coberturaProjetadaDias}d`, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-950/30', showProgress: true, progressValue: coverageProgress, formatter: (n: number) => `${n}d` },
     { icon: Timer, label: 'Lead Time Médio', numericValue: kpis.ltMedio, displayValue: `${kpis.ltMedio} dias`, sublabel: `${kpis.countComLT} SKUs com LT`, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/30', formatter: (n: number) => `${n} dias` }
   ];
