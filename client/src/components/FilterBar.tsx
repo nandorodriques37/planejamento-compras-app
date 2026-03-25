@@ -5,7 +5,7 @@
 
 import { Search, Filter, X } from 'lucide-react';
 import { ComboboxFilter } from './ComboboxFilter';
-import type { Filters } from '../hooks/useProjectionData';
+import type { Filters } from '../store/projectionStore';
 
 interface FilterBarProps {
   filters: Filters;

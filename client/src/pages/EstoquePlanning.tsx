@@ -49,6 +49,7 @@ import { useProjectionData } from '../hooks/useProjectionData';
 import type { ProjecaoSKU, SKUCadastro, MesData } from '../lib/calculationEngine';
 import { CDCard, MainChartTooltip, type CDSummary } from '../components/warehouse/CDCard';
 import { SKUDetailPanel } from '../components/warehouse/SKUDetailPanel';
+import { ErrorBoundary } from '../components/ui/ErrorBoundaryFallback';
 import { formatMes, formatNumber, getStatusSKU } from '../lib/calculationEngine';
 
 // ============================================================================
@@ -682,14 +683,15 @@ export default function EstoquePlanning() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
               {filteredCDs.map((cd) => (
-                <CDCard
-                  key={cd.cd}
-                  cd={cd}
-                  isExpanded={expandedCDs.has(cd.cd)}
-                  onToggle={() => toggleCD(cd.cd)}
-                  filters={filters}
-                  onViewDetail={(sku) => setSelectedSKU(sku)}
-                />
+                <ErrorBoundary key={cd.cd}>
+                  <CDCard
+                    cd={cd}
+                    isExpanded={expandedCDs.has(cd.cd)}
+                    onToggle={() => toggleCD(cd.cd)}
+                    filters={filters}
+                    onViewDetail={(sku) => setSelectedSKU(sku)}
+                  />
+                </ErrorBoundary>
               ))}
             </div>
           </div>
@@ -700,12 +702,14 @@ export default function EstoquePlanning() {
 
       {/* SKU Detail Panel */}
       {selectedProjecao && selectedCadastro && (
-        <SKUDetailPanel
-          sku={selectedProjecao}
-          cadastro={selectedCadastro}
-          meses={meses}
-          onClose={() => setSelectedSKU(null)}
-        />
+        <ErrorBoundary>
+          <SKUDetailPanel
+            sku={selectedProjecao}
+            cadastro={selectedCadastro}
+            meses={meses}
+            onClose={() => setSelectedSKU(null)}
+          />
+        </ErrorBoundary>
       )}
     </div>
   );

@@ -43,6 +43,7 @@ import { diasNoMes } from '../lib/engine/utils/dates';
 import { exportarParaExcel } from '../lib/dataAdapter';
 import type { PedidoItem, PedidoKPIs } from '../lib/types';
 import { useHomeKPIs } from '../hooks/useHomeKPIs';
+import { ErrorBoundary } from '../components/ui/ErrorBoundaryFallback';
 
 export default function Home() {
   const {
@@ -421,13 +422,15 @@ export default function Home() {
         {/* Content */}
         <div className="px-6 py-5 space-y-5 pb-24">
           {/* Summary Cards */}
-          <SummaryCards
-            kpis={kpis}
-            loading={loadingKpis}
-            totalSKUs={dadosFiltrados.length}
-            horizonte={mesesVisiveis.length}
-            pedidosPendentes={pedidosPendentes}
-          />
+          <ErrorBoundary>
+            <SummaryCards
+              kpis={kpis}
+              loading={loadingKpis}
+              totalSKUs={dadosFiltrados.length}
+              horizonte={mesesVisiveis.length}
+              pedidosPendentes={pedidosPendentes}
+            />
+          </ErrorBoundary>
 
           {/* Filter Bar */}
           <FilterBar
@@ -441,24 +444,26 @@ export default function Home() {
           />
 
           {/* Projection Table */}
-          <ProjectionTable
-            projecoes={dadosFiltrados}
-            cadastroMap={cadastroMap}
-            meses={mesesVisiveis}
-            onEditPedido={editarPedido}
-            onEditPedidoComCascata={editarPedidoComCascata}
-            onUndoEdit={desfazerEdicao}
-            isCellEdited={isCellEdited}
-            allMeses={dados.metadata.meses}
-            onSKUClick={handleSKUClick}
-            selectedSKU={selectedSKU}
-            dataReferencia={dados.metadata.data_referencia}
-            coverageWeeklyEdits={coverageWeeklyEdits}
-            weeklyEdits={weeklyEdits}
-            onWeeklyEditsChange={setWeeklyEdits}
-            selectedWeeks={selectedWeeks}
-            onToggleWeek={handleToggleWeek}
-          />
+          <ErrorBoundary>
+            <ProjectionTable
+              projecoes={dadosFiltrados}
+              cadastroMap={cadastroMap}
+              meses={mesesVisiveis}
+              onEditPedido={editarPedido}
+              onEditPedidoComCascata={editarPedidoComCascata}
+              onUndoEdit={desfazerEdicao}
+              isCellEdited={isCellEdited}
+              allMeses={dados.metadata.meses}
+              onSKUClick={handleSKUClick}
+              selectedSKU={selectedSKU}
+              dataReferencia={dados.metadata.data_referencia}
+              coverageWeeklyEdits={coverageWeeklyEdits}
+              weeklyEdits={weeklyEdits}
+              onWeeklyEditsChange={setWeeklyEdits}
+              selectedWeeks={selectedWeeks}
+              onToggleWeek={handleToggleWeek}
+            />
+          </ErrorBoundary>
         </div>
       </main>
 

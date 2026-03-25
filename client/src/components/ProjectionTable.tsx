@@ -13,6 +13,7 @@ import { AlertTriangle, AlertCircle, CheckCircle2, Pencil, BarChart3, ArrowUpDow
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from './ui/empty';
 import { Checkbox } from './ui/checkbox';
 import { EditableCell } from './ui/EditableCell';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ProjecaoSKU, SKUCadastro, SemanaInfo, WeekDistribution } from '../lib/calculationEngine';
 import { formatNumber, formatCurrency, formatMes, getStatusSKU, hasShelfLifeRisk, getShelfLifeRiskStatus, calcularSemanasRestantes, calcularSemanasComLT, distribuirPedidoMultiMes, parseMesAno, diasNoMes, calcularLostSalesSKU } from '../lib/calculationEngine';
 
@@ -511,7 +512,7 @@ export default function ProjectionTable({
     if (!cad) return null;
     const status = getStatusSKU(proj.meses, allMeses, cad);
     const isSelected = selectedSKU === proj.CHAVE;
-    const globalIdx = startIdx + rowIdx;
+    const globalIdx = projecoes.indexOf(proj);
     const isCritical = status === 'critical';
     const temRiscoShelfLife = cad.SHELF_LIFE > 0 && getShelfLifeRiskStatus(proj.meses, allMeses, cad.SHELF_LIFE);
 
@@ -581,7 +582,7 @@ export default function ProjectionTable({
     const cobEstDias = cad && demandaDiariaMes1 > 0 ? Math.round((cad.ESTOQUE || 0) / demandaDiariaMes1) : ((cad?.ESTOQUE || 0) > 0 ? 999 : 0);
     const cobEPDias = cad && demandaDiariaMes1 > 0 ? Math.round(((cad.ESTOQUE || 0) + (cad.PENDENCIA || 0)) / demandaDiariaMes1) : (((cad?.ESTOQUE || 0) + (cad?.PENDENCIA || 0)) > 0 ? 999 : 0);
     const isSelected = selectedSKU === proj.CHAVE;
-    const globalIdx = startIdx + rowIdx;
+    const globalIdx = projecoes.indexOf(proj);
     const status = getStatusSKU(proj.meses, allMeses, cad);
     const isCritical = status === 'critical';
 

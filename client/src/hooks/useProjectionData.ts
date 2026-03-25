@@ -3,119 +3,45 @@
  * Centraliza: carregamento de dados, filtros, edições e recálculos.
  * 
  * MELHORIAS v2:
- * - cadastroMap: Map<CHAVE, SKUCadastro> para O(1) lookups (era O(n) com find)
+ * - cadastroMap: Map<CHAVE, SKUCadastro> para O(1) lookups
  * - Debounce na busca textual (300ms)
- * - Suporte a undo individual por célula
+ * - Integração base com Zustand Store (`projectionStore.ts`)
  * - Export com edições aplicadas
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { DadosCompletos, ProjecaoSKU, SKUCadastro } from '../lib/calculationEngine';
+import type { DadosCompletos, ProjecaoSKU, SKUCadastro, PedidoPendente } from '../lib/calculationEngine';
 import { recalcularProjecaoSKU, getStatusSKU, buildPendenciasPorSKU, agruparPendenciasPorMes } from '../lib/calculationEngine';
-import type { PedidoPendente } from '../lib/calculationEngine';
 import { getFullDatabase, getFilterOptions } from '../lib/api';
 import type { FilterOptionsResponse } from '../lib/api/types';
 import { useDebounce } from './useDebounce';
-import { usePersistedEdits } from './usePersistedEdits';
-import type { PedidoAprovacao } from '../lib/types';
-
-export interface EditedCell {
-  chave: string;
-  mes: string;
-  valor: number;
-}
-
-export interface Filters {
-  fornecedor: string;
-  categoria: string;
-  categoriaNivel4: string;
-  cd: string;
-  busca: string;
-  status: string;
-  analista: string;
-  comprador: string;
-  fornecedorLogistico: string;
-  generico: string;
-  monitorado: string;
-  marcaExclusiva: string;
-  importedSkus?: string[];
-}
-const FILTERS_STORAGE_KEY = 'planejamento_filtros';
-const HORIZONTE_STORAGE_KEY = 'planejamento_horizonte';
-
-/** Carrega filtros persistidos do localStorage (exclui campos voláteis) */
-function loadPersistedFilters(): Partial<Filters> {
-  try {
-    const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignora erros de parse */ }
-  return {};
-}
-
-function loadPersistedHorizonte(): number {
-  try {
-    const raw = localStorage.getItem(HORIZONTE_STORAGE_KEY);
-    if (raw) return parseInt(raw, 10) || 13;
-  } catch { /* ignora */ }
-  return 13;
-}
+import { useProjectionStore } from '../store/projectionStore';
 
 export function useProjectionData() {
   const [dados, setDados] = useState<DadosCompletos | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Restaurar horizonte e filtros do localStorage
-  const [horizonte, setHorizonteState] = useState(() => loadPersistedHorizonte());
-  const setHorizonte = useCallback((val: number) => {
-    setHorizonteState(val);
-    try { localStorage.setItem(HORIZONTE_STORAGE_KEY, String(val)); } catch {}
-  }, []);
+  // Zustand State mappings
+  const filters = useProjectionStore((state) => state.filters);
+  const setFilters = useProjectionStore((state) => state.setFilters);
+  const horizonte = useProjectionStore((state) => state.horizonte);
+  const setHorizonte = useProjectionStore((state) => state.setHorizonte);
 
-  const defaultFilters: Filters = {
-    fornecedor: '',
-    categoria: '',
-    categoriaNivel4: '',
-    cd: '',
-    busca: '',
-    status: '',
-    analista: '',
-    comprador: '',
-    fornecedorLogistico: '',
-    generico: '',
-    monitorado: '',
-    marcaExclusiva: '',
-    importedSkus: []
-  };
+  const editedCells = useProjectionStore((state) => state.editedCells);
+  const editarPedidoPersistido = useProjectionStore((state) => state.editarPedido);
+  const editarLotePersistido = useProjectionStore((state) => state.editarLote);
+  const desfazerEdicaoPersistida = useProjectionStore((state) => state.desfazerEdicao);
+  const limparEdicoesPersistidas = useProjectionStore((state) => state.limparEdicoes);
 
-  const [filters, setFiltersState] = useState<Filters>(() => {
-    const persisted = loadPersistedFilters();
-    return { ...defaultFilters, ...persisted };
+  const isCellEdited = useCallback((chave: string, mes: string) => {
+    return `${chave}|${mes}` in editedCells;
+  }, [editedCells]);
+
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse>({ 
+    fornecedores: [], categorias: [], categoriasNivel4: [], cds: [], analistas: [], compradores: [], fornecedoresLogisticos: [], genericos: [], monitorados: [], marcasExclusivas: [] 
   });
 
-  const setFilters = useCallback((updater: Filters | ((prev: Filters) => Filters)) => {
-    setFiltersState(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      // Persistir tudo exceto busca e importedSkus (são voláteis)
-      try {
-        const { busca, importedSkus, ...persistable } = next as Filters & { importedSkus?: string[] };
-        localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(persistable));
-      } catch {}
-      return next;
-    });
-  }, []);
-  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse>({ fornecedores: [], categorias: [], categoriasNivel4: [], cds: [], analistas: [], compradores: [], fornecedoresLogisticos: [], genericos: [], monitorados: [], marcasExclusivas: [] });
-
-  const {
-    editedCells,
-    editarPedidoPersistido,
-    editarLotePersistido,
-    desfazerEdicaoPersistida,
-    limparEdicoesPersistidas,
-    isCellEdited,
-  } = usePersistedEdits();
-
-  // Debounce na busca textual (300ms)
   const debouncedBusca = useDebounce(filters.busca, 300);
 
   useEffect(() => {
@@ -137,7 +63,6 @@ export function useProjectionData() {
     loadData();
   }, []);
 
-  // cadastroMap: O(1) lookups em vez de .find() O(n)
   const cadastroMap = useMemo(() => {
     if (!dados) return new Map<string, SKUCadastro>();
     const map = new Map<string, SKUCadastro>();
@@ -150,32 +75,29 @@ export function useProjectionData() {
     return dados.metadata.meses.slice(0, horizonte);
   }, [dados, horizonte]);
 
-  // ── Pendencias: provém integralmente do Supabase (dataAdapter injeta os pendentes/aprovados) ────────
   const pedidosPendentesCompletos = useMemo(() => {
     return dados?.pedidos_pendentes ?? [];
   }, [dados?.pedidos_pendentes, cadastroMap]);
 
   const prevProjecoesRef = useRef<ProjecaoSKU[]>([]);
-  const lastEditedCellsRef = useRef<Map<string, number>>(new Map());
+  const lastEditedCellsRef = useRef<Record<string, number>>({});
   const lastPendenciasRef = useRef<PedidoPendente[] | null>(null);
 
-  // Projeções com edições aplicadas
   const projecoesComEdicoes = useMemo(() => {
     if (!dados) return [];
     
     const pendSKUMap = buildPendenciasPorSKU(pedidosPendentesCompletos);
     
-    // Identificar chaves que mudaram nas edições para calcular apenas as diferenças e economizar re-randerizações O(N)
     const changedSkus = new Set<string>();
     const oldEdits = lastEditedCellsRef.current;
     
-    for (const [key, val] of editedCells.entries()) {
-      if (oldEdits.get(key) !== val) {
+    for (const key of Object.keys(editedCells)) {
+      if (oldEdits[key] !== editedCells[key]) {
         changedSkus.add(key.split('|')[0]);
       }
     }
-    for (const key of oldEdits.keys()) {
-      if (!editedCells.has(key)) {
+    for (const key of Object.keys(oldEdits)) {
+      if (!(key in editedCells)) {
         changedSkus.add(key.split('|')[0]);
       }
     }
@@ -189,7 +111,6 @@ export function useProjectionData() {
     lastPendenciasRef.current = pedidosPendentesCompletos;
 
     const result = dados.projecao.map((proj, idx) => {
-      // Otimização: se o SKU não teve edições alteradas e não é um rebuild completo, usar cache!
       const cachedProj = prevProjecoesRef.current[idx];
       if (!needsFullRebuild && cachedProj && cachedProj.CHAVE === proj.CHAVE && !changedSkus.has(proj.CHAVE)) {
         return cachedProj;
@@ -198,8 +119,8 @@ export function useProjectionData() {
       const edicoesDoSKU: Record<string, number | null> = {};
       dados.metadata.meses.forEach(mes => {
         const key = `${proj.CHAVE}|${mes}`;
-        if (editedCells.has(key)) {
-          edicoesDoSKU[mes] = editedCells.get(key)!;
+        if (key in editedCells) {
+          edicoesDoSKU[mes] = editedCells[key];
         } else {
           edicoesDoSKU[mes] = null;
         }
@@ -218,7 +139,6 @@ export function useProjectionData() {
         estObjetivosOriginais[mes] = proj.meses[mes]?.ESTOQUE_OBJETIVO || 0;
       });
 
-      // Agregar pendências distribuídas por mês para este SKU
       const pedidosSKU = pendSKUMap.get(cadastro.CHAVE) || [];
       const pendMes = pedidosSKU.length > 0
         ? agruparPendenciasPorMes(pedidosSKU, dados.metadata.meses)
@@ -232,7 +152,6 @@ export function useProjectionData() {
       
       const status = getStatusSKU(novaProjecao, dados.metadata.meses, cadastro);
       
-      // Calcular KPIs da projeção atual pre-cacheados
       const firstMes = dados.metadata.meses[0];
       const mes1Data = novaProjecao[firstMes];
       const fallbackObjDias = (cadastro.LT || 0) + (cadastro.FREQUENCIA || 0) + (cadastro.EST_SEGURANCA || 0);
@@ -263,7 +182,6 @@ export function useProjectionData() {
     return result;
   }, [dados, editedCells, cadastroMap, pedidosPendentesCompletos]);
 
-  // Filtros — usa debouncedBusca para busca textual
   const dadosFiltrados = useMemo(() => {
     if (!dados) return [];
     
@@ -300,15 +218,9 @@ export function useProjectionData() {
     });
   }, [projecoesComEdicoes, dados, filters.fornecedor, filters.categoria, filters.categoriaNivel4, filters.cd, filters.status, filters.analista, filters.comprador, filters.fornecedorLogistico, filters.generico, filters.monitorado, filters.marcaExclusiva, filters.importedSkus, debouncedBusca, cadastroMap]);
 
-  // Ref para acessar projeções atuais dentro do callback de cascata
   const projecoesRef = useRef(projecoesComEdicoes);
   projecoesRef.current = projecoesComEdicoes;
 
-  /**
-   * Edita um pedido mensal COM cascata: redistribui o delta entre meses subsequentes.
-   * - Se aumentou o pedido (delta > 0): subtrai o excedente dos meses seguintes
-   * - Se diminuiu o pedido (delta < 0): adiciona o liberado ao próximo mês
-   */
   const editarPedidoComCascata = useCallback((chave: string, mes: string, novoValor: number) => {
     if (!dados) return;
 
@@ -319,12 +231,10 @@ export function useProjectionData() {
       return;
     }
 
-    // Buscar valor atual do PEDIDO (da projeção com edições já aplicadas)
     const proj = projecoesRef.current.find(p => p.CHAVE === chave);
     const valorAtual = proj?.meses[mes]?.PEDIDO || 0;
     const delta = novoValor - valorAtual;
 
-    // Montar lote de edições: edição principal + cascata
     const edits: Array<{chave: string, mes: string, valor: number}> = [
       { chave, mes, valor: novoValor }
     ];
@@ -338,14 +248,12 @@ export function useProjectionData() {
         const pedidoAtual = proj?.meses[mesFuturo]?.PEDIDO || 0;
 
         if (isIncrease) {
-          // Subtrair dos meses futuros
           const absorvido = Math.min(deltaRestante, pedidoAtual);
           if (absorvido > 0) {
             edits.push({ chave, mes: mesFuturo, valor: pedidoAtual - absorvido });
             deltaRestante -= absorvido;
           }
         } else {
-          // Adicionar ao próximo mês que tem pedido ou ao imediato
           edits.push({ chave, mes: mesFuturo, valor: pedidoAtual + deltaRestante });
           deltaRestante = 0;
         }
@@ -359,7 +267,7 @@ export function useProjectionData() {
   const desfazerEdicao = desfazerEdicaoPersistida;
   const limparEdicoes = limparEdicoesPersistidas;
 
-  const totalEdicoes = editedCells.size;
+  const totalEdicoes = Object.keys(editedCells).length;
 
   return {
     dados, loading, error, mesesVisiveis, filterOptions, filters, setFilters,
