@@ -31,8 +31,8 @@
 | Funcionalidade | Como Funciona / Como é Calculado |
 |---|---|
 | Estoque Total Atual | Valor: `kpis.totalEstoque`. Calculado em `mockDataLake.ts > getHomeKPIs()`: soma de `cadastro.ESTOQUE` de todos os SKUs filtrados. Exibido com `formatNumber()`. |
-| PME Hoje | Valor: `kpis.pmeHojeDias`. Calculado em `mockDataLake.ts > getHomeKPIs()`: média ponderada `Σ(ESTOQUE * dias_cobertura) / Σ(ESTOQUE)` onde `dias_cobertura = ESTOQUE / (SELL_OUT_mes1 / dias_mes)`. Exibido como `"{N}d"`. |
-| PMP Hoje | Valor: `kpis.pmpHojeDias`. Calculado em `mockDataLake.ts > getHomeKPIs()`: média ponderada dos prazos de pagamento dos fornecedores, ponderados pelo valor das contas a pagar. Exibido como `"{N}d"`. |
+| PME Hoje | Valor: `kpis.pmeHojeDias`. Calculado em `mockDataLake.ts > getHomeKPIs()`: metricamente financeiro, divide o valor do estoque total pelo COGS diário. Fórmula: `Σ(ESTOQUE * CUSTO_LIQUIDO) / Σ((SELL_OUT_mes1 / dias_mes) * CUSTO_LIQUIDO)`. Exibido como `"{N}d"`. |
+| PMP Hoje | Valor: `kpis.pmpHojeDias`. Calculado em `mockDataLake.ts > getHomeKPIs()`: metricamente financeiro, divide o passivo total (contas a pagar + pedidos pendentes/em trânsito) pelo COGS diário (Custo da Mercadoria Vendida diária). Fórmula: `Total_Passivo_R$ / Σ((SELL_OUT_mes1 / dias_mes) * CUSTO_LIQUIDO)`. Exibido como `"{N}d"`. |
 | Valor Total Pedidos | Valor: `kpis.valorTotalPedidos`. Calculado em `mockDataLake.ts > getHomeKPIs()`: `Σ(PEDIDO_mes * CUSTO_LIQUIDO)` para todos os meses visíveis. Exibido com `formatCurrency()`. |
 | SKUs em Ponto de Pedido | Valor: `kpis.skusWarning`. Contagem de SKUs com `getStatusSKU() === 'warning'` (estoque projetado abaixo do ponto de pedido mas acima da segurança). |
 | SKUs em Ponto de Ruptura | Valor: `kpis.skusCritical`. Contagem de SKUs com `getStatusSKU() === 'critical'` (estoque projetado ≤ estoque de segurança em algum mês). |
@@ -300,10 +300,10 @@
 
 | Funcionalidade | Como Funciona / Como é Calculado |
 |---|---|
-| PME Loja (linha) | Prazo Médio de Estoque na loja. Calculado em `mockDataLake.ts > getCicloEstoqueData()`: para cada mês, `pmeLoja = Σ(estoque_loja * custoLiquido) / (Σ(sellOut * custoLiquido) / diasMes)`. Se não há dados de estoque loja, assume `0`. |
-| PME CD (linha) | Prazo Médio de Estoque no CD. Para cada mês, `pmeCd = Σ(estoqueProjetado * custoLiquido) / (Σ(sellOut * custoLiquido) / diasMes)`. |
-| PMP (linha) | Prazo Médio de Pagamento. Calculado a partir de `contas_a_pagar`: `pmp = Σ(valor_nota * diasAteVencimento) / Σ(valor_nota)`. Valor constante se contas a pagar são fixas. |
-| PME − PMP (barras) | Diferença: `pmeMenosPmp = (pmeLoja + pmeCd) - pmp`. Barras positivas (vermelho) = estoque financiando mais que pagamentos. Barras negativas (verde) = ciclo favorável. |
+| PME Loja (linha) | Prazo Médio de Estoque na loja em dias. Calculado em `mockDataLake.ts > getCicloEstoqueData()`: métrica financeira ponderada. `pmeLoja = Σ(Estoque_Loja_R$) / Σ(SellOut_Diário_R$)`. Onde R$ = quantidade * custo_líquido. Se não há dados de estoque loja, assume-se `0`. |
+| PME CD (linha) | Prazo Médio de Estoque no CD em dias. Para cada mês projetado, `pmeCd = Σ(Estoque_Projetado_R$) / Σ(SellOut_Diário_R$)`. |
+| PMP (linha) | Prazo Médio de Pagamento Projetado em dias. Para cada mês fechado, `pmp = Σ(Passivo_Ativo_Fim_do_Mês_R$) / Σ(SellOut_Diário_R$)` onde o Passivo Ativo avalia todo o saldo projetado não quitado no último dia do mês capturado pelo fluxo de passivos. |
+| PME − PMP (barras) | Diferença: `pmeMenosPmp = (pmeLoja + pmeCd) - pmp`. Barras positivas (vermelho) = longo no estoque e curto no pagamento, varejo financiando fornecedor. Barras negativas (verde) = ciclo financeiramente favorável. |
 | Tooltip customizado | Mostra valores de PME Loja, PME CD, PMP e diferença para cada mês. |
 
 ### 7.3 Rankings Financeiros
@@ -326,7 +326,7 @@
 |---|---|
 | Algoritmo de 2 Passes (Engine) | `recalcularProjecaoSKU()`. Processa todo o horizonte contínuo (M a M+13) com dupla validação. **Passo 1:** Analisa mês a mês as faltas, usando a fórmula `Necessidade = (Sell_Out + Estoque_Objetivo) - (EstoqueAnterior + Entrada_Fixa)`. Se houver necessidade, gera um *Pedido Sugerido* aplicando a regra de `Múltiplo de Embalagem` ou quantidade mínima `MOQ`. **Passo 2:** Calcula iterativamente o `Estoque Projetado Final` transferindo o carry-over para o mês N+1. |
 | Time-Phased Replenishment (DRP) | Conversão orgânica da pedida com `calcularIndiceMesChegada()`. Um pedido despachado hoje fisicamente não abate a falta deste mês caso a data `Hoje() + Lead_Time` exceda os próximos 30 dias. O motor transpassa esse pedido para a coluna de Entrada do mês alvo exato, garantindo que o Planejamento Mestre de Produção amarre fluxo de pagamento x recebimento real. |
-| Matriz Avaliativa PME x PMP | A inteligência cruza a velocidade do produto (*PME: Prazo Médio de Estoque*) com o poder financeiro retido na cadeia (*PMP: Prazo Médio de Pagamento*). Regra: `PME = Estoque_Projetado_Valor_Financeiro_Unificado / Despesa_Custo_Líquido_Média_Mensal`. Se o resultado PME - PMP da conta global der Positivo, o Varejo financia o fornecedor. |
+| Matriz Avaliativa PME x PMP | A inteligência cruza a velocidade do produto (*PME: Prazo Médio de Estoque*) com o poder financeiro retido na cadeia (*PMP: Prazo Médio de Pagamento*). Após revisão para métricas financeiras integradas, baseia-se na divisão pelo COGS Diário (`Despesa_Custo_Líquido_Diária_Média`). `PME Global = Σ(Estoque_R$) / Σ(COGS_Diário_R$)` e `PMP Global = Σ(Passivo_Total_R$) / Σ(COGS_Diário_R$)`. Se PME - PMP der Positivo, o Varejo financia o fornecedor de forma excessiva. |
 | Scorecards e Regras Semafóricas | O Status global unitário do SKU governa as cores e treemaps dos dashboards analíticos: <br>• **CRITICAL (Ruptura em Risco):** `min(ESTOQUE_PROJETADO) <= EST_SEGURANCA` ao longo de toda a esteira do horizonte visível. <br>• **WARNING (Fading/Ponto de Disparo):** `min(ESTOQUE_PROJETADO) < (EST_SEGURANCA * 2)` <br>• **OK (Saúde Plena):** Acima das defesas mínimas. |
 | Prevenção Overstock (Shelf Life) | Módulo anti-quebra (Shelf Life Risk) dispara sinal de contenção de aprovação se: `Cobertura Projetada (dias) >= (Dias_Total_Shelf_Life * 0.8)`. Bloqueia ordens desnecessárias que fatalmente fariam o produto vencer dentro do armazém antes de ser comprado nas pontas (lojas). |
 | Lógica Indutiva de "Cobertura Alvo" | Algoritmo contido em `coverage.ts` retro-analisa de maneira furtiva quantos meses e semanas de pedidos precisam ser empacotados em N entregas semanais para cobrir a rede até a `Data-Alvo Final`. Antecipa faturamentos dos meses M+1, M+2 proporcionalmente enchendo buracos antes da ocorrência (smoothing de compras extremas). |
