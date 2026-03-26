@@ -32,7 +32,8 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
       { data: contasDB, error: errContas },
       { data: pendentesDB, error: errPend },
       { data: projetadosDB, error: errProjDB },
-      { data: aprovacaoDB, error: errAprovacao }
+      { data: aprovacaoDB, error: errAprovacao },
+      { data: capacityDB, error: errCap }
     ] = await Promise.all([
       supabase.from('fornecedores').select('*'),
       supabase.from('produtos').select('*'),
@@ -40,7 +41,8 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
       supabase.from('contas_a_pagar').select('*, fornecedores(nome)'),
       supabase.from('pedidos_pendentes').select('*'),
       supabase.from('pedidos_projetados').select('*'),
-      supabase.from('pedidos_aprovacao').select('*')
+      supabase.from('pedidos_aprovacao').select('*'),
+      supabase.from('warehouse_capacity').select('*')
     ]);
 
     if (errProd) throw new Error("Erro produtos: " + errProd.message);
@@ -187,6 +189,11 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
       mesesOrdenados.push(`${ano}_${String(mes).padStart(2, '0')}`);
     }
 
+    const capacityArr = (capacityDB || []).map(c => ({
+      codigoDepositoPd: c.codigo_deposito_pd,
+      grupos: c.grupos
+    }));
+
     const data: DadosCompletos = {
       metadata: {
         data_referencia: `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`,
@@ -200,7 +207,8 @@ export async function obterProjecaoInicial(): Promise<DadosCompletos> {
       fornecedores: fornecedoresArr,
       contas_a_pagar: contasArr,
       pedidos_pendentes: pendentesArr,
-      pedidos_projetados: projetadosArr
+      pedidos_projetados: projetadosArr,
+      warehouse_capacity: capacityArr
     };
 
     const pendenciasPorSKU = buildPendenciasPorSKU(pendentesArr);

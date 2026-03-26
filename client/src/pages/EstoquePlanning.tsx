@@ -111,6 +111,7 @@ function KPICard({
 
 import { useHomeKPIs } from '../hooks/useHomeKPIs';
 import { useCDSummaries } from '../hooks/useCDSummaries';
+import { usePedidosAprovacao } from '../hooks/usePedidosAprovacao';
 import { getSkusPaginated } from '../lib/api';
 import type { AugmentedSKU } from '../lib/api/types';
 
@@ -148,15 +149,8 @@ export default function EstoquePlanning() {
     }));
   };
 
-  // Contagem de pedidos pendentes para badge do sidebar
-  const pedidosPendentes = (() => {
-    try {
-      const raw = localStorage.getItem('pedidos_aprovacao');
-      if (!raw) return 0;
-      const lista = JSON.parse(raw);
-      return Array.isArray(lista) ? lista.filter((p: any) => p.status === 'pendente').length : 0;
-    } catch { return 0; }
-  })();
+  const { pedidos } = usePedidosAprovacao();
+  const pedidosPendentes = pedidos.filter(p => p.status === 'pendente').length;
 
   // Use full horizon (all months)
   const meses = dados?.metadata.meses ?? [];

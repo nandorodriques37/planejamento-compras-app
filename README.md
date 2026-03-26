@@ -53,7 +53,7 @@ Aplicação S&OP (Sales & Operations Planning) para planejamento de compras, ges
 
 ### Arquitetura
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                     Browser (SPA)                       │
 ├─────────────────────────────────────────────────────────┤
@@ -71,30 +71,20 @@ Aplicação S&OP (Sales & Operations Planning) para planejamento de compras, ges
 │  └────────────────────┬──────────────────────────────┘  │
 │                       │                                 │
 │  ┌────────────────────┴──────────────────────────────┐  │
-│  │            Mock Data Lake API                     │  │
-│  │  (client/src/lib/api/mockDataLake.ts)             │  │
-│  │  Simula endpoints de backend com delays           │  │
-│  └────────────────────┬──────────────────────────────┘  │
-│                       │                                 │
-│  ┌────────────────────┴──────────────────────────────┐  │
-│  │           Calculation Engine                      │  │
+│  │           Calculation Engine (S&OP)               │  │
 │  │  engine/core/projection.ts  (recálculo projeções) │  │
 │  │  engine/core/coverage.ts    (cobertura por data)  │  │
 │  │  engine/utils/dates.ts      (semanas, datas)      │  │
-│  │  engine/utils/formatters.ts (formatação pt-BR)    │  │
-│  │  engine/utils/pendencias.ts (pedidos pendentes)   │  │
 │  └────────────────────┬──────────────────────────────┘  │
 │                       │                                 │
 │  ┌────────────────────┴──────────────────────────────┐  │
-│  │           Data Adapter                            │  │
-│  │  (client/src/lib/dataAdapter.ts)                  │  │
-│  │  Carrega JSON estáticos + recalcula projeções     │  │
+│  │           Data Adapter / Data Lake API            │  │
+│  │  Faz merge de dados do banco oficial + edições    │  │
 │  └────────────────────┬──────────────────────────────┘  │
 │                       │                                 │
 │  ┌────────────────────┴──────────────────────────────┐  │
-│  │        Arquivos JSON Estáticos (public/)          │  │
-│  │  sample-data.json │ pending-orders.json           │  │
-│  │  estoque-objetivo.json                            │  │
+│  │      Banco de Dados Relacional (Supabase)         │  │
+│  │  produtos │ fornecedores │ projecoes_mensais      │  │
 │  └───────────────────────────────────────────────────┘  │
 │                                                         │
 │  ┌───────────────────────────────────────────────────┐  │
@@ -103,13 +93,9 @@ Aplicação S&OP (Sales & Operations Planning) para planejamento de compras, ges
 │  │  warehouse_capacity│ theme                        │  │
 │  └───────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────┤
-│  Gerenciamento de Estado: React Context API             │
-│  (ThemeContext para tema claro/escuro)                   │
-│  + hooks com useState/useEffect para estado local       │
-│  + localStorage para persistência entre sessões         │
-├─────────────────────────────────────────────────────────┤
-│  Servidor Express (produção apenas)                     │
-│  Serve SPA estática com catch-all para client routing   │
+│  Gerenciamento de Estado e Sincronização                │
+│  - Supabase-js Client para chamadas SQL Backend         │
+│  - localStorage para workflow local e cache transitório │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -125,7 +111,7 @@ Aplicação S&OP (Sales & Operations Planning) para planejamento de compras, ges
 npm install -g pnpm
 ```
 
-### Setup
+### Setup Automático e Supabase
 
 ```bash
 # 1. Clone o repositório
@@ -135,26 +121,31 @@ cd planejamento-compras-app
 # 2. Instale as dependências
 pnpm install
 
-# 3. Configure o ambiente local
+# 3. Configure o ambiente local (Cria .env.local a partir de .env.example)
 pnpm run setup
-# → Cria .env.local a partir de .env.example
 
-# 4. Inicie o servidor de desenvolvimento
+# 4. Preencha as credenciais do Supabase no .env.local
+# Você precisará configurar VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY 
+
+# 5. Rode a Seeder para inserir os produtos e matrizes no Supabase
+pnpm tsx scripts/seedSupabase.ts
+
+# 6. Inicie o servidor de desenvolvimento
 pnpm dev
 ```
 
 Abra [http://localhost:3000](http://localhost:3000) no navegador.
 
-### Variáveis de Ambiente
+### Variáveis de Ambiente (.env.local)
 
-As variáveis em `.env.local` são opcionais para uso local. O sistema funciona sem elas (sem autenticação OAuth):
+O sistema exige conexões ao Supabase para a master data de Supply Chain. Configure:
 
 | Variável | Descrição |
 |---|---|
-| `VITE_OAUTH_PORTAL_URL` | URL do portal OAuth (deixe vazio para uso local) |
+| `VITE_SUPABASE_URL` | URL de API do projeto Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Chave pública anônima do projeto |
+| `VITE_OAUTH_PORTAL_URL` | URL do portal OAuth (deixe vazio para uso local isolado) |
 | `VITE_APP_ID` | ID da app OAuth (deixe vazio para uso local) |
-
-Copie `.env.example` para `.env.local` e edite conforme necessário.
 
 ## Scripts Disponíveis
 
@@ -312,13 +303,17 @@ planejamento-compras-app/
 
 ## Modelo de Dados
 
-### Dados Estáticos (JSON)
+### Banco de Dados Oficial (Supabase PostgreSQL)
 
-| Arquivo | Registros | Descrição |
-|---|---|---|
-| `sample-data.json` | 72 SKUs, 6 fornecedores, 5 contas a pagar, 33 estoques loja | Base principal com cadastro, projeções e metadata |
-| `pending-orders.json` | 62 pedidos | Pedidos pendentes de entrega |
-| `estoque-objetivo.json` | 72 registros | Estoque objetivo mensal por SKU |
+A aplicação conta com um Schema relacional S&OP gerido via `supabase-js`, contendo:
+
+| Tabela | Responsabilidade Funcional |
+|---|---|
+| `produtos` | Cadastro de parâmetros mestre dos SKUs (Frequência, LT, Estoque Segurança). |
+| `fornecedores` | Cadastro das inteligências de compra, moedas e Prazo Médio de Pagamento. |
+| `projecoes_mensais` | Fato Analítica que sustenta a projeção de S&OP curva inteira (+13 meses) e KPIs operacionais temporais. |
+
+**Nota:** Os arquivos JSON localizados na pasta `public` (`sample-data.json`, etc) atuam como Fallback legados e origem para seeding da base limpa.
 
 ### Dados Persistidos (localStorage)
 

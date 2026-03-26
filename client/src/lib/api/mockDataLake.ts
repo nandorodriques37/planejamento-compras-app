@@ -563,12 +563,8 @@ export async function getCDSummaries(filters: Filters): Promise<CDSummary[]> {
 
     const cdMap: Record<string, CDMapEntry> = {};
 
-    // Load capacity data from localStorage (backend logic mock)
-    let capacityData: WarehouseCapacityData[] = [];
-    try {
-        const raw = localStorage.getItem('warehouse_capacity');
-        if (raw) capacityData = JSON.parse(raw);
-    } catch {}
+    // Load capacity data from database
+    const capacityData: WarehouseCapacityData[] = (db.warehouse_capacity as any) || [];
 
     filtered.forEach(proj => {
         const cad = dbCadastroMap.get(proj.CHAVE);

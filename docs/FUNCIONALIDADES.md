@@ -320,14 +320,16 @@
 
 ## 8. Funcionalidades Transversais
 
-### 8.1 Motor de Cálculo (Calculation Engine)
+### 8.1 Motor de Cálculo Automático S&OP (Calculation Engine)
 
-| Funcionalidade | Como Funciona / Como é Calculado |
+| Funcionalidade | Como Funciona / Lógica Funcional Extremamente Detalhada |
 |---|---|
-| Recálculo de projeção | `recalcularProjecaoSKU()` em `projection.ts`. Algoritmo de 2 passes: (1) calcula pedidos necessários por mês considerando sell-out, estoque, pendências, segurança, frequência, impacto, múltiplo de embalagem; (2) recalcula estoque projetado final. Entrada = pedido com LT convertido para mês de chegada via `calcularIndiceMesChegada()`. |
-| Status de SKU | `getStatusSKU()`: `'critical'` se `min(ESTOQUE_PROJETADO) <= EST_SEGURANCA`, `'warning'` se `min < EST_SEGURANCA * 2`, `'ok'` caso contrário. Avalia todos os meses da projeção. |
-| Risco de shelf life | `hasShelfLifeRisk()`: `true` se `(estoqueProjetado / (sellOut / diasMes)) > shelfLife * 0.8`. |
-| Cobertura por data | `calcularCoberturaPorData()` em `coverage.ts`. Calcula pedido proporcional para cobrir até data-alvo, usando distribuição por semanas e antecipação de meses futuros. |
+| Algoritmo de 2 Passes (Engine) | `recalcularProjecaoSKU()`. Processa todo o horizonte contínuo (M a M+13) com dupla validação. **Passo 1:** Analisa mês a mês as faltas, usando a fórmula `Necessidade = (Sell_Out + Estoque_Objetivo) - (EstoqueAnterior + Entrada_Fixa)`. Se houver necessidade, gera um *Pedido Sugerido* aplicando a regra de `Múltiplo de Embalagem` ou quantidade mínima `MOQ`. **Passo 2:** Calcula iterativamente o `Estoque Projetado Final` transferindo o carry-over para o mês N+1. |
+| Time-Phased Replenishment (DRP) | Conversão orgânica da pedida com `calcularIndiceMesChegada()`. Um pedido despachado hoje fisicamente não abate a falta deste mês caso a data `Hoje() + Lead_Time` exceda os próximos 30 dias. O motor transpassa esse pedido para a coluna de Entrada do mês alvo exato, garantindo que o Planejamento Mestre de Produção amarre fluxo de pagamento x recebimento real. |
+| Matriz Avaliativa PME x PMP | A inteligência cruza a velocidade do produto (*PME: Prazo Médio de Estoque*) com o poder financeiro retido na cadeia (*PMP: Prazo Médio de Pagamento*). Regra: `PME = Estoque_Projetado_Valor_Financeiro_Unificado / Despesa_Custo_Líquido_Média_Mensal`. Se o resultado PME - PMP da conta global der Positivo, o Varejo financia o fornecedor. |
+| Scorecards e Regras Semafóricas | O Status global unitário do SKU governa as cores e treemaps dos dashboards analíticos: <br>• **CRITICAL (Ruptura em Risco):** `min(ESTOQUE_PROJETADO) <= EST_SEGURANCA` ao longo de toda a esteira do horizonte visível. <br>• **WARNING (Fading/Ponto de Disparo):** `min(ESTOQUE_PROJETADO) < (EST_SEGURANCA * 2)` <br>• **OK (Saúde Plena):** Acima das defesas mínimas. |
+| Prevenção Overstock (Shelf Life) | Módulo anti-quebra (Shelf Life Risk) dispara sinal de contenção de aprovação se: `Cobertura Projetada (dias) >= (Dias_Total_Shelf_Life * 0.8)`. Bloqueia ordens desnecessárias que fatalmente fariam o produto vencer dentro do armazém antes de ser comprado nas pontas (lojas). |
+| Lógica Indutiva de "Cobertura Alvo" | Algoritmo contido em `coverage.ts` retro-analisa de maneira furtiva quantos meses e semanas de pedidos precisam ser empacotados em N entregas semanais para cobrir a rede até a `Data-Alvo Final`. Antecipa faturamentos dos meses M+1, M+2 proporcionalmente enchendo buracos antes da ocorrência (smoothing de compras extremas). |
 
 **Arquivos-fonte:** `client/src/lib/engine/core/projection.ts`, `client/src/lib/engine/core/coverage.ts`
 

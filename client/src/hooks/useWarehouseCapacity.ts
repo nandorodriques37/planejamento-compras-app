@@ -1,29 +1,11 @@
 /**
  * Hook para gerenciar cadastro de capacidade dos armazéns.
- * Persiste no localStorage sob a chave 'warehouse_capacity'.
+ * Persiste no Supabase na tabela 'warehouse_capacity'.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { WarehouseCapacityData, CDWarehouseConfig, WarehouseGroup } from '../lib/warehouseTypes';
-
-const STORAGE_KEY = 'warehouse_capacity';
-
-function carregarDados(): WarehouseCapacityData {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as WarehouseCapacityData) : [];
-  } catch {
-    return [];
-  }
-}
-
-function persistir(data: WarehouseCapacityData): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    console.error('Erro ao persistir capacidade armazéns no localStorage:', e);
-  }
-}
+import { supabase } from '../lib/supabase';
 
 function getOrCreateCDConfig(data: WarehouseCapacityData, cd: number): [WarehouseCapacityData, CDWarehouseConfig] {
   const existing = data.find(c => c.codigoDepositoPd === cd);
@@ -33,7 +15,34 @@ function getOrCreateCDConfig(data: WarehouseCapacityData, cd: number): [Warehous
 }
 
 export function useWarehouseCapacity() {
-  const [data, setData] = useState<WarehouseCapacityData>(() => carregarDados());
+  const [data, setData] = useState<WarehouseCapacityData>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from('warehouse_capacity').select('*')
+      .then(({ data: dbData, error }) => {
+        if (error) {
+          console.error("Erro ao carregar warehouse_capacity:", error);
+        } else if (dbData) {
+          setData(dbData.map(c => ({
+            codigoDepositoPd: c.codigo_deposito_pd,
+            grupos: c.grupos
+          })));
+        }
+        setLoading(false);
+      });
+  }, []);
+
+  const persistirCD = async (cdConfig: CDWarehouseConfig) => {
+    try {
+      await supabase.from('warehouse_capacity').upsert({
+        codigo_deposito_pd: cdConfig.codigoDepositoPd,
+        grupos: cdConfig.grupos
+      });
+    } catch (e) {
+      console.error('Erro ao persistir capacidade no Supabase:', e);
+    }
+  };
 
   const getConfigForCD = useCallback((cd: number): CDWarehouseConfig => {
     return data.find(c => c.codigoDepositoPd === cd) ?? { codigoDepositoPd: cd, grupos: [] };
@@ -64,7 +73,8 @@ export function useWarehouseCapacity() {
           }],
         });
       }
-      persistir(next);
+      const cdConfig = next.find(c => c.codigoDepositoPd === cd);
+      if (cdConfig) persistirCD(cdConfig);
       return next;
     });
   }, []);
@@ -75,7 +85,8 @@ export function useWarehouseCapacity() {
         if (c.codigoDepositoPd !== cd) return c;
         return { ...c, grupos: c.grupos.filter(g => g.id !== grupoId) };
       });
-      persistir(next);
+      const cdConfig = next.find(c => c.codigoDepositoPd === cd);
+      if (cdConfig) persistirCD(cdConfig);
       return next;
     });
   }, []);
@@ -89,7 +100,8 @@ export function useWarehouseCapacity() {
           grupos: c.grupos.map(g => g.id === grupoId ? { ...g, nome: novoNome } : g),
         };
       });
-      persistir(next);
+      const cdConfig = next.find(c => c.codigoDepositoPd === cd);
+      if (cdConfig) persistirCD(cdConfig);
       return next;
     });
   }, []);
@@ -103,7 +115,8 @@ export function useWarehouseCapacity() {
           grupos: c.grupos.map(g => g.id === grupoId ? { ...g, capacidadeM3 } : g),
         };
       });
-      persistir(next);
+      const cdConfig = next.find(c => c.codigoDepositoPd === cd);
+      if (cdConfig) persistirCD(cdConfig);
       return next;
     });
   }, []);
@@ -130,7 +143,8 @@ export function useWarehouseCapacity() {
           }),
         };
       });
-      persistir(next);
+      const newCdConfig = next.find(c => c.codigoDepositoPd === cd);
+      if (newCdConfig) persistirCD(newCdConfig);
       return next;
     });
   }, []);
@@ -147,7 +161,8 @@ export function useWarehouseCapacity() {
           }),
         };
       });
-      persistir(next);
+      const cdConfig = next.find(c => c.codigoDepositoPd === cd);
+      if (cdConfig) persistirCD(cdConfig);
       return next;
     });
   }, []);
@@ -200,18 +215,20 @@ export function useWarehouseCapacity() {
       }));
 
       const next = prev.filter(c => c.codigoDepositoPd !== cd);
-      next.push({
+      const newCdConfig = {
         ...cdConfig,
         grupos: [...cdConfig.grupos, ...novosGrupos]
-      });
+      };
+      next.push(newCdConfig);
       
-      persistir(next);
+      persistirCD(newCdConfig);
       return next;
     });
   }, []);
 
   return {
     data,
+    loading,
     getConfigForCD,
     adicionarGrupo,
     removerGrupo,

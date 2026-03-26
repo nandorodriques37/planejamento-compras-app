@@ -16,11 +16,9 @@ import { getFullDatabase, getFilterOptions } from '../lib/api';
 import type { FilterOptionsResponse } from '../lib/api/types';
 import { useDebounce } from './useDebounce';
 import { useProjectionStore } from '../store/projectionStore';
+import { useQuery } from '@tanstack/react-query';
 
 export function useProjectionData() {
-  const [dados, setDados] = useState<DadosCompletos | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Zustand State mappings
   const filters = useProjectionStore((state) => state.filters);
@@ -38,35 +36,31 @@ export function useProjectionData() {
     return `${chave}|${mes}` in editedCells;
   }, [editedCells]);
 
-  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse>({ 
-    fornecedores: [], categorias: [], categoriasNivel4: [], cds: [], analistas: [], compradores: [], fornecedoresLogisticos: [], genericos: [], monitorados: [], marcasExclusivas: [] 
+  const { data: databasePayload, isLoading: loadingDb, error: errorDb } = useQuery({
+    queryKey: ['fullDatabase'],
+    queryFn: getFullDatabase,
+    staleTime: 10 * 60 * 1000,
   });
 
-  const debouncedBusca = useDebounce(filters.busca, 300);
+  const { data: optionsPayload, isLoading: loadingOptions, error: errorOptions } = useQuery({
+    queryKey: ['filterOptions'],
+    queryFn: getFilterOptions,
+    staleTime: 10 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [data, options] = await Promise.all([
-          getFullDatabase(),
-          getFilterOptions()
-        ]);
-        setDados(data);
-        setFilterOptions(options);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro desconhecido');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
+  const dados = databasePayload ?? null;
+  const filterOptions = optionsPayload ?? { 
+    fornecedores: [], categorias: [], categoriasNivel4: [], cds: [], analistas: [], compradores: [], fornecedoresLogisticos: [], genericos: [], monitorados: [], marcasExclusivas: [] 
+  };
+  const loading = loadingDb || loadingOptions;
+  const error = (errorDb || errorOptions) ? String((errorDb as Error)?.message || (errorOptions as Error)?.message || 'Erro desconhecido') : null;
+
+  const debouncedBusca = useDebounce(filters.busca, 300);
 
   const cadastroMap = useMemo(() => {
     if (!dados) return new Map<string, SKUCadastro>();
     const map = new Map<string, SKUCadastro>();
-    dados.cadastro.forEach(c => map.set(c.CHAVE, c));
+    dados.cadastro.forEach((c: SKUCadastro) => map.set(c.CHAVE, c));
     return map;
   }, [dados]);
 
@@ -79,108 +73,42 @@ export function useProjectionData() {
     return dados?.pedidos_pendentes ?? [];
   }, [dados?.pedidos_pendentes, cadastroMap]);
 
-  const prevProjecoesRef = useRef<ProjecaoSKU[]>([]);
-  const lastEditedCellsRef = useRef<Record<string, number>>({});
-  const lastPendenciasRef = useRef<PedidoPendente[] | null>(null);
+  const [projecoesComEdicoes, setProjecoesComEdicoes] = useState<ProjecaoSKU[]>([]);
+  const [isWorkerReady, setIsWorkerReady] = useState(false);
+  const workerRef = useRef<Worker | null>(null);
 
-  const projecoesComEdicoes = useMemo(() => {
-    if (!dados) return [];
-    
-    const pendSKUMap = buildPendenciasPorSKU(pedidosPendentesCompletos);
-    
-    const changedSkus = new Set<string>();
-    const oldEdits = lastEditedCellsRef.current;
-    
-    for (const key of Object.keys(editedCells)) {
-      if (oldEdits[key] !== editedCells[key]) {
-        changedSkus.add(key.split('|')[0]);
-      }
-    }
-    for (const key of Object.keys(oldEdits)) {
-      if (!(key in editedCells)) {
-        changedSkus.add(key.split('|')[0]);
-      }
-    }
-    
-    lastEditedCellsRef.current = editedCells;
-    
-    const needsFullRebuild = prevProjecoesRef.current.length === 0 || 
-                             prevProjecoesRef.current.length !== dados.projecao.length ||
-                             lastPendenciasRef.current !== pedidosPendentesCompletos;
-                             
-    lastPendenciasRef.current = pedidosPendentesCompletos;
-
-    const result = dados.projecao.map((proj, idx) => {
-      const cachedProj = prevProjecoesRef.current[idx];
-      if (!needsFullRebuild && cachedProj && cachedProj.CHAVE === proj.CHAVE && !changedSkus.has(proj.CHAVE)) {
-        return cachedProj;
-      }
-        
-      const edicoesDoSKU: Record<string, number | null> = {};
-      dados.metadata.meses.forEach(mes => {
-        const key = `${proj.CHAVE}|${mes}`;
-        if (key in editedCells) {
-          edicoesDoSKU[mes] = editedCells[key];
-        } else {
-          edicoesDoSKU[mes] = null;
-        }
-      });
-
-      const cadastro = cadastroMap.get(proj.CHAVE);
-      if (!cadastro) return proj;
-
-      const sellOutOriginal: Record<string, number> = {};
-      const pedidosOriginais: Record<string, number> = {};
-      const estObjetivosOriginais: Record<string, number> = {};
-      
-      dados.metadata.meses.forEach(mes => {
-        sellOutOriginal[mes] = proj.meses[mes]?.SELL_OUT || 0;
-        pedidosOriginais[mes] = proj.meses[mes]?.PEDIDO || 0;
-        estObjetivosOriginais[mes] = proj.meses[mes]?.ESTOQUE_OBJETIVO || 0;
-      });
-
-      const pedidosSKU = pendSKUMap.get(cadastro.CHAVE) || [];
-      const pendMes = pedidosSKU.length > 0
-        ? agruparPendenciasPorMes(pedidosSKU, dados.metadata.meses)
-        : undefined;
-
-      const novaProjecao = recalcularProjecaoSKU(
-        cadastro, dados.metadata.meses, sellOutOriginal,
-        edicoesDoSKU, pedidosOriginais, dados.metadata.data_referencia,
-        pendMes, estObjetivosOriginais
-      );
-      
-      const status = getStatusSKU(novaProjecao, dados.metadata.meses, cadastro);
-      
-      const firstMes = dados.metadata.meses[0];
-      const mes1Data = novaProjecao[firstMes];
-      const fallbackObjDias = (cadastro.LT || 0) + (cadastro.FREQUENCIA || 0) + (cadastro.EST_SEGURANCA || 0);
-      let demandaDiariaMes1 = 1;
-      
-      if (firstMes) {
-          const parts = firstMes.split('_');
-          if (parts.length === 2) {
-              const ano = parseInt(parts[0], 10);
-              const mesNum = parseInt(parts[1], 10);
-              const diasMes1 = new Date(ano, mesNum, 0).getDate();
-              demandaDiariaMes1 = (mes1Data?.SELL_OUT || 0) / diasMes1;
-          }
-      }
-      
-      const kpis = {
-          status,
-          coberturaEstoqueDias: demandaDiariaMes1 > 0 ? Math.round((cadastro.ESTOQUE || 0) / demandaDiariaMes1) : ((cadastro.ESTOQUE || 0) > 0 ? 999 : 0),
-          coberturaEstoquePendenciaDias: demandaDiariaMes1 > 0 ? Math.round(((cadastro.ESTOQUE || 0) + (cadastro.PENDENCIA || 0)) / demandaDiariaMes1) : (((cadastro.ESTOQUE || 0) + (cadastro.PENDENCIA || 0)) > 0 ? 999 : 0),
-          objetivoDias: demandaDiariaMes1 > 0 ? Math.round((mes1Data?.ESTOQUE_OBJETIVO || 0) / demandaDiariaMes1) : fallbackObjDias,
-          sellOutM1: mes1Data?.SELL_OUT || 0
-      };
-
-      return { ...proj, meses: novaProjecao, kpis };
+  useEffect(() => {
+    const worker = new Worker(new URL('../workers/projectionWorker.ts', import.meta.url), {
+      type: 'module'
     });
     
-    prevProjecoesRef.current = result;
-    return result;
-  }, [dados, editedCells, cadastroMap, pedidosPendentesCompletos]);
+    worker.onmessage = (e: MessageEvent<any>) => {
+      setProjecoesComEdicoes(e.data.projecoesComEdicoes);
+    };
+
+    workerRef.current = worker;
+    return () => worker.terminate();
+  }, []);
+
+  useEffect(() => {
+    if (dados && workerRef.current) {
+      workerRef.current.postMessage({
+        type: 'INIT',
+        dados,
+        editedCells
+      });
+      setIsWorkerReady(true);
+    }
+  }, [dados]); // re-init if full database reloads
+
+  useEffect(() => {
+    if (isWorkerReady && workerRef.current) {
+      workerRef.current.postMessage({
+        type: 'CALCULATE',
+        editedCells
+      });
+    }
+  }, [editedCells, isWorkerReady]);
 
   const dadosFiltrados = useMemo(() => {
     if (!dados) return [];
@@ -188,10 +116,10 @@ export function useProjectionData() {
     let base = projecoesComEdicoes;
     if (filters.importedSkus && filters.importedSkus.length > 0) {
       const importedSet = new Set(filters.importedSkus);
-      base = base.filter(proj => importedSet.has(proj.CHAVE));
+      base = base.filter((proj: ProjecaoSKU) => importedSet.has(proj.CHAVE));
     }
 
-    return base.filter(proj => {
+    return base.filter((proj: ProjecaoSKU) => {
       const cadastro = cadastroMap.get(proj.CHAVE);
       if (!cadastro) return false;
       if (filters.fornecedor && cadastro['fornecedor comercial'] !== filters.fornecedor) return false;
@@ -231,7 +159,7 @@ export function useProjectionData() {
       return;
     }
 
-    const proj = projecoesRef.current.find(p => p.CHAVE === chave);
+    const proj = projecoesRef.current.find((p: ProjecaoSKU) => p.CHAVE === chave);
     const valorAtual = proj?.meses[mes]?.PEDIDO || 0;
     const delta = novoValor - valorAtual;
 

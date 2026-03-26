@@ -13,7 +13,6 @@ import { AlertTriangle, AlertCircle, CheckCircle2, Pencil, BarChart3, ArrowUpDow
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from './ui/empty';
 import { Checkbox } from './ui/checkbox';
 import { EditableCell } from './ui/EditableCell';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ProjecaoSKU, SKUCadastro, SemanaInfo, WeekDistribution } from '../lib/calculationEngine';
 import { formatNumber, formatCurrency, formatMes, getStatusSKU, hasShelfLifeRisk, getShelfLifeRiskStatus, calcularSemanasRestantes, calcularSemanasComLT, distribuirPedidoMultiMes, parseMesAno, diasNoMes, calcularLostSalesSKU } from '../lib/calculationEngine';
 

@@ -119,7 +119,7 @@ export interface CDMapEntry {
     }>;
 }
 
-/** Dados de capacidade de armazém (do localStorage) */
+/** Dados de capacidade de armazém (do Supabase) */
 export interface WarehouseCapacityData {
     codigoDepositoPd: string | number;
     grupos?: WarehouseGroup[];

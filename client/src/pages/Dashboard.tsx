@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDashboardData, DashboardFilters } from '../hooks/useDashboardData';
+import { usePedidosAprovacao } from '../hooks/usePedidosAprovacao';
 import { formatCurrency, formatNumber } from '../lib/calculationEngine';
 
 function KPICard({
@@ -79,15 +80,8 @@ export default function Dashboard() {
     loading,
   } = useDashboardData(filters);
 
-  // Badge: pedidos pendentes
-  const pedidosPendentes = (() => {
-    try {
-      const raw = localStorage.getItem('pedidos_aprovacao');
-      if (!raw) return 0;
-      const lista = JSON.parse(raw);
-      return Array.isArray(lista) ? lista.filter((p: any) => p.status === 'pendente').length : 0;
-    } catch { return 0; }
-  })();
+  const { pedidos } = usePedidosAprovacao();
+  const pedidosPendentes = pedidos.filter(p => p.status === 'pendente').length;
 
   const clearFilters = () => {
     setFilters({

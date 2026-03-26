@@ -20,6 +20,7 @@ export default function CapacidadeArmazens() {
   const [loading, setLoading] = useState(true);
 
   const {
+    loading: capacityLoading,
     getConfigForCD,
     adicionarGrupo,
     removerGrupo,
@@ -38,6 +39,8 @@ export default function CapacidadeArmazens() {
       .catch(err => console.error('Erro ao carregar cadastro:', err))
       .finally(() => setLoading(false));
   }, []);
+
+  const isFullyLoading = loading || capacityLoading;
 
   // Derivar CDs e categorias por CD
   const cds = useMemo(() => {
@@ -81,7 +84,7 @@ export default function CapacidadeArmazens() {
     gerarGruposAleatorios(cdNum, categoriasDisponiveis);
   };
 
-  if (loading) {
+  if (isFullyLoading) {
     return (
       <div className="flex h-screen overflow-hidden">
         <AppSidebar />

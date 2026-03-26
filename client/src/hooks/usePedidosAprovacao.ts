@@ -1,6 +1,6 @@
 /**
  * Hook para gerenciar pedidos enviados para aprovação
- * Persiste no localStorage sob a chave 'pedidos_aprovacao'
+ * Persiste no Supabase na tabela 'pedidos_aprovacao'
  * 
  * SESSÃO DIÁRIA:
  * - Pedidos pendentes: persistem indefinidamente até decisão

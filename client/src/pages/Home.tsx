@@ -88,7 +88,7 @@ export default function Home() {
   const estoqueLojaMap = useMemo(() => {
     const map = new Map<string, number>();
     if (dados?.estoque_loja) {
-      dados.estoque_loja.forEach(el => map.set(el.CHAVE, el.estoque_loja));
+      dados.estoque_loja.forEach((el: any) => map.set(el.CHAVE, el.estoque_loja));
     }
     return map;
   }, [dados?.estoque_loja]);
@@ -285,7 +285,7 @@ export default function Home() {
   const estoquesObjetivoPorChave = useMemo(() => {
     if (!dados?.estoques_objetivo) return undefined;
     const map = new Map<string, Record<string, number>>();
-    dados.estoques_objetivo.forEach(eo => {
+    dados.estoques_objetivo.forEach((eo: any) => {
       map.set(eo.chave, eo.meses);
     });
     return map;

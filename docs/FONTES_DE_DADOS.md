@@ -8,34 +8,40 @@
 
 ## Visão Geral
 
-```
+## Visão Geral
+
+O sistema transiciona de uma arquitetura estática (baseada em arquivos JSON em memória/localStorage) para uma arquitetura relacional persistida utilizando o **Supabase** (PostgreSQL).
+
+```text
 ┌──────────────────────────────────────────────────────────────────┐
 │                    FONTES DE DADOS                               │
 ├──────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  ┌─── ESTÁTICOS (JSON em public/) ────────────────────────────┐  │
-│  │  sample-data.json      → cadastro, projecao, fornecedores, │  │
-│  │                          contas_a_pagar, estoque_loja,     │  │
-│  │                          metadata                          │  │
+│  ┌─── BANCO DE DADOS RELACIONAL (Supabase / PostgreSQL) ──────┐  │
+│  │  produtos              → cadastro unificado de SKUs        │  │
+│  │  fornecedores          → regras e prazos de pagamento      │  │
+│  │  projecoes_mensais     → dados projetados por SKU e mês    │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌─── ESTÁTICOS LEGADOS (JSON em public/) ────────────────────┐  │
+│  │  sample-data.json      → metadata complementar             │  │
 │  │  pending-orders.json   → pedidos pendentes de entrega      │  │
 │  │  estoque-objetivo.json → estoque objetivo mensal por SKU   │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                          │                                       │
 │                          ▼                                       │
-│  ┌─── DERIVADOS (calculados no browser) ──────────────────────┐  │
-│  │  dataAdapter.ts        → recalcula projeções ao carregar   │  │
-│  │  mockDataLake.ts       → filtragem, KPIs, rankings,       │  │
-│  │                          ciclo estoque, dashboards         │  │
-│  │  projection.ts         → recálculo de projeções por SKU   │  │
-│  │  coverage.ts           → cálculo de cobertura por data     │  │
+│  ┌─── DERIVADOS E MEMÓRIA (Calculados no Front-End) ──────────┐  │
+│  │  dataAdapter.ts        → recalcula projeções e faz merge   │  │
+│  │  mockDataLake.ts       → filtragem, KPIs, rankings         │  │
+│  │  projection.ts         → funções de S&OP (estoque proj.)   │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                          │                                       │
 │                          ▼                                       │
-│  ┌─── PERSISTIDOS (localStorage) ─────────────────────────────┐  │
-│  │  pedidos_aprovacao            → pedidos de compra enviados │  │
-│  │  planejamento_edicoes_YYYY-MM → edições na tabela          │  │
-│  │  warehouse_capacity           → config de armazéns         │  │
-│  │  theme                        → preferência de tema        │  │
+│  ┌─── PERSISTIDOS LOCAIS (localStorage) ──────────────────────┐  │
+│  │  pedidos_aprovacao            → workflow de aprovação      │  │
+│  │  planejamento_edicoes_YYYY... → edições S&OP manuais       │  │
+│  │  warehouse_capacity           → regras de volumetria CDs   │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                                                                  │
 └──────────────────────────────────────────────────────────────────┘
@@ -43,7 +49,73 @@
 
 ---
 
-## Dados Estáticos (JSON)
+## Banco de Dados Relacional (Supabase)
+
+A arquitetura oficial de dados do Planejamento de Compras (S&OP) está estruturada em tabelas no Supabase.
+
+### 1. `fornecedores` (Dimensão)
+
+Tabela que armazena as regras comerciais de relacionamento com o fornecedor.
+
+| Coluna | Tipo (PostgreSQL) | Descrição e Funcionalidade |
+|--------|-------------------|-----------------------------|
+| `id` | `uuid` | PK. Identificador único do fornecedor autogerado pelo Supabase. |
+| `nome` | `text` | Nome comercial do fornecedor (ex: "NOVO NORDISK"). Unique Key. |
+| `prazo_pagamento` | `integer` | Prazo padrão de pagamento em dias. Utilizado para cálculos de PMP (Prazo Médio de Pagamento) e fluxo de caixa. |
+| `created_at` | `timestamptz` | Data e hora de criação. |
+
+**Integração e Uso:** Os prazos parametrizados aqui populam automaticamente a tela de Envio para Aprovação e norteiam as métricas de Ciclo de Estoque (PME vs PMP e Financiamento da Cadeia Operacional).
+
+### 2. `produtos` (Cadastro / Dimensão Fato)
+
+Tabela central de cadastro de SKUs. Combina informações estáticas do produto com parâmetros dinâmicos de reposição de cada Centro de Distribuição (CD).
+
+| Coluna | Tipo | Descrição e Funcionalidade |
+|--------|------|-----------------------------|
+| `chave` | `text` | PK. Identificador natural e único no formato `{codigo_deposito_pd}-{codigo_produto}`. Ex: "1-2959". |
+| `fornecedor_id` | `uuid` | FK para `fornecedores(id)`. Vincula o fornecedor padrão do produto. |
+| `codigo_deposito_pd` | `integer` | Código identificador do CD (ex: 1, 2, 7). Utilizado no rateio de painéis e volumetria do componente `CapacidadeArmazens`. |
+| `codigo_produto` | `integer` | Código master do produto (SKU pai). |
+| `nome_produto` | `text` | Descrição comercial do produto/apresentação. |
+| `categoria_n3`, `n4` | `text` | Categoria terapêutica Nível 3 (ex: "CARDIOLOGIA") e Subcategoria. Filtro estratégico e agregador de relatórios visuais no Dashboard (ex: Treemap). |
+| `estoque_cd` | `integer` | Saldo inicial físico atualizado no CD (em unidades). |
+| `estoque_loja` | `integer` | Saldo global de unidades espalhadas na ponta (PDV/Lojas). Usado ativamente no cálculo do PME das Lojas e em Cobertura Global. |
+| `pendencia` | `integer` | Quantidade de unidades já formalmente pedidas na jornada in-transit (aguardando recebimento/recepção fiscal). |
+| `lead_time` | `integer` | Tempo integral de ressuprimento em dias (ordem faturada a recebida). Define qual semana da projeção abrigará os pedidos despachados do Motor de Sugestão. |
+| `nna` | `integer` | Nível de Normativas de Abastecimento (target de diretriz comercial). |
+| `frequencia` | `integer` | Intervalo em dias padronizado para repetições de pedidos no S&OP. |
+| `estoque_seguranca` | `integer` | Target de reserva técnica. Se *Estoque Projetado* resvalar a este patamar ou inferior, a Engine vira o semaforo para *Status = RED/CRITICAL* (Risco Forte de Ruptura). |
+| `impacto` | `integer` | Peso ponderador de demanda comercial e curvaturas tipo XYZ/ABC. |
+| `preenchimento_demanda_loja` | `numeric` | Indexador percentual da penetração estimada real na loja/gôndola. |
+| `multiplo_embalagem` | `integer` | Múltiplo logístico imposto por fornecedor. Se > 0, todo e qualquer cálculo de Cobertura Arredondará a sugestão final ao pacote viável mais próximo. |
+| `custo_liquido` | `numeric` | Custo unitário base (R$). Principal fonte de todos os rankings financeiros, KPIs de perda estimada/dia, Valor financeiro NNA e painel Ciclo Estoque. |
+| `shelf_life` | `integer` | Tempo válido de vida útil contratual (vencimento do produto). Se a proporção cobertura/demanda projetada atingir >= 80% dessa coluna, levanta o trigger de Shelf Life Risk. |
+| `comprimento`, `altura`, `largura` | `numeric` | Dimensões centimetrais da apresentação. Motor multiplica isso pelo estoque em unidades (dividindo por 1.000.000) e compõe a capacidade estática Cúbica (M³) por grupo lógico no CD. |
+| Metadados S&OP | `text` | `analista`, `comprador`, `fornecedor_logistico`, `generico`, `monitorado`, `marca_exclusiva`. Agrupamentos analíticos para visões operacionais. |
+
+**Integração e Uso:** Os hooks da aplicação injetam os metadados desta entidade em todos os painéis e nos disparos para o cálculo complexo (`recalcularProjecaoSKU()`).
+
+### 3. `projecoes_mensais` (Fato de Performance)
+
+Tabela densa que armazena temporalmente as volumetrias para a curva do S&OP. O horizonte das métricas alcança até +13 meses adiante.
+
+| Coluna | Tipo | Descrição e Funcionalidade |
+|--------|------|-----------------------------|
+| `produto_chave` | `text` | PK Composta / FK para `produtos(chave)`. |
+| `mes` | `text` | PK Composta. Formato "YYYY_MM" (ex: "2026_03"). |
+| `sell_out` | `integer` | Demanda total estimada/projetada (Forecast Consolidado). Quantas unidades a cadeia deverá puxar no encerramento desse mês específico. |
+| `estoque_projetado` | `integer` | Target preditivo ao fim do ciclo fiscal (mês). O motor processa essa conta baseada em Estoque Anterior + Entrada e/ou Pedidos, descontando `sell_out`. |
+| `estoque_objetivo` | `integer` | Meta ou limite superior imposto para o mês. |
+| `pedido` | `integer` | Disparo/sugestão do sistema (base line) e/ou override manual da edição de comprador de qual volumetria extrair sob demanda da matriz desse fornecedor. Modificações em frontend reescrevem sobre a sombra do motor. |
+| `entrada` | `integer` | Transit-in hard / Entradas fixadas decorrentes de faturamentos ou ordens concretas já previstas de chegada física nesse mês em específico, engordando o somatório ativo de projeção. |
+
+**Integração e Uso:** A projeção contínua (mês N a N+13) suporta inteiramente a Tabela Paginada Interativa (`ProjectionTable.tsx`). Qualquer recalibração de um "pedido" no mês M propaga ondas de ressuprimento linear automático de M+1 adiante, realinhando o risco global.
+
+---
+
+## Fontes de Dados Estáticos Legados (Apoio Base)
+
+
 
 ### 1. metadata — Metadados da Base de Dados
 

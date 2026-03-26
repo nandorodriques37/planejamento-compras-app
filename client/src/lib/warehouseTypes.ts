@@ -14,5 +14,5 @@ export interface CDWarehouseConfig {
   grupos: WarehouseGroup[];
 }
 
-/** Estrutura raiz persistida no localStorage */
+/** Estrutura raiz persistida no Supabase */
 export type WarehouseCapacityData = CDWarehouseConfig[];

@@ -114,6 +114,7 @@ export interface DadosCompletos {
   pedidos_projetados?: PedidoProjetado[];
   estoque_loja?: EstoqueLoja[];
   estoques_objetivo?: EstoqueObjetivoDB[];
+  warehouse_capacity?: any[];
 }
 
 export interface DetalheMesCobertura {
